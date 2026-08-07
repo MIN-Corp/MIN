@@ -5,7 +5,7 @@ using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
-using MIN.Core.Messaging.Stateless;
+using MIN.Core.Messaging.Stateless.Handshake;
 using MIN.Core.Protocol.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Services.Contracts.Models;
@@ -75,7 +75,7 @@ internal sealed class ClientRoomService
         {
             logger.Log($"Подключаюсь к {endpoint}");
 
-            connectionResult.ConnectionId = await transport.ConnectAsync(endpoint, cancellationToken);
+            connectionResult.ConnectionId = await transport.ConnectAsync(endpoint, cancellationToken: cancellationToken);
 
             var result = await clientHandshake.HandleClientAsync(connectionResult.ConnectionId, cancellationToken);
 

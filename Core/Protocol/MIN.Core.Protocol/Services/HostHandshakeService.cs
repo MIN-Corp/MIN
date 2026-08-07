@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Messaging.Contracts.Enums;
 using MIN.Core.Protocol.Contracts.Constants;
 using MIN.Core.Protocol.Contracts.Interfaces;
 using MIN.Core.Protocol.Contracts.Models;
@@ -56,7 +57,7 @@ public sealed class HostHandshakeService : IHostHandshake
 
             var roomJson = JsonSerializer.Serialize(roomInfo);
             var response = Encoding.UTF8.GetBytes(ProtocolConstants.ResponseStarter + roomJson);
-            await transport.SendAsync(response, clientConnectionId, serverConnectionId, cancellationToken);
+            await transport.SendAsync(response, clientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
 
             tcs.TrySetResult(new PreambleResult { IsSuccess = true });
         }

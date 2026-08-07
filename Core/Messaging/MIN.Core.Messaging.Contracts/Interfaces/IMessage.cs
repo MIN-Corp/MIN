@@ -1,4 +1,6 @@
-﻿namespace MIN.Core.Messaging.Contracts.Interfaces;
+﻿using MIN.Core.Messaging.Contracts.Enums;
+
+namespace MIN.Core.Messaging.Contracts.Interfaces;
 
 /// <summary>
 /// Базовый интерфейс для всех сообщений, передаваемых по сети
@@ -53,4 +55,9 @@ public interface IMessage
     /// при передаче в потоке для этого сообщения
     /// </summary>
     bool RequireStreamAcks { get; }
+
+    /// <summary>
+    /// Канал, по которому пойдёт сообщение
+    /// </summary>
+    MessageChannel Channel { get; }
 }

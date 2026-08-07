@@ -9,5 +9,9 @@
     <ItemGroup>
         <PackageReference Include="Open.NAT.Core" />
     </ItemGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\..\Messaging\MIN.Core.Messaging.Contracts\MIN.Core.Messaging.Contracts.csproj" />
+    </ItemGroup>
 
 </Project>

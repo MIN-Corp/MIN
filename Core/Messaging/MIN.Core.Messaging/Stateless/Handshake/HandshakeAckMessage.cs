@@ -2,7 +2,7 @@
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Messages;
 
-namespace MIN.Core.Messaging.Stateless;
+namespace MIN.Core.Messaging.Stateless.Handshake;
 
 /// <summary>
 /// Подтверждение рукопожатия, содержащее публичный ключ сервера

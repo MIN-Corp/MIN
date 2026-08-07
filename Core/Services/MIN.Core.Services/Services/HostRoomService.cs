@@ -199,8 +199,8 @@ internal sealed class HostRoomService
 
         room.TotalMessageCount = context.Messages.GetMessageCount();
 
-        var connectionId = await transport.StartHostingAsync(cancellationToken);
-        room.ConnectionAddresses = await transport.SetUpAndGetEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
+        var connectionId = await transport.StartHostingAsync(cancellationToken: cancellationToken);
+        room.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
         room.LocalRoomSettings.NetworkOptions = networkOptions;
 
         context.Participants.AddParticipant(new Participant(localParticipant));
@@ -222,7 +222,7 @@ internal sealed class HostRoomService
             return room.ConnectionAddresses;
         }
 
-        var newEndpoints = await transport.SetUpAndGetEndpoints(connectionId, newNetworkOptions, room.LocalRoomSettings.NetworkOptions, cancellationToken);
+        var newEndpoints = await transport.SetUpEndpoints(connectionId, newNetworkOptions, room.LocalRoomSettings.NetworkOptions, cancellationToken);
         room.ConnectionAddresses = newEndpoints;
         room.LocalRoomSettings.NetworkOptions = newNetworkOptions;
 

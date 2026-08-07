@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using MIN.Core.Headers.Contracts.Constants;
 using MIN.Core.Headers.Contracts.Enums;
 using MIN.Core.Headers.Contracts.Interfaces;
+using MIN.Core.Messaging.Contracts.Enums;
 using MIN.Core.Streaming.Contracts.Constants;
 using MIN.Core.Streaming.Contracts.Events;
 using MIN.Core.Streaming.Contracts.Interfaces;
@@ -165,7 +166,8 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
             streamId.TryWriteBytes(new Span<byte>(ack, 1, 16));
             BitConverter.GetBytes(chunkIndex).CopyTo(ack, 17);
 
-            await transport.SendAsync(ack, connectionId, serverConnectionid, cancellationToken);
+            // TODO: CHECK CHANNEL
+            await transport.SendAsync(ack, connectionId, serverConnectionid, MessageChannel.Secure, cancellationToken);
         }
         catch (Exception ex)
         {

@@ -5,8 +5,8 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
-using MIN.Core.Messaging.Stateless;
-using MIN.Core.Messaging.Stateless.RoomRelated.Join;
+using MIN.Core.Messaging.Stateless.FastChannelConnect;
+using MIN.Core.Messaging.Stateless.Handshake;
 using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -73,7 +73,7 @@ internal sealed class HandshakeHandler : IMessageHandler
 
             logger.Log($"Сессия с получателем {handshakeAckMessage.Participant.Name} инициализирована");
 
-            return HandlerResult.WithResponse(new RoomJoinRequestMessage());
+            return HandlerResult.WithResponse(new FastChannelConnectRequestMessage());
         }
 
         return HandlerResult.Failure($"Неизвестный тип сообщения в {nameof(HandshakeHandler)} - {message.GetType()}");

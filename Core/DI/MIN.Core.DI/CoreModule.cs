@@ -24,7 +24,7 @@ using MIN.Core.Stores.Registries;
 using MIN.Core.Stores.Services;
 using MIN.Core.Streaming.Services;
 using MIN.Core.SubRooms.Services;
-using MIN.Core.Transport.TcpSockets;
+using MIN.Core.Transport;
 
 namespace MIN.Core.DI;
 
@@ -47,7 +47,7 @@ public class CoreModule : Module
         services.RegisterAsImplementedInterfaces<FileSystemKeyStorage>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<MessageEncryptor>(ServiceLifetime.Singleton);
 
-        services.RegisterAsImplementedInterfaces<TcpTransport>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<ChannelTransport>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ClientHandshakeService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<HostHandshakeService>(ServiceLifetime.Singleton);
 

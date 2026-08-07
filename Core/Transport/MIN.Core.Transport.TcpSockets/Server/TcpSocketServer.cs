@@ -90,10 +90,40 @@ internal sealed class TcpSocketServer : IAsyncDisposable
 
     private async Task HandleConnectionAsync(TcpClient tcpClient)
     {
-        var connection = new TcpSocketConnection(tcpClient, logger);
-        logger.Log($"Клиент подключился: {connection.RemoteEndPoint ?? "unknown"}");
+        TcpSocketConnection? connection = null;
+
         try
         {
+            var stream = tcpClient.GetStream();
+            var remoteEndPoint = tcpClient.Client.RemoteEndPoint?.ToString();
+
+            Guid announcedId;
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cts!.Token);
+                timeoutCts.CancelAfter(ConnectionPreamble.Timeout);
+                var preamble = await TcpSocketConnection.ReadFrameAsync(stream, timeoutCts.Token);
+
+                if (!ConnectionPreamble.TryParse(preamble, out announcedId))
+                {
+                    logger.Log($"Клиент {remoteEndPoint ?? "unknown"} прислал невалидную преамбалу, отклоняю");
+                    return;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                logger.Log($"Клиент {remoteEndPoint ?? "unknown"} не прислал преамбалу за {ConnectionPreamble.Timeout}, отклоняю");
+                return;
+            }
+            catch (Exception ex) when (ex is EndOfStreamException or IOException)
+            {
+                logger.Log($"Клиент {remoteEndPoint ?? "unknown"} разорвал соединение до преамбалу: {ex.Message}");
+                return;
+            }
+
+            logger.Log($"Клиент {remoteEndPoint ?? "unknown"} подключился с id {announcedId}");
+
+            connection = new TcpSocketConnection(tcpClient, logger, announcedId);
             connection.RawMessageReceived += OnConnectionMessage;
             connection.Disconnected += OnConnectionDisconnected;
             connection.StartReading();
@@ -107,8 +137,16 @@ internal sealed class TcpSocketServer : IAsyncDisposable
         }
         finally
         {
-            connections.TryRemove(connection.Id, out _);
-            await connection.DisposeAsync();
+            if (connection != null)
+            {
+                connections.TryRemove(connection.Id, out _);
+                await connection.DisposeAsync();
+            }
+            else
+            {
+                tcpClient.Dispose();
+            }
+
             connectionSlots.Release();
         }
     }

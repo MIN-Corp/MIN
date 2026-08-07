@@ -21,4 +21,17 @@ public abstract class BaseConnection : IConnection
     /// Активно ли соединение
     /// </summary>
     public virtual bool IsConnected { get; }
+
+    /// <summary>
+    /// Инициализирует новый экземпляр <see cref="BaseConnection"/>
+    /// </summary>
+    protected BaseConnection(Guid id)
+    {
+        Id = id;
+    }
+
+    /// <summary>
+    /// Инициализирует новый экземпляр <see cref="BaseConnection"/>
+    /// </summary>
+    protected BaseConnection() : this(Guid.NewGuid()) { }
 }

@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using MIN.Core.Transport.Contracts.Enum;
+using MIN.Core.Transport.Contracts.Helpers;
 using MIN.Core.Transport.TcpSockets.Models;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -47,15 +48,18 @@ internal sealed class TcpSocketClient : IAsyncDisposable
     /// <summary>
     /// Подключиться к серверу
     /// </summary>
-    public async Task<Guid> ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken)
+    public async Task<Guid> ConnectAsync(string ipAddress, int port, Guid? connectionId, CancellationToken cancellationToken)
     {
         client = new TcpClient();
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         await client.ConnectAsync(ipAddress, port, cts.Token);
 
-        connection = new TcpSocketConnection(client, logger);
+        connection = new TcpSocketConnection(client, logger, connectionId);
         connection.RawMessageReceived += (_, msg) => OnMessageReceived?.Invoke(msg);
         connection.Disconnected += (_, ex) => OnDisconnected?.Invoke(ex);
+
+        await connection.SendAsync(ConnectionPreamble.Create(connection.Id), cancellationToken);
+
         connection.StartReading();
 
         return connection.Id;

@@ -1,4 +1,6 @@
-﻿namespace MIN.Core.Protocol.Contracts.Constants;
+﻿using MIN.Core.Transport.Contracts.Helpers;
+
+namespace MIN.Core.Protocol.Contracts.Constants;
 
 /// <summary>
 /// Константы для протокола
@@ -8,7 +10,7 @@ public class ProtocolConstants
     /// <summary>
     /// Кодовое слово для любого подключения
     /// </summary>
-    public const string ResponseStarter = "MIN";
+    public const string ResponseStarter = ConnectionPreamble.Magic;
 
     /// <summary>
     /// Таймаут ожидания подключения со стороны клиента

@@ -58,6 +58,16 @@ public enum MessageTypeTag : byte
     /// </summary>
     Pong = 7,
 
+    /// <summary>
+    /// Запрос на подключение к быстрому каналу
+    /// </summary>
+    FastChannelConnectRequest = 8,
+
+    /// <summary>
+    /// Ответ на подключение к быстрому каналу
+    /// </summary>
+    FastChannelConnectResponse = 9,
+
     // ===== Сообщения обнаружения (32-47) =====
 
     /// <summary>

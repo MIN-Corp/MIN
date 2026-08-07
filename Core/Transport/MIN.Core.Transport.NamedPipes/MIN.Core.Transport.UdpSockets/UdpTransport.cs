@@ -5,35 +5,34 @@ using MIN.Core.Transport.Contracts.Events;
 using MIN.Core.Transport.Contracts.Helpers;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Models;
-using MIN.Core.Transport.TcpSockets.Client;
-using MIN.Core.Transport.TcpSockets.Models;
-using MIN.Core.Transport.TcpSockets.Server;
+using MIN.Core.Transport.UdpSockets.Client;
+using MIN.Core.Transport.UdpSockets.Models;
+using MIN.Core.Transport.UdpSockets.Server;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 using Open.Nat;
 
-namespace MIN.Core.Transport.TcpSockets;
+namespace MIN.Core.Transport.UdpSockets;
 
 /// <summary>
-/// Реализация передачи данных на основе Tcp Socket
+/// Реализация передачи данных на основе Udp Socket
 /// </summary>
-public class TcpTransport : ITransport, IAsyncDisposable
+public class UdpTransport : IAsyncDisposable
 {
     private readonly ILoggerProvider logger;
-    private readonly ConcurrentDictionary<Guid, TcpSocketServer> servers = new();
-    private readonly ConcurrentDictionary<Guid, TcpSocketClient> clients = new();
+    private readonly ConcurrentDictionary<Guid, UdpSocketServer> servers = new();
+    private readonly ConcurrentDictionary<Guid, UdpSocketClient> clients = new();
     private readonly ConcurrentDictionary<Guid, IReadOnlyList<IEndpoint>> cachedServerEndpoints = new();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Получено сырое сообщение
+    /// </summary>
     public event EventHandler<RawMessageReceivedEventArgs>? RawMessageReceived;
 
-    /// <inheritdoc />
-    public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
-
     /// <summary>
-    /// Инициализирует новый экземпляр <see cref="TcpTransport"/>
+    /// Инициализирует новый экземпляр <see cref="UdpTransport"/>
     /// </summary>
-    public TcpTransport(ILoggerProvider logger)
+    public UdpTransport(ILoggerProvider logger)
     {
         this.logger = logger;
     }
@@ -45,27 +44,12 @@ public class TcpTransport : ITransport, IAsyncDisposable
             ? serverConnectionId.Value
             : Guid.NewGuid();
         var port = PortProvider.AllocatePort();
-        var server = new TcpSocketServer(logger, port);
+        var server = new UdpSocketServer(logger, port);
 
-        server.OnMessageReceived += (TcpSocketServer server, (TcpSocketConnection conn, byte[] msg) eventArgs) =>
+        server.OnMessageReceived += (UdpSocketServer server, (UdpSocketConnection conn, byte[] msg) eventArgs) =>
         {
             var args = new RawMessageReceivedEventArgs(eventArgs.msg, eventArgs.conn.Id, connectionId);
             RawMessageReceived?.Invoke(this, args);
-        };
-
-        server.OnConnectionEstablished += (s, conn) =>
-        {
-            var args = new ConnectionStateChangedEventArgs(conn.Id, true, serverConnectionId: connectionId)
-            {
-                RemoteEndPoint = conn.RemoteEndPoint,
-            };
-            ConnectionStateChanged?.Invoke(this, args);
-        };
-
-        server.ConnectionDisconnected += (TcpSocketServer server, (TcpSocketConnection conn, DisconnectReason reason) eventArgs) =>
-        {
-            var args = new ConnectionStateChangedEventArgs(eventArgs.conn.Id, false, eventArgs.reason, connectionId);
-            ConnectionStateChanged?.Invoke(this, args);
         };
 
         await server.StartAsync(cancellationToken);
@@ -87,30 +71,22 @@ public class TcpTransport : ITransport, IAsyncDisposable
     /// <inheritdoc />
     public async Task<Guid> ConnectAsync(IEndpoint endpoint, Guid? connectionId, CancellationToken cancellationToken)
     {
-        if (endpoint is not TcpEndpoint tcpEp)
+        if (endpoint is not UdpEndpoint udpEp)
         {
-            throw new ArgumentException("Endpoint must be TcpEndpoint");
+            throw new ArgumentException("Endpoint must be UdpEndpoint");
         }
 
-        var client = new TcpSocketClient(logger);
+        var client = new UdpSocketClient(connectionId ?? Guid.NewGuid(), logger);   // id задаст ChannelTransport
         client.OnMessageReceived += msg =>
         {
             var args = new RawMessageReceivedEventArgs(msg, client.ConnectionId);
             RawMessageReceived?.Invoke(this, args);
         };
-        client.OnDisconnected += reason =>
-        {
-            var args = new ConnectionStateChangedEventArgs(client.ConnectionId, false, reason);
-            ConnectionStateChanged?.Invoke(this, args);
-        };
 
-        var connectedConnectionId = await client.ConnectAsync(tcpEp.IPAddress, tcpEp.Port, connectionId, cancellationToken);
-        clients.TryAdd(connectedConnectionId, client);
+        await client.ConnectAsync(udpEp.IPAddress, udpEp.Port, cancellationToken);
+        clients.TryAdd(client.ConnectionId, client);
 
-        var connectedArgs = new ConnectionStateChangedEventArgs(connectedConnectionId, true);
-        ConnectionStateChanged?.Invoke(this, connectedArgs);
-
-        return connectedConnectionId;
+        return client.ConnectionId;
     }
 
     /// <inheritdoc />
@@ -164,7 +140,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             ResultCodes? result = ResultCodes.UNKNOWN_ERROR;
             try
             {
-                result = await PortForwardingHelper.MapPortAsync(server.Port, Protocol.Tcp, cancellationToken, $"Room {server.Port}");
+                result = await PortForwardingHelper.MapPortAsync(server.Port, Protocol.Udp, cancellationToken, $"Room {server.Port}");
             }
             catch
             {
@@ -190,7 +166,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
         }
         else if (oldNetworkOptions.HasValue && !networkOptions.EnablePortForwarding && oldNetworkOptions.Value.EnablePortForwarding)
         {
-            await PortForwardingHelper.UnmapPortAsync(server.Port, Protocol.Tcp, cancellationToken);
+            await PortForwardingHelper.UnmapPortAsync(server.Port, Protocol.Udp, cancellationToken);
         }
 
         var includeVpns = oldNetworkOptions == null && networkOptions.EnableRadmin
@@ -207,16 +183,16 @@ public class TcpTransport : ITransport, IAsyncDisposable
             if ((oldNetworkOptions == null && networkOptions.EnablePortForwarding)
                 || (oldNetworkOptions.HasValue && networkOptions.EnablePortForwarding && !oldNetworkOptions.Value.EnablePortForwarding))
             {
-                await PortForwardingHelper.UnmapPortAsync(server.Port, Protocol.Tcp, cancellationToken);
+                await PortForwardingHelper.UnmapPortAsync(server.Port, Protocol.Udp, cancellationToken);
             }
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        var endpoints = new List<TcpEndpoint>();
+        var endpoints = new List<UdpEndpoint>();
 
         foreach (var ip in knownIps)
         {
-            endpoints.Add(new TcpEndpoint
+            endpoints.Add(new UdpEndpoint
             {
                 Origin = ip.Origin,
                 IPAddress = ip.Address.ToString(),
@@ -246,9 +222,9 @@ public class TcpTransport : ITransport, IAsyncDisposable
     {
         logger.Log($"Отключаю соединения с id {clientConnectionId}");
         if (servers.TryGetValue(serverConnectionId ?? Guid.Empty, out var server) &&
-            server.Connections.TryGetValue(clientConnectionId, out var conn))
+            server.Connections.TryGetValue(clientConnectionId, out _))
         {
-            await conn.StopAsync(reason);
+            await server.DisconnectConnectionAsync(clientConnectionId, reason);
         }
         else if (clients.TryGetValue(clientConnectionId, out var client))
         {
@@ -261,6 +237,20 @@ public class TcpTransport : ITransport, IAsyncDisposable
     public async Task DisconnectAsync(Guid connectionId, DisconnectReason reason)
     {
         await DisconnectClientAsync(connectionId, null, reason);
+    }
+
+    /// <summary>
+    /// Готов отправлять сообщения
+    /// </summary>
+    public bool IsReadyToSend(Guid recipientConnectionId, Guid? serverConnectionId)
+    {
+        if (clients.ContainsKey(recipientConnectionId))
+        {
+            return true;
+        }
+
+        return servers.TryGetValue(serverConnectionId ?? Guid.Empty, out var server)
+            && server.Connections.ContainsKey(recipientConnectionId);
     }
 
     /// <inheritdoc cref="IAsyncDisposable.DisposeAsync"/>

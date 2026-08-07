@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Messaging.Contracts.Enums;
 using MIN.Core.Protocol.Contracts.Constants;
 using MIN.Core.Protocol.Contracts.Interfaces;
 using MIN.Core.Protocol.Contracts.Models;
@@ -82,7 +83,7 @@ public sealed class ClientHandshakeService : IClientHandshake
         var request = Encoding.UTF8.GetBytes(ProtocolConstants.ResponseStarter);
         logger.Log($"Protocol client: отправляю запрос на соединение {connectionId}");
         await Task.Delay(10, cancellationToken); // даём серверу время осознать
-        await transport.SendAsync(request, connectionId, null, cancellationToken);
+        await transport.SendAsync(request, connectionId, null, MessageChannel.Secure, cancellationToken);
 
         try
         {

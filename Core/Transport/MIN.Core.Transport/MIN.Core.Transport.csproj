@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MIN.Core.Transport.NamedPipes\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj" />
+    <ProjectReference Include="..\MIN.Core.Transport.TcpSockets\MIN.Core.Transport.TcpSockets.csproj" />
+  </ItemGroup>
+
+</Project>

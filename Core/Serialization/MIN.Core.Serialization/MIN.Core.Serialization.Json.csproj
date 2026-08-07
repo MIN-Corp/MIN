@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Messaging\MIN.Core.Messaging\MIN.Core.Messaging.csproj" />
+    <ProjectReference Include="..\..\Transport\MIN.Core.Transport.NamedPipes\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj" />
     <ProjectReference Include="..\..\Transport\MIN.Core.Transport.TcpSockets\MIN.Core.Transport.TcpSockets.csproj" />
     <ProjectReference Include="..\MIN.Core.Serialization.Contracts\MIN.Core.Serialization.Contracts.csproj" />
   </ItemGroup>

@@ -1,4 +1,5 @@
-﻿using MIN.Core.Messaging.Contracts.Interfaces;
+﻿using MIN.Core.Messaging.Contracts.Enums;
+using MIN.Core.Messaging.Contracts.Interfaces;
 
 namespace MIN.Core.Messaging.Contracts.Messages;
 
@@ -34,4 +35,7 @@ public abstract class BaseMessage : IMessage
 
     /// <inheritdoc />
     public virtual bool RequireStreamAcks { get; }
+
+    /// <inheritdoc />
+    public virtual MessageChannel Channel { get; } = MessageChannel.Secure;
 }

@@ -77,7 +77,7 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
         var dataWithMarker = headerManager.AddHeader(serialized, (byte)StreamChunkFlags.None);
         var dataToSend = EncryptDataIfRequired(message, dataWithMarker, roomId, recipientConnectionId);
 
-        await transport.SendAsync(dataToSend, recipientConnectionId, serverConnectionId, cancellationToken);
+        await transport.SendAsync(dataToSend, recipientConnectionId, serverConnectionId, message.Channel, cancellationToken);
     }
 
     async Task IMessageSender.SendStreamAsync(Stream messageStream, Guid? streamId, Guid roomId, Guid recipientConnectionId, CancellationToken cancellationToken)

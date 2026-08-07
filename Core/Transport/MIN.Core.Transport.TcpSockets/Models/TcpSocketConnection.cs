@@ -23,7 +23,8 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
     /// <summary>
     /// Инициализирует новый экзмепляр <see cref="TcpSocketConnection"/>
     /// </summary>
-    public TcpSocketConnection(TcpClient client, ILoggerProvider logger)
+    public TcpSocketConnection(TcpClient client, ILoggerProvider logger, Guid? connectionId = null)
+        : base(connectionId ?? Guid.NewGuid())
     {
         this.client = client;
         this.logger = logger;
@@ -83,7 +84,7 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
         }
     }
 
-    private async Task<byte[]> ReadMessageAsync(CancellationToken ct)
+    static internal async Task<byte[]> ReadFrameAsync(NetworkStream stream, CancellationToken ct)
     {
         var lengthBuf = new byte[4];
         var bytesRead = 0;
@@ -111,6 +112,9 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
         }
         return data;
     }
+
+    private async Task<byte[]> ReadMessageAsync(CancellationToken ct)
+        => await ReadFrameAsync(stream, ct);
 
     /// <summary>
     /// Отправляет данные

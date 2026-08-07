@@ -21,7 +21,7 @@
     <ProjectReference Include="..\..\Stores\MIN.Core.Stores\MIN.Core.Stores.csproj" />
     <ProjectReference Include="..\..\Streaming\MIN.Core.Streaming\MIN.Core.Streaming.csproj" />
     <ProjectReference Include="..\..\SubRooms\MIN.Core.SubRooms\MIN.Core.SubRooms.csproj" />
-    <ProjectReference Include="..\..\Transport\MIN.Core.Transport.TcpSockets\MIN.Core.Transport.TcpSockets.csproj" />
+    <ProjectReference Include="..\..\Transport\MIN.Core.Transport\MIN.Core.Transport.csproj" />
   </ItemGroup>
 
 </Project>
