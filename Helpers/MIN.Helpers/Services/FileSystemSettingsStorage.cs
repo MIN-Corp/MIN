@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using MIN.Helpers.Contracts.Helpers;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces.SettingsServices;
 using MIN.Helpers.Contracts.Models;
@@ -9,14 +10,15 @@ namespace MIN.Helpers.Services;
 public sealed class FileSystemSettingsStorage : ISettingsStorage
 {
     private readonly string settingsPath;
+    private readonly SchemaFileStore schemaFileStore;
     private readonly JsonSerializerOptions jsonOptions;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="FileSystemSettingsStorage"/>
     /// </summary>
-    public FileSystemSettingsStorage(IAppDataProvider appDataProvider)
+    public FileSystemSettingsStorage(IAppDataProvider appDataProvider, ILoggerProvider logger)
     {
-        var directory = Directory.CreateDirectory(Path.Combine(appDataProvider.BaseDirectory, "settings")).FullName;
+        var directory = Directory.CreateDirectory(Path.Combine(appDataProvider.SharedDirectory, "settings")).FullName;
         settingsPath = Path.Combine(directory, "settings.json");
         jsonOptions = new JsonSerializerOptions
         {
@@ -24,28 +26,12 @@ public sealed class FileSystemSettingsStorage : ISettingsStorage
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             PropertyNameCaseInsensitive = true
         };
+        schemaFileStore = new(1, jsonOptions, logger);
     }
 
     Settings ISettingsStorage.Load()
-    {
-        try
-        {
-            if (!File.Exists(settingsPath))
-            {
-                return new Settings();
-            }
-            var json = File.ReadAllText(settingsPath);
-            return JsonSerializer.Deserialize<Settings>(json, jsonOptions) ?? new Settings();
-        }
-        catch
-        {
-            return new Settings();
-        }
-    }
+        => schemaFileStore.LoadOrCreate(settingsPath, () => new Settings());
 
-    void ISettingsStorage.Save(Settings settings)
-    {
-        var json = JsonSerializer.Serialize(settings, jsonOptions);
-        File.WriteAllText(settingsPath, json);
-    }
+    Task ISettingsStorage.Save(Settings settings)
+        => schemaFileStore.SaveAsync(settingsPath, settings);
 }

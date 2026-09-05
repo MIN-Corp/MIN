@@ -29,7 +29,7 @@ public record RoomInfo : IRoomData
     public int MaximumParticipants { get; set; }
 
     /// <inheritdoc />
-    public bool IsActive { get; set; }
+    public bool IsOnline { get; set; }
 
     /// <inheritdoc />
     public ParticipantInfo HostParticipant { get; set; } = null!;
@@ -50,7 +50,7 @@ public record RoomInfo : IRoomData
         ParticipantCount = room.ParticipantCount;
         TotalMessageCount = room.TotalMessageCount;
         MaximumParticipants = room.MaximumParticipants;
-        IsActive = room.IsActive;
+        IsOnline = room.IsOnline;
         CreatedAt = room.CreatedAt;
     }
 

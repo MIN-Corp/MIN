@@ -23,10 +23,10 @@ public class SettingsProvider : ISettingsProvider
     Settings ISettingsProvider.GetSettings()
         => cachedSettings ??= storage.Load();
 
-    void ISettingsProvider.SaveSettings(Settings settings)
+    async Task ISettingsProvider.SaveSettings(Settings settings)
     {
         cachedSettings = settings;
-        storage.Save(settings);
+        await storage.Save(settings);
         OnSettingsSaved?.Invoke();
     }
 }

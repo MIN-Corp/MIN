@@ -2,4 +2,4 @@
 
 namespace MIN.Desktop.Contracts.Designer;
 
-internal class DesignerMainSideBarViewModel() : MainSideBarViewModel(null!, null!, null!);
+internal class DesignerMainSideBarViewModel() : MainSideBarViewModel(null!, null!, null!, null!);

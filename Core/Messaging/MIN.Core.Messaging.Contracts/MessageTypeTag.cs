@@ -69,6 +69,16 @@ public enum MessageTypeTag : byte
     /// </summary>
     FastChannelConnectResponse = 9,
 
+    /// <summary>
+    /// Запрос на получение публичного ключа
+    /// </summary>
+    PublicKeyRequest = 10,
+
+    /// <summary>
+    /// Ответ на получение публичного ключа
+    /// </summary>
+    PublicKeyResponse = 11,
+
     // ===== Сообщения обнаружения (32-47) =====
 
     /// <summary>
@@ -253,9 +263,14 @@ public enum MessageTypeTag : byte
     HostMigration = 105,
 
     /// <summary>
-    /// Изменение состояния комнаты.
+    /// Сообщение о выходе из комнаты.
     /// </summary>
-    RoomStateChanged = 106,
+    RoomLeave = 106,
+
+    /// <summary>
+    /// Подтерждение выхода из комнаты.
+    /// </summary>
+    RoomLeaveAck = 107,
 
     // ===== Сообщения для передачи файлов (128-142) =====
 

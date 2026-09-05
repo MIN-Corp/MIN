@@ -20,6 +20,7 @@ public class SessionProcessManager : ISessionProcessManager
     private const int ProcessWaitingTimeOutMs = 30_000;
 
     private readonly Dictionary<ProcessContext, Process> pendingProcesses = [];
+    private readonly Dictionary<ProcessContext, EventHandler> currentExitHandlers = [];
     private readonly Dictionary<ProcessContext, Process> runningProcesses = [];
     private readonly Dictionary<ProcessContext, ISessionProcessTransport> transports = [];
     private readonly IMessageRouter messageRouter;
@@ -29,8 +30,6 @@ public class SessionProcessManager : ISessionProcessManager
     private readonly ISubRoomManager subRoomManager;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
-
-    private EventHandler? currentExitHandler;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="SessionProcessManager"/>
@@ -125,8 +124,8 @@ public class SessionProcessManager : ISessionProcessManager
         runningProcesses[context] = startedProcess;
 
         startedProcess.EnableRaisingEvents = true;
-        currentExitHandler = async (_, _) => await AnnounceExit(session, context, cancellationToken);
-        startedProcess.Exited += currentExitHandler;
+        currentExitHandlers[context] = async (_, _) => await AnnounceExit(session, context, cancellationToken);
+        startedProcess.Exited += currentExitHandlers[context];
 
         return true;
     }
@@ -169,7 +168,15 @@ public class SessionProcessManager : ISessionProcessManager
     {
         if (runningProcesses.TryGetValue(context, out var process))
         {
-            await StopProcessWithTimeOut(context, process, clearAnnounce: false);
+            try
+            {
+                await StopProcessWithTimeOut(context, process, clearAnnounce: false);
+            }
+            catch (Exception ex)
+            {
+                logger.Log($"Произошла ошибка при закрытии сессии {ex.Message}",
+                    Helpers.Contracts.Models.Enums.LogLevel.Error);
+            }
         }
         runningProcesses.Remove(context);
     }
@@ -179,15 +186,29 @@ public class SessionProcessManager : ISessionProcessManager
         var roomPendingProcesses = pendingProcesses.Keys.Where(x => x.RoomId == roomId).ToList();
         foreach (var context in roomPendingProcesses)
         {
-            await StopProcessWithTimeOut(context, pendingProcesses[context]);
+            try
+            {
+                await StopProcessWithTimeOut(context, pendingProcesses[context]);
+            }
+            catch
+            {
+                continue;
+            }
             pendingProcesses.Remove(context);
         }
 
         var roomRunningProcesses = runningProcesses.Keys.Where(x => x.RoomId == roomId).ToList();
         foreach (var context in roomRunningProcesses)
         {
-            await StopProcessWithTimeOut(context, runningProcesses[context]);
-            runningProcesses.Remove(context);
+            try
+            {
+                await StopProcessWithTimeOut(context, runningProcesses[context]);
+                runningProcesses.Remove(context);
+            }
+            catch
+            {
+                continue;
+            }
         }
     }
 
@@ -195,21 +216,36 @@ public class SessionProcessManager : ISessionProcessManager
     {
         foreach (var process in pendingProcesses)
         {
-            await StopProcessWithTimeOut(process.Key, process.Value);
+            try
+            {
+                await StopProcessWithTimeOut(process.Key, process.Value);
+            }
+            catch
+            {
+                continue;
+            }
         }
         pendingProcesses.Clear();
+
         foreach (var process in runningProcesses)
         {
-            await StopProcessWithTimeOut(process.Key, process.Value);
+            try
+            {
+                await StopProcessWithTimeOut(process.Key, process.Value);
+            }
+            catch
+            {
+                continue;
+            }
         }
         runningProcesses.Clear();
     }
 
     private async Task StopProcessWithTimeOut(ProcessContext context, Process process, bool clearAnnounce = true)
     {
-        if (currentExitHandler != null && clearAnnounce)
+        if (currentExitHandlers[context] != null && clearAnnounce)
         {
-            process.Exited -= currentExitHandler;
+            process.Exited -= currentExitHandlers[context];
         }
         else if (!clearAnnounce)
         {
@@ -222,22 +258,17 @@ public class SessionProcessManager : ISessionProcessManager
 
         await processBridge.SendCloseMessage(context);
 
-        var exited = await Task.WhenAny(
-            process.WaitForExitAsync(),
-            Task.Delay(ProcessWaitingTimeOutMs)
-        ) == process.WaitForExitAsync();
+        var exitTask = process.WaitForExitAsync(CancellationToken.None);
 
-        if (exited)
-        {
-            transportFactory.Destroy(transports[context]);
-            processBridge.UnregisterTransport(context);
-        }
-        else
+        var exited = await Task.WhenAny(exitTask, Task.Delay(ProcessWaitingTimeOutMs)) == exitTask;
+
+        if (!exited)
         {
             process.Kill();
-            await process.WaitForExitAsync();
-            transportFactory.Destroy(transports[context]);
-            processBridge.UnregisterTransport(context);
+            await process.WaitForExitAsync(CancellationToken.None);
         }
+
+        transportFactory.Destroy(transports[context]);
+        processBridge.UnregisterTransport(context);
     }
 }

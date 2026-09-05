@@ -112,12 +112,16 @@ internal sealed class ClientRoomService
 
             logger.Log($"Подключились к комнате с id {connectionResult.RoomId}, соединение с id {connectionResult.ConnectionId}");
 
+            var isRejoin = roomStore.RoomExists(connectionResult.RoomId);
+            var localKey = await encryptor.GetLocalPublicKey();
+
             var selfHandshake = new HandshakeMessage()
             {
                 SenderId = selfParticipant.Id,
                 Participant = selfParticipant,
-                PublicKey = await encryptor.GetLocalPublicKey(),
-                Version = versionProvider.Version
+                Version = versionProvider.Version,
+                PublicKey = isRejoin ? null : localKey,
+                PublicKeyFingerprint = isRejoin ? encryptor.ComputeKeyFingerprint(localKey) : null,
             };
 
             await messageSender.SendAsync(selfHandshake, connectionResult.RoomId, connectionResult.ConnectionId, cancellationToken);

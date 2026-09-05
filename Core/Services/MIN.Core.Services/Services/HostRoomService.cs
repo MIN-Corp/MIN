@@ -140,13 +140,11 @@ internal sealed class HostRoomService
         }
         else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out _))
         {
-            var participantLeftMessage = new ParticipantLeftMessage()
+            await messageRouter.RouteAsync(new ParticipantLeftMessage()
             {
                 Participant = leavingParticipant,
                 Reason = e.DisconnectReason,
-            };
-
-            await messageRouter.RouteAsync(participantLeftMessage, roomId, hostParticipantId, CancellationToken.None);
+            }, roomId, hostParticipantId, CancellationToken.None);
         }
 
         return needToDisconnect;

@@ -3,7 +3,7 @@
   <!-- Framework properties -->
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
-    <Version>2.1.1.1</Version>
+    <Version>2.2.1.0</Version>
     <EmbedAllSources>true</EmbedAllSources>
     <DebugType>embedded</DebugType>
     <DebugSymbols>true</DebugSymbols>

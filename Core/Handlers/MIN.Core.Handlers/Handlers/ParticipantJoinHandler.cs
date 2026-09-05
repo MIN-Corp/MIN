@@ -62,9 +62,6 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                     Participant = new Participant(identityService.SelfParticipant)
                 });
 
-            case ParticipantAcceptedMessage _:
-                return HandlerResult.WithResponse(new RoomInfoRequestMessage());
-
             case ParticipantJoinedMessage participantJoinedMessage:
                 LogInfo($"Участник {participantJoinedMessage.Participant.Name} зашёл в комнату с id {context.RoomContext.RoomId}");
 
@@ -83,6 +80,9 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 }
 
                 return HandlerResult.Success();
+
+            case ParticipantAcceptedMessage _:
+                return HandlerResult.WithResponse(new RoomInfoRequestMessage());
 
             default:
                 throw new HandlerTypeMismatch(this, message);

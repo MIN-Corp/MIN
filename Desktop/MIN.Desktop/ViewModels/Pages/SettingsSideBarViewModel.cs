@@ -64,14 +64,14 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     public partial string Version { get; set; } = string.Empty;
 
     /// <summary>
-    /// Имя своего участника по умолчанию
+    /// Имя своего участника
     /// </summary>
     [ObservableProperty]
     [Display(Name = "Имя участника")]
     [NotifyDataErrorInfo]
     [ParticipantName]
     [NotEndsWith(".")]
-    public partial string DefaultParticipantName { get; set; } = string.Empty;
+    public partial string ParticipantName { get; set; } = string.Empty;
 
     /// <summary>
     /// Время ожидания поиска комнаты
@@ -153,13 +153,15 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     /// Вернуться назад
     /// </summary>
     [RelayCommand]
-    public void Back()
+    public async Task Back()
     {
         if (CanSave())
         {
-            Settings.DefaultParticipantName = DefaultParticipantName;
             Settings.DiscoveryPort = DiscoveryPort;
             Settings.DiscoveryTimeout = DiscoveryTimeout;
+            var localParticipant = featureCollection.Core.IdentityService.SelfParticipant;
+            localParticipant.Name = ParticipantName;
+            await featureCollection.Core.IdentityService.SaveParticipant(localParticipant);
         }
 
         Settings.LightThemeEnabled = LightThemeEnabled;
@@ -169,7 +171,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
             Settings.NoiseReduction = (NoiseReduction)ChoosenNoiseReduction;
         }
 
-        featureCollection.Helper.SettingsProvider.SaveSettings(Settings);
+        await featureCollection.Helper.SettingsProvider.SaveSettings(Settings);
         ChangeViewToPrevious();
     }
 
@@ -209,11 +211,12 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
         Version = $"Версия: {featureCollection.Helper.VersionProvider.Version}";
 
         Settings = featureCollection.Helper.SettingsProvider.GetSettings();
-        DefaultParticipantName = Settings.DefaultParticipantName;
         LightThemeEnabled = Settings.LightThemeEnabled;
         DiscoveryTimeout = Settings.DiscoveryTimeout;
         DiscoveryPort = Settings.DiscoveryPort;
         ChoosenNoiseReduction = (int)Settings.NoiseReduction;
+
+        ParticipantName = featureCollection.Core.IdentityService.SelfParticipant.Name;
     }
 
     private bool CanSave() => !HasErrors;

@@ -6,11 +6,14 @@ namespace MIN.Helpers.Services;
 public sealed class AppDataProvider : IAppDataProvider
 {
     /// <inheritdoc />
-    public string BaseDirectory { get; }
+    public string VersionedDirectory { get; }
+
+    /// <inheritdoc />
+    public string SharedDirectory { get; }
 
     void IAppDataProvider.ClearFolder(string folderName)
     {
-        foreach (var file in Directory.EnumerateFiles(Path.Combine(BaseDirectory, folderName)))
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(VersionedDirectory, folderName)))
         {
             File.Delete(file);
         }
@@ -22,6 +25,7 @@ public sealed class AppDataProvider : IAppDataProvider
     public AppDataProvider(IVersionProvider versionProvider)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        BaseDirectory = Path.Combine(appData, "MIN", $"v.{versionProvider.Version}");
+        VersionedDirectory = Path.Combine(appData, "MIN", $"v.{versionProvider.Version}");
+        SharedDirectory = Path.Combine(appData, "MIN", "Shared");
     }
 }

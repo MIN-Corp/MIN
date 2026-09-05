@@ -87,6 +87,9 @@ public sealed class ParticipantStore : IParticipantStore
 
     void IParticipantStore.ClearParticipants()
     {
-        participants.Clear();
+        lock (participants)
+        {
+            participants.Clear();
+        }
     }
 }

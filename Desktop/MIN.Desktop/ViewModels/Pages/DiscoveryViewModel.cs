@@ -112,10 +112,11 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
 
     private async Task<bool> ResolveParticipant()
     {
-        if (Settings.DefaultParticipantName != string.Empty)
+        var selfParticipant = featureCollection.Core.IdentityService.SelfParticipant;
+
+        if (selfParticipant.Name != string.Empty)
         {
-            localParticipant.Name = Settings.DefaultParticipantName;
-            featureCollection.Core.IdentityService.SetParticipant(localParticipant);
+            localParticipant.Name = selfParticipant.Name;
         }
         else
         {
@@ -124,9 +125,6 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             {
                 return false;
             }
-
-            Settings.DefaultParticipantName = featureCollection.Core.IdentityService.SelfParticipant.Name;
-            featureCollection.Helper.SettingsProvider.SaveSettings(Settings);
         }
         return true;
     }

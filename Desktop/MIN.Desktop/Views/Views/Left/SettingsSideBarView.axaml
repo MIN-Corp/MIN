@@ -51,7 +51,7 @@
                             Имя по умолчанию
                         </TextBlock>
 
-                        <TextBox Text="{Binding DefaultParticipantName}"
+                        <TextBox Text="{Binding ParticipantName}"
                             PlaceholderText="Введите имя..." />
                     </DockPanel>
 
