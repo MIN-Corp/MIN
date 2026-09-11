@@ -108,6 +108,10 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             MissedMessagesCount++;
         }
+        else if (IsAtBottom)
+        {
+            await ScrollToBottom();
+        }
     }
 
     private void RemoveMessage(Guid id)

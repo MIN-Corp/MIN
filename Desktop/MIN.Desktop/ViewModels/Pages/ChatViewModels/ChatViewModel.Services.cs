@@ -178,6 +178,15 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task SendSelfStatusChangedMessage(OnlineStatus newStatus)
     {
 #if DEBUG
+        try
+        {
+            await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(roomId,
+                newStatus,
+                roomCts.Token
+            );
+        }
+        catch { }
+
         await Task.CompletedTask;
         return;
 #else
@@ -185,7 +194,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(roomId,
                 newStatus,
-                appCts.Token
+                roomCts.Token
             );
         }
         catch { }

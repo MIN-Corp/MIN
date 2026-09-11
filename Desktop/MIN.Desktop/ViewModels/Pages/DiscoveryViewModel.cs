@@ -120,8 +120,8 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
         }
         else
         {
-            var participantCreatingResult = await dialogService.ShowDialogAsync<CreateParticipantViewModel>();
-            if (participantCreatingResult != null && participantCreatingResult == false)
+            bool participantCreatingResult = await dialogService.ShowDialogAsync<CreateParticipantViewModel>();
+            if (participantCreatingResult == false)
             {
                 return false;
             }

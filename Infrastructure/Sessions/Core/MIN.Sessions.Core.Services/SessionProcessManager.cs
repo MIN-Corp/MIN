@@ -3,6 +3,7 @@ using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -78,7 +79,11 @@ public class SessionProcessManager : ISessionProcessManager
         transports[context] = processTransport;
         processBridge.RegisterTransport(context, processTransport);
 
+        var profile = Profiling.IsEnabled ? Stopwatch.StartNew() : null;
+
         await processTransport.StartAsync(context.RoomId, cancellationToken);
+        LogPhase(profile, $"session transport start {context.Role}");
+
         var connectionString = processTransport.GetConnectionString();
 
         var psi = new ProcessStartInfo
@@ -99,6 +104,7 @@ public class SessionProcessManager : ISessionProcessManager
         }
 
         var startedProcess = Process.Start(psi);
+        LogPhase(profile, $"session process spawn {session.Name}");
 
         if (startedProcess == null || startedProcess.HasExited)
         {
@@ -111,7 +117,11 @@ public class SessionProcessManager : ISessionProcessManager
         var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         await processTransport.WaitForConnectionAsync(context, ProcessWaitingTimeOutMs, connectCts.Token);
+        LogPhase(profile, $"session wait connection {context.Role}");
+
         var readySuccess = await processBridge.WaitForReadyMessage(context, ProcessWaitingTimeOutMs, connectCts.Token);
+        LogPhase(profile, $"session wait ready {session.Name}");
+
         pendingProcesses.Remove(context);
         if (readySuccess == false)
         {
@@ -270,5 +280,16 @@ public class SessionProcessManager : ISessionProcessManager
 
         transportFactory.Destroy(transports[context]);
         processBridge.UnregisterTransport(context);
+    }
+
+    private void LogPhase(Stopwatch? sw, string phase)
+    {
+        if (sw == null)
+        {
+            return;
+        }
+        sw.Stop();
+        logger.Log($"[PROFILE] {phase} = {sw.Elapsed.TotalMilliseconds:F1} ms (thread {Environment.CurrentManagedThreadId})");
+        sw.Restart();
     }
 }

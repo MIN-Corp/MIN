@@ -1,4 +1,5 @@
-﻿using MIN.Core.Entities.Contracts.Enums;
+﻿using System.Diagnostics;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts;
@@ -10,6 +11,7 @@ using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Core.Stores.Contracts.Registries.Models;
 using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Core.SubRooms.Contracts.Interfaces.Messages;
+using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 
@@ -66,7 +68,16 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     continue;
                 }
 
+                var handlerSw = Profiling.IsEnabled ? Stopwatch.StartNew() : null;
+
                 var result = await handler.HandleAsync(message, context);
+
+                if (handlerSw != null)
+                {
+                    handlerSw.Stop();
+                    logger.Log($"[PROFILE] handler {handler.GetType().Name} for {message.GetType().Name}" +
+                               $" = {handlerSw.Elapsed.TotalMilliseconds:F1} ms (thread {Environment.CurrentManagedThreadId})");
+                }
 
                 if (!result.IsSuccess)
                 {
