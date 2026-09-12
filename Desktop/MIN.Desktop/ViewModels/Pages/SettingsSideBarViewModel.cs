@@ -191,7 +191,6 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     [RelayCommand]
     public void ClearCacheAsync()
     {
-        featureCollection.Helper.AppDataProvider.ClearFolder("cryptography");
         featureCollection.Helper.AppDataProvider.ClearFolder("network");
         InAppNotifier.Success("Кэш был успешно очищен");
     }

@@ -64,19 +64,20 @@ public sealed class MessageDispatcher : IMessageDispatcher
             {
                 if (broadcastExcludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds);
+                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
                     continue;
                 }
 
                 var handlerSw = Profiling.IsEnabled ? Stopwatch.StartNew() : null;
 
-                var result = await handler.HandleAsync(message, context);
+                var result = await handler.HandleAsync(message, context).ConfigureAwait(false);
 
                 if (handlerSw != null)
                 {
                     handlerSw.Stop();
                     logger.Log($"[PROFILE] handler {handler.GetType().Name} for {message.GetType().Name}" +
-                               $" = {handlerSw.Elapsed.TotalMilliseconds:F1} ms (thread {Environment.CurrentManagedThreadId})");
+                               $" = {handlerSw.Elapsed.TotalMilliseconds:F1} ms (thread {Environment.CurrentManagedThreadId})",
+                               durationMs: handlerSw.Elapsed.TotalMilliseconds);
                 }
 
                 if (!result.IsSuccess)
@@ -85,7 +86,7 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     if (result.ShowErrorMessage)
                     {
                         await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка",
-                            needToDisconnect: context.Role == Role.Client && result.CriticalError, context);
+                            needToDisconnect: context.Role == Role.Client && result.CriticalError, context).ConfigureAwait(false);
                     }
                     continue;
                 }
@@ -95,28 +96,30 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     result.Response.SenderId = context.SelfId;
                     if (context.ConnectionId == CoreRegistryConstants.LocalConnectionId)
                     {
-                        await DispatchAsync(result.Response, context, broadcastExcludeIds);
+                        await DispatchAsync(result.Response, context, broadcastExcludeIds).ConfigureAwait(false);
                     }
                     else
                     {
-                        await messageSender.SendAsync(result.Response, context.RoomContext.RoomId, context.ConnectionId, context.CancellationToken);
+                        await messageSender.SendAsync(result.Response, context.RoomContext.RoomId, context.ConnectionId, context.CancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
 
                 if (result.ResultEvent != null)
                 {
-                    await eventBus.PublishAsync(result.ResultEvent, context.CancellationToken);
+                    await eventBus.PublishAsync(result.ResultEvent, context.CancellationToken).ConfigureAwait(false);
                 }
 
                 if (result.ErrorMessage != null)
                 {
                     if (message.SenderId == context.SelfId && context.Role == Role.Host)
                     {
-                        await PublishErrorEvent(result.ErrorMessage, needToDisconnect: false, context);
+                        await PublishErrorEvent(result.ErrorMessage, needToDisconnect: false, context).ConfigureAwait(false);
                     }
                     else
                     {
-                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalError);
+                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalError)
+                            .ConfigureAwait(false);
                     }
                     continue;
                 }
@@ -128,13 +131,13 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
                 if (context.Role == Role.Host)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds);
+                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
             {
                 logger.Log($"Handler {handler.GetType().Name} threw exception: {ex.Message}", LogLevel.Error);
-                await PublishErrorEvent(ex.Message, needToDisconnect: context.Role == Role.Client, context);
+                await PublishErrorEvent(ex.Message, needToDisconnect: context.Role == Role.Client, context).ConfigureAwait(false);
             }
         }
     }
@@ -167,7 +170,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
             try
             {
-                await messageSender.BroadcastAsync(message, context.RoomContext.RoomId, excludeConnectionIds, context.CancellationToken);
+                await messageSender.BroadcastAsync(message, context.RoomContext.RoomId, excludeConnectionIds, context.CancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -186,7 +190,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
             {
                 try
                 {
-                    await messageSender.SendAsync(message, context.RoomContext.RoomId, recipientConnectionId, context.CancellationToken);
+                    await messageSender.SendAsync(message, context.RoomContext.RoomId, recipientConnectionId, context.CancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -202,5 +207,5 @@ public sealed class MessageDispatcher : IMessageDispatcher
             ErrorMessage = message,
             NeedToDisconnect = needToDisconnect,
             RoomId = context.RoomContext.RoomId
-        }, context.CancellationToken);
+        }, context.CancellationToken).ConfigureAwait(false);
 }

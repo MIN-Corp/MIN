@@ -42,7 +42,7 @@ public sealed class InMemoryEventBus : IEventBus, IAsyncDisposable
         }
 
         var tasks = snapshot.Select(handler => SafeExecuteHandler(handler, eventMessage, linkedCts.Token));
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     IDisposable IEventBus.Subscribe<T>(Func<T, CancellationToken, Task> handler)
@@ -70,7 +70,7 @@ public sealed class InMemoryEventBus : IEventBus, IAsyncDisposable
     {
         try
         {
-            await handler(eventMessage, cancellationToken);
+            await handler(eventMessage, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -104,7 +104,7 @@ public sealed class InMemoryEventBus : IEventBus, IAsyncDisposable
         }
 
         disposed = true;
-        await cts.CancelAsync();
+        await cts.CancelAsync().ConfigureAwait(false);
         cts.Dispose();
         handlers.Clear();
     }

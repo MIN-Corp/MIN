@@ -39,9 +39,10 @@ public static class StartupProfiler
 
         foreach (var (service, ms) in results.OrderByDescending(r => r.Ms))
         {
-            logger.Log($"[PROFILE] resolve {service} = {ms:F1} ms (thread {Environment.CurrentManagedThreadId})");
+            logger.Log($"[PROFILE] resolve {service} = {ms:F1} ms (thread {Environment.CurrentManagedThreadId})", durationMs: ms);
         }
 
-        logger.Log($"[PROFILE] total warm resolution = {results.Sum(r => r.Ms):F1} ms");
+        var sum = results.Sum(r => r.Ms);
+        logger.Log($"[PROFILE] total warm resolution = {sum:F1} ms", durationMs: sum);
     }
 }
