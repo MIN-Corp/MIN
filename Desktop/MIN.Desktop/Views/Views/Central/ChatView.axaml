@@ -505,8 +505,18 @@
                  </Border>
 
                 <Button DockPanel.Dock="Bottom"
+                    Classes="appear-from-bottom"
+                    Command="{Binding ReconnectCommand}"
+                    Opacity="{Binding !IsOnline,
+                        Converter={converters:BoolToOpacityConverter}}"
                     Content="Подключиться">
-                    <Button.IsVisible>
+                    <Button.Transitions>
+                        <Transitions>
+                            <DoubleTransition Duration="0:0:.2" Property="Opacity" />
+                        </Transitions>
+                    </Button.Transitions>
+
+                     <Button.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="!IsOnline" />
                             <Binding Path="!IsHost" />
@@ -515,7 +525,17 @@
                 </Button>
 
                 <Button DockPanel.Dock="Bottom"
+                    Classes="appear-from-bottom"
+                    Command="{Binding RehostCommand}"
+                    Opacity="{Binding !IsOnline,
+                        Converter={converters:BoolToOpacityConverter}}"
                     Content="Продолжить хостинг">
+                    <Button.Transitions>
+                        <Transitions>
+                            <DoubleTransition Duration="0:0:.2" Property="Opacity" />
+                        </Transitions>
+                    </Button.Transitions>
+
                     <Button.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="!IsOnline" />

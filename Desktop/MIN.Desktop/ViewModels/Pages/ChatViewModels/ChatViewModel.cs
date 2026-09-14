@@ -8,7 +8,6 @@ using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Constants;
-using MIN.Core.Transport.Contracts.Enum;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.ViewModels.Base;
@@ -28,9 +27,9 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private readonly IMinFeatureCollection featureCollection;
     private readonly CancellationTokenSource roomCts = new();
-    private readonly TaskCompletionSource loadingTcs = new();
-
     private readonly ParticipantInfo localParticipant = null!;
+
+    private TaskCompletionSource? loadingTcs = new();
     private Guid roomId;
     private Guid connectionId;
     private Room room = null!;
@@ -153,9 +152,18 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     /// <inheritdoc />
-    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken = default) => await loadingTcs.Task;
+    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken = default)
+    {
+        if (loadingTcs != null)
+        {
+            await loadingTcs.Task;
+        }
+    }
 
-    partial void OnIsOnlineChanged(bool value) => IsAvaibleForNetwork = value || IsHost;
+    partial void OnIsOnlineChanged(bool value)
+    {
+        IsAvaibleForNetwork = value || IsHost;
+    }
 
     /// <summary>
     /// Подгрузить данные о комнате и перезагрузить страницу
@@ -163,14 +171,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     public async Task LoadRoomDataAndRefresh(Room room, Guid connectionId)
     {
         ToggleRightSideBar();
-        await chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
+        chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
 
         this.room = room;
+        this.connectionId = connectionId;
+
         RoomName = room.Name;
         IsHost = localParticipant.Id == room.HostParticipant.Id;
         IsOnline = room.IsOnline;
+        chatSideBarViewModel.IsOnline = IsOnline;
         IsAvaibleForNetwork = IsOnline || IsHost;
-        this.connectionId = connectionId;
         roomId = room.Id;
         SubscribeToEvents(featureCollection.Core.EventBus);
 
@@ -182,7 +192,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
         else
         {
-            loadingTcs.SetResult();
+            loadingTcs?.SetResult();
+            loadingTcs = null;
         }
     }
 
@@ -208,7 +219,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             }
             else
             {
-                await featureCollection.Core.Lifecycle.DisconnectAsync(roomId, connectionId, DisconnectReason.None);
+                await featureCollection.Core.Lifecycle.DisconnectAsync(roomId, connectionId);
             }
         }
     }
@@ -219,7 +230,9 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             await DisposeAsync();
         }
+
         await CleanUpServicesAsync(asForget);
+
         if (asForget)
         {
             ChangeView(discoveryViewModel);

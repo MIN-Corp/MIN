@@ -200,11 +200,28 @@ internal sealed class HostRoomService
 
         var localParticipant = identityService.SelfParticipant.ToParticipantInfo();
 
-        roomInfo.HostParticipant = localParticipant;
-        var room = new Room(roomInfo);
+        var connectionId = await transport.StartHostingAsync(prefferedPort: networkOptions.PrefferredPort,
+            sequentialAttempts: ServicesConstants.MaximumRoomHosts, cancellationToken: cancellationToken);
 
-        var connectionId = await transport.StartHostingAsync(cancellationToken: cancellationToken);
-        room.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
+        if (roomStore.TryGetRoom(roomId, out var existingRoom))
+        {
+            existingRoom.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
+            roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            var existingContext = roomFactory.GetOrCreateContext(roomId);
+            existingContext.Connections.RegisterLocalParticipant(localParticipant);
+
+            registry.RegisterServerConnection(roomId, connectionId);
+            readyRoomInfos[roomId] = roomInfo;
+
+            return existingRoom;
+        }
+
+        roomInfo.HostParticipant = localParticipant;
+        var room = new Room(roomInfo)
+        {
+            ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken)
+        };
         room.LocalRoomSettings.NetworkOptions = networkOptions;
 
         roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -320,6 +337,9 @@ internal sealed class HostRoomService
 
         await transport.StopHostingAsync(connectionId);
         subRoomManager.ClearRoomSubRooms(roomId);
+
+        var context = roomFactory.GetOrCreateContext(roomId);
+        context.Participants.MarkAllParticipansOffline(exceptId: identityService.SelfParticipant.Id);
 
         registry.UnregisterServerConnection(roomId);
         readyRoomInfos.TryRemove(roomId, out _);

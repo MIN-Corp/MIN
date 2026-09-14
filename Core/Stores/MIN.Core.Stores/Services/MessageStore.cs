@@ -105,6 +105,36 @@ public sealed class MessageStore : IMessageStore
         return anchorId.HasValue && m.Id.CompareTo(anchorId.Value) < 0;
     }
 
+    IEnumerable<IMessage> IMessageStore.GetMessagesNewerThan(DateTime? latestLoadedTimestamp, Guid? latestLoadedMessageId, int pageSize)
+    {
+        lock (messages)
+        {
+            IEnumerable<IMessage> query = messages;
+
+            if (latestLoadedTimestamp.HasValue)
+            {
+                query = query.Where(m => IsNewerThanAnchor(m, latestLoadedTimestamp.Value, latestLoadedMessageId));
+            }
+
+            return query
+                .Take(pageSize)
+                .ToList();
+        }
+    }
+
+    private static bool IsNewerThanAnchor(IMessage m, DateTime anchorTimestamp, Guid? anchorId)
+    {
+        if (m.Timestamp != anchorTimestamp)
+        {
+            return m.Timestamp > anchorTimestamp;
+        }
+
+        // Тай-брейк при равных Timestamp: Guid как таковой не даёт хронологического порядка,
+        // но обеспечивает детерминированность, чтобы не потерять и не задублировать сообщения
+        // с одинаковой меткой времени.
+        return anchorId.HasValue && m.Id.CompareTo(anchorId.Value) < 0;
+    }
+
     IMessage? IMessageStore.GetLastMessage()
     {
         lock (messages)

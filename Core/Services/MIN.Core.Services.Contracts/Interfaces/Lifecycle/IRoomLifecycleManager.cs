@@ -25,7 +25,7 @@ public interface IRoomLifecycleManager
     /// <summary>
     /// Отключиться от удалённой комнаты (клиентская сторона)
     /// </summary>
-    Task DisconnectAsync(Guid roomId, Guid connectionId, DisconnectReason reason);
+    Task DisconnectAsync(Guid roomId, Guid connectionId);
 
     /// <summary>
     /// Отключиться от удалённой комнаты и забыть её (клиентская сторона)

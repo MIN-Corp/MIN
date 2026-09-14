@@ -139,6 +139,21 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Пометить как оффлайн (себя не помечает)
+    /// </summary>
+    public void MarkAsOffline()
+    {
+        if (IsOffline)
+        {
+            return;
+        }
+
+        ParticipantStatus = isSelf ? OnlineStatus.Online : OnlineStatus.Offline;
+        IsOffline = ParticipantStatus == OnlineStatus.Offline;
+        ParticipantLastSeenAt = DateTime.Now;
+    }
+
+    /// <summary>
     /// Отменить выбор карточки
     /// </summary>
     public void Unselect()

@@ -10,7 +10,7 @@ public static class Profiling
     /// </summary>
     public readonly static bool IsEnabled =
 #if DEBUG
-        true;
+        false;
 #else
         Environment.GetEnvironmentVariable("MIN_PROFILE") == "1"
             || Environment.GetCommandLineArgs().Contains("--profile-startup");

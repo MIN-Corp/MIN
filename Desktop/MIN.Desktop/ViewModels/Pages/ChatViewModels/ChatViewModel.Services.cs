@@ -1,16 +1,23 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Common.Core.Contracts.Interfaces;
+using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Services.Contracts.Models;
+using MIN.Core.Stores.Contracts.Registries.Models;
+using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
+using MIN.Desktop.ViewModels.Modals;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.FileTransfer.Messaging;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -24,6 +31,9 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 public partial class ChatViewModel : RoutableViewModelBase
 {
     private Window parentWindow = null!;
+    private bool isConnecting;
+    private bool isTryingToHost;
+    private CancellationTokenSource? createRoomCts;
     private Guid? replyToPreviewId;
 
     /// <summary>
@@ -270,6 +280,122 @@ public partial class ChatViewModel : RoutableViewModelBase
         catch (Exception ex)
         {
             InAppNotifier.Error($"Не удалось отправить сообщение: {ex.Message}");
+        }
+    }
+
+    private bool IsClientOfflineAndNotConnecting() => !isConnecting;
+
+    [RelayCommand(CanExecute = nameof(IsClientOfflineAndNotConnecting))]
+    private async Task Reconnect()
+    {
+        isConnecting = true;
+        var connectCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
+        LoadingViewModel? loadingVm = null;
+
+        try
+        {
+            ConnectionResult connectionResult = new();
+
+            _ = dialogService.ShowDialogAsync<LoadingViewModel>(async vm =>
+            {
+                await vm.LoadRoomDataAndRefresh(async room =>
+                {
+                    if (room == null)
+                    {
+                        isConnecting = false;
+                        return;
+                    }
+
+                    await RefreshAfterReconnect(room, connectionResult.ConnectionId);
+                }, connectCts, DesktopConstants.RoomConnectionTimeoutMs);
+
+                loadingVm = vm;
+            });
+
+            // TODO: make endpoint choosable
+            connectionResult = await featureCollection.Core.Lifecycle.ConnectAsync(room.ConnectionAddresses.First(), connectCts.Token);
+
+            if (loadingVm != null)
+            {
+                loadingVm.RoomId = connectionResult.RoomId;
+            }
+        }
+        catch (Exception ex)
+        {
+            loadingVm?.CloseByCode();
+            InAppNotifier.Error($"Произошла ошибка при подключении: {ex.Message}");
+        }
+        finally
+        {
+            isConnecting = false;
+        }
+    }
+
+    private async Task RefreshAfterReconnect(Room updatedRoom, Guid connectionId)
+    {
+        chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
+
+        room = updatedRoom;
+        this.connectionId = connectionId;
+
+        RoomName = room.Name;
+        IsHost = localParticipant.Id == room.HostParticipant.Id;
+        IsOnline = room.IsOnline;
+        IsAvaibleForNetwork = IsOnline || IsHost;
+
+        await UpdateChatFlow();
+
+        if (!IsHost)
+        {
+            await RequestVoiceCallStateAsync();
+        }
+        else
+        {
+            loadingTcs?.SetResult();
+        }
+
+        IsOnline = true;
+        chatSideBarViewModel.IsOnline = true;
+        isConnecting = false;
+        isTryingToHost = false;
+    }
+
+    [RelayCommand]
+    private async Task Rehost()
+    {
+        if (isTryingToHost)
+        {
+            createRoomCts?.Cancel();
+            return;
+        }
+
+        isTryingToHost = true;
+        createRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
+        var roomInfo = new RoomInfo(room);
+
+        try
+        {
+            var hostedRoom = await featureCollection.Core.Lifecycle.StartHostingAsync(roomInfo, room.LocalRoomSettings.NetworkOptions, createRoomCts.Token);
+            await featureCollection.Chat.ChatRoomService.ManageDiscoveryOutOfSettings(roomInfo,
+                hostedRoom.ConnectionAddresses, room.LocalRoomSettings.NetworkOptions, cancellationToken: createRoomCts.Token);
+
+            await RefreshAfterReconnect(hostedRoom, CoreRegistryConstants.LocalConnectionId);
+
+            InAppNotifier.Success($"Комната {room.Name} успешно хоститься!");
+        }
+        catch (OperationCanceledException)
+        {
+            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomInfo.Id);
+            InAppNotifier.Info("Хостинг комнаты был отменён");
+        }
+        catch (Exception ex)
+        {
+            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomInfo.Id);
+            InAppNotifier.Error($"Не удалось захостить комнату: {ex.Message}");
+        }
+        finally
+        {
+            createRoomCts = null;
         }
     }
 }

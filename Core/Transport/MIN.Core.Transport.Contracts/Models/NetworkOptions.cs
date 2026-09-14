@@ -3,8 +3,13 @@
 /// <summary>
 /// Настройки глобальности сети
 /// </summary>
-public struct NetworkOptions
+public struct NetworkOptions()
 {
+    /// <summary>
+    /// Желаемый порт
+    /// </summary>
+    public short PrefferredPort { get; set; } = 5550;
+
     /// <summary>
     /// Локальное обнаружение
     /// </summary>

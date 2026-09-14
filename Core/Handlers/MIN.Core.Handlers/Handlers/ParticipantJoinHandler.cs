@@ -60,7 +60,6 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 return HandlerResult.WithResponse(new RoomJoinResponseMessage());
 
             case RoomJoinResponseMessage _:
-
                 return HandlerResult.WithResponse(new ParticipantJoinedMessage()
                 {
                     Participant = new Participant(identityService.SelfParticipant),
@@ -96,7 +95,10 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 return HandlerResult.Success();
 
             case ParticipantAcceptedMessage _:
-                return HandlerResult.WithResponse(new RoomInfoRequestMessage());
+                return HandlerResult.WithResponse(new RoomInfoRequestMessage()
+                {
+                    IsRejoin = context.RoomContext.Messages.GetFirstMessage() != null
+                });
 
             default:
                 throw new HandlerTypeMismatch(this, message);

@@ -18,6 +18,12 @@ public enum DisconnectReason
     None,
 
     /// <summary>
+    /// Умышленно отключён
+    /// </summary>
+    [Description("Отключились от комнаты")]
+    Intentionally,
+
+    /// <summary>
     /// Вышло время подключения
     /// </summary>
     [Description("Вышло время ожидания подключения")]

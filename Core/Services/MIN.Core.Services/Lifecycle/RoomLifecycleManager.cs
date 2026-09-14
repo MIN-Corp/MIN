@@ -74,8 +74,8 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
     void IRoomLifecycleManager.MarkRoomForDeletion(Guid roomId)
         => clientService.MarkRoomForDeletion(roomId);
 
-    async Task IRoomLifecycleManager.DisconnectAsync(Guid roomId, Guid connectionId, DisconnectReason reason)
-        => await clientService.DisconnectAsync(roomId, connectionId, reason);
+    async Task IRoomLifecycleManager.DisconnectAsync(Guid roomId, Guid connectionId)
+        => await clientService.DisconnectAsync(roomId, connectionId);
 
     async Task IRoomLifecycleManager.ForgetRoomAsync(Guid roomId, Guid connectionId)
         => await clientService.ForgetRoomAsync(roomId, connectionId);

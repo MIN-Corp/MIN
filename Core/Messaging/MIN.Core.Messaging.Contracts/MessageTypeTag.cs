@@ -106,6 +106,16 @@ public enum MessageTypeTag : byte
     /// </summary>
     RoomInfoResponse = 36,
 
+    /// <summary>
+    /// Запрос на получение упущенной информации о комнате.
+    /// </summary>
+    RoomSyncRequest = 37,
+
+    /// <summary>
+    /// Упущенная информация о комнате.
+    /// </summary>
+    RoomSyncResponse = 38,
+
     // ===== Сообщения сессий (48-63) =====
 
     /// <summary>

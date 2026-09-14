@@ -58,6 +58,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdated);
         roomScope.Subscribe<ChatHistoryUpdatedEvent>(OnChatHistoryUpdated);
         roomScope.Subscribe<ChatHistoryClearedEvent>(OnChatHistoryCleared);
+        roomScope.Subscribe<RoomSyncedEvent>(OnRoomSyncedEvent);
 
         roomScope.Subscribe<MessageDeletedEvent>(ChatMessageDeleted);
         roomScope.Subscribe<MessageEditedEvent>(ChatMessageEdited);
@@ -131,7 +132,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             AddToVoiceChatParticipant(participant);
         }
-        loadingTcs.SetResult();
+        loadingTcs?.SetResult();
+        loadingTcs = null;
         return Task.CompletedTask;
     }
 
@@ -305,6 +307,9 @@ public partial class ChatViewModel : RoutableViewModelBase
         }, countTowardCap: true);
     }
 
+    private async Task OnRoomSyncedEvent(RoomSyncedEvent eventMessage, CancellationToken cancellationToken)
+        => await RenderMessages(eventMessage.MissedMessages);
+
     private Task ChatMessageDeleted(MessageDeletedEvent eventMessage, CancellationToken cancellationToken)
     {
         RemoveMessage(eventMessage.MessageId);
@@ -319,6 +324,11 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private Task OnOnlineStatusChanged(OnlineStatusChangedEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (eventMessage.Status == OnlineStatus.Online)
+        {
+            chatSideBarViewModel.ResortOnlineParticipants();
+        }
+
         if (currentTypingParticipants.Contains(eventMessage.Participant) && eventMessage.Status != OnlineStatus.Typing)
         {
             if (currentTypingParticipants.Remove(eventMessage.Participant) && currentTypingParticipants.Count == 0)
@@ -365,6 +375,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task OnRoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
         IsOnline = false;
+        chatSideBarViewModel.IsOnline = false;
         ClearParentFormEvents();
         if (!string.IsNullOrEmpty(eventMessage.Reason))
         {
@@ -381,6 +392,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         if (e.NeedToDisconnect)
         {
             IsOnline = false;
+            chatSideBarViewModel.IsOnline = false;
             ClearParentFormEvents();
             if (!string.IsNullOrEmpty(e.ErrorMessage))
             {

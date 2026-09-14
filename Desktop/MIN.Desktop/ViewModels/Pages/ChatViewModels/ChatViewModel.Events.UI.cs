@@ -228,7 +228,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     [RelayCommand]
     private async Task LeaveRoom()
     {
-        if (IsHost && room.ParticipantCount > 1)
+        if (IsHost && room.CurrentParticipants.Any(x => x.CurrentStatus == OnlineStatus.Online && x.Id != localParticipant.Id))
         {
             bool confirmation = await dialogService.ShowDialogAsync<DialogBoxViewModel>(model =>
             {

@@ -191,7 +191,9 @@ internal sealed class ClientRoomService
         await eventBus.PublishAsync(new RoomWentOfflineEvent()
         {
             RoomId = roomId,
-            Reason = e.DisconnectReason.GetDescription(),
+            Reason = e.DisconnectReason != DisconnectReason.Intentionally
+                ? e.DisconnectReason.GetDescription()
+                : null
         });
         return false;
     }
@@ -200,24 +202,24 @@ internal sealed class ClientRoomService
     {
         if (registry.IsConnected(roomId))
         {
-            await DisconnectAsync(roomId, connectionId, DisconnectReason.Timeout);
+            await transport.DisconnectAsync(connectionId, DisconnectReason.Timeout);
         }
     }
 
     public void MarkRoomForDeletion(Guid roomId)
         => destroyOnDropRoomIds.Add(roomId);
 
-    public async Task DisconnectAsync(Guid roomId, Guid connectionId, DisconnectReason reason)
+    public async Task DisconnectAsync(Guid roomId, Guid connectionId)
     {
         if (!registry.IsConnected(roomId))
         {
             return;
         }
 
-        logger.Log($"Я сам инициирую отключение от комнаты с id {roomId} с соединением {connectionId}: {reason.GetDescription()}");
+        logger.Log($"Я сам инициирую отключение от комнаты с id {roomId} с соединением {connectionId}");
 
         // Transport will fire event, where it would cleanup further
-        await transport.DisconnectAsync(connectionId, reason);
+        await transport.DisconnectAsync(connectionId, DisconnectReason.Intentionally);
     }
 
     public async Task ForgetRoomAsync(Guid roomId, Guid connectionId)

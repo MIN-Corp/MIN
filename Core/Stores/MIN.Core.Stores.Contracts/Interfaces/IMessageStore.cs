@@ -44,6 +44,11 @@ public interface IMessageStore
     IEnumerable<IMessage> GetMessagesOlderThan(DateTime? oldestLoadedTimestamp, Guid? oldestLoadedMessageId, int pageSize = StoreConstants.MessagesPageSize);
 
     /// <summary>
+    /// Получить все сообщения, младше по времени
+    /// </summary>
+    IEnumerable<IMessage> GetMessagesNewerThan(DateTime? latestLoadedTimestamp, Guid? latestLoadedMessageId, int pageSize = StoreConstants.MessagesPageSize);
+
+    /// <summary>
     /// Получить последнее сообщение (внизу)
     /// </summary>
     IMessage? GetLastMessage();
