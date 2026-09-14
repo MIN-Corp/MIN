@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using MIN.Common.Core.Extensions;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Extensions;
@@ -39,6 +40,8 @@ internal sealed class HostRoomService
     private readonly PingService pingService;
 
     private readonly ConcurrentDictionary<Guid, RoomInfo> readyRoomInfos = [];
+    private readonly HashSet<(Guid, Guid)> markedParticipantsAsLeft = [];
+    private readonly HashSet<Guid> markedRoomsToDestroy = [];
     private readonly Dictionary<Guid, CancellationTokenSource> roomCancellationTokenSources = [];
     private readonly HashSet<Guid> protocolPhase = [];
 
@@ -117,7 +120,7 @@ internal sealed class HostRoomService
     {
         await pingService.UnregisterHeartbeatSession(Role.Host, roomId, e.ConnectionId);
 
-        if (!roomStore.RoomExists(roomId))
+        if (!roomStore.TryGetRoom(roomId, out var room))
         {
             return false;
         }
@@ -134,19 +137,40 @@ internal sealed class HostRoomService
 
         if (needToDisconnect)
         {
-            roomStore.Remove(roomId);
-            roomFactory.DestroyContext(roomId);
-            await eventBus.PublishAsync(new RoomClosedEvent() { RoomId = roomId });
+            room.IsOnline = false;
+            if (markedRoomsToDestroy.Remove(roomId))
+            {
+                await DestroyRoom(roomId);
+            }
+            else
+            {
+                await eventBus.PublishAsync(new RoomWentOfflineEvent()
+                {
+                    RoomId = roomId,
+                    Reason = e.DisconnectReason.GetDescription(),
+                });
+            }
         }
         else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out _))
         {
-            var participantLeftMessage = new ParticipantLeftMessage()
+            var reason = e.DisconnectReason;
+
+            if (reason == DisconnectReason.Kick)
+            {
+                markedParticipantsAsLeft.Remove((roomId, leavingParticipant.Id));
+            }
+            else
+            {
+                reason = markedParticipantsAsLeft.Remove((roomId, leavingParticipant.Id))
+                    ? DisconnectReason.LeftRoom
+                    : e.DisconnectReason;
+            }
+
+            await messageRouter.RouteAsync(new ParticipantLeftMessage()
             {
                 Participant = leavingParticipant,
-                Reason = e.DisconnectReason,
-            };
-
-            await messageRouter.RouteAsync(participantLeftMessage, roomId, hostParticipantId, CancellationToken.None);
+                Reason = reason,
+            }, roomId, hostParticipantId, CancellationToken.None);
         }
 
         return needToDisconnect;
@@ -176,11 +200,28 @@ internal sealed class HostRoomService
 
         var localParticipant = identityService.SelfParticipant.ToParticipantInfo();
 
-        roomInfo.HostParticipant = localParticipant;
-        var room = new Room(roomInfo);
+        var connectionId = await transport.StartHostingAsync(prefferedPort: networkOptions.PrefferredPort,
+            sequentialAttempts: ServicesConstants.MaximumRoomHosts, cancellationToken: cancellationToken);
 
-        var connectionId = await transport.StartHostingAsync(cancellationToken: cancellationToken);
-        room.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
+        if (roomStore.TryGetRoom(roomId, out var existingRoom))
+        {
+            existingRoom.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
+            roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            var existingContext = roomFactory.GetOrCreateContext(roomId);
+            existingContext.Connections.RegisterLocalParticipant(localParticipant);
+
+            registry.RegisterServerConnection(roomId, connectionId);
+            readyRoomInfos[roomId] = roomInfo;
+
+            return existingRoom;
+        }
+
+        roomInfo.HostParticipant = localParticipant;
+        var room = new Room(roomInfo)
+        {
+            ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken)
+        };
         room.LocalRoomSettings.NetworkOptions = networkOptions;
 
         roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -228,31 +269,8 @@ internal sealed class HostRoomService
         return room.ConnectionAddresses;
     }
 
-    public async Task StopHostingAsync(Guid roomId)
-    {
-        if (!registry.TryGetServerConnectionIdByRoomId(roomId, out var connectionId))
-        {
-            return;
-        }
-
-        if (roomCancellationTokenSources.TryGetValue(roomId, out var cancellationTokenSource))
-        {
-            cancellationTokenSource.Cancel();
-            cancellationTokenSource.Dispose();
-            roomCancellationTokenSources.Remove(roomId);
-        }
-
-        await transport.StopHostingAsync(connectionId);
-        subRoomManager.ClearRoomSubRooms(roomId);
-
-        registry.UnregisterServerConnection(roomId);
-        readyRoomInfos.TryRemove(roomId, out _);
-
-        roomStore.Remove(roomId);
-        roomFactory.DestroyContext(roomId);
-
-        await eventBus.PublishAsync(new RoomClosedEvent() { RoomId = roomId });
-    }
+    public void MarkParticipantAsLeftRoom(Guid roomId, Guid participantId)
+        => markedParticipantsAsLeft.Add((roomId, participantId));
 
     public async Task KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason)
     {
@@ -268,6 +286,10 @@ internal sealed class HostRoomService
 
         try
         {
+            if (reason == DisconnectReason.Kick)
+            {
+                markedParticipantsAsLeft.Add((roomId, participantId));
+            }
             var connectionId = context.Connections.GetConnectionIdFromParticipantId(participantId);
             await transport.DisconnectClientAsync(connectionId, serverConnectionId, reason);
         }
@@ -297,5 +319,51 @@ internal sealed class HostRoomService
         {
             logger.Log($"Не удалось кикнуть соединение {ex.Message}", LogLevel.Warning);
         }
+    }
+
+    public async Task StopHostingAsync(Guid roomId)
+    {
+        if (!registry.TryGetServerConnectionIdByRoomId(roomId, out var connectionId))
+        {
+            return;
+        }
+
+        if (roomCancellationTokenSources.TryGetValue(roomId, out var cancellationTokenSource))
+        {
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
+            roomCancellationTokenSources.Remove(roomId);
+        }
+
+        await transport.StopHostingAsync(connectionId);
+        subRoomManager.ClearRoomSubRooms(roomId);
+
+        var context = roomFactory.GetOrCreateContext(roomId);
+        context.Participants.MarkAllParticipansOffline(exceptId: identityService.SelfParticipant.Id);
+
+        registry.UnregisterServerConnection(roomId);
+        readyRoomInfos.TryRemove(roomId, out _);
+
+        if (markedRoomsToDestroy.Remove(roomId))
+        {
+            await DestroyRoom(roomId);
+            return;
+        }
+
+        await eventBus.PublishAsync(new RoomWentOfflineEvent() { RoomId = roomId });
+    }
+
+    public async Task ForgetRoom(Guid roomId)
+    {
+        markedRoomsToDestroy.Add(roomId);
+        await StopHostingAsync(roomId);
+    }
+
+    private async Task DestroyRoom(Guid roomId)
+    {
+        roomStore.Remove(roomId);
+        roomFactory.DestroyContext(roomId);
+        await eventBus.PublishAsync(new RoomWentOfflineEvent() { RoomId = roomId });
+        await eventBus.PublishAsync(new RoomDestroyedEvent() { RoomId = roomId });
     }
 }

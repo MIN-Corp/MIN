@@ -79,7 +79,8 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                      <MenuItem IsVisible="{Binding !IsVoiceChatActive}"
-                                         Header="Начать звонок"
+                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            Header="Начать звонок"
                                             Command="{Binding StartVoiceCallClickCommand}">
                                         <MenuItem.Icon>
                                             <Svg Path="/Assets/Icons/phone-call.svg" />
@@ -98,18 +99,35 @@
 
                                     <MenuItem IsVisible="{Binding !IsHost}"
                                             Classes="danger"
-                                            Header="Покинуть комнату"
+                                            Header="Отключиться от комнаты"
                                             Command="{Binding LeaveRoomCommand}">
                                         <MenuItem.Icon>
                                             <Svg Path="/Assets/Icons/leave.svg" />
                                         </MenuItem.Icon>
                                     </MenuItem>
-                                      <MenuItem IsVisible="{Binding IsHost}"
+                                    <MenuItem IsVisible="{Binding IsHost}"
                                             Classes="danger"
-                                             Header="Закрыть комнату"
+                                             Header="Приостановить хостинг комнаты"
                                             Command="{Binding LeaveRoomCommand}">
                                         <MenuItem.Icon>
                                             <Svg Path="/Assets/Icons/leave.svg" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+
+                                    <MenuItem IsVisible="{Binding !IsHost}"
+                                            Classes="danger"
+                                            Header="Забыть комнату"
+                                            Command="{Binding ForgetRoomCommand}">
+                                        <MenuItem.Icon>
+                                            <Svg Path="/Assets/Icons/delete.svg" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                     <MenuItem IsVisible="{Binding IsHost}"
+                                            Classes="danger"
+                                             Header="Удалить комнату"
+                                            Command="{Binding ForgetRoomCommand}">
+                                        <MenuItem.Icon>
+                                            <Svg Path="/Assets/Icons/delete.svg" />
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </MenuFlyout>
@@ -331,10 +349,9 @@
                     </Expander>
                 </Border>
 
-
                 <!-- TextBox and actions -->
 
-                 <Border DockPanel.Dock="Bottom"
+                <Border DockPanel.Dock="Bottom"
                         Background="{DynamicResource SidebarBackground}"
                         Padding="{DynamicResource PaddingTopBar}"
                         CornerRadius="{DynamicResource CornerRadiusLarge}">
@@ -425,13 +442,15 @@
                                 <Button.Flyout>
                                     <MenuFlyout Placement="TopEdgeAlignedLeft">
                                         <MenuItem Header="Отправить файл"
-                                                Command="{Binding UploadFileClickCommand}">
+                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            Command="{Binding UploadFileClickCommand}">
                                             <MenuItem.Icon>
                                                 <Svg Path="/Assets/Icons/file-upload.svg" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Начать активность"
-                                                Command="{Binding StartSessionClickCommand}">
+                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            Command="{Binding StartSessionClickCommand}">
                                             <MenuItem.Icon>
                                                 <Svg Path="/Assets/Icons/rocket.svg" />
                                             </MenuItem.Icon>
@@ -443,6 +462,7 @@
                             <Button
                                 Command="{Binding SendMessageCommand}"
                                 VerticalAlignment="Bottom"
+                                IsEnabled="{Binding IsAvaibleForNetwork}"
                                 ToolTip.Tip="Отправить"
                                 Classes="icon primary"
                                 DockPanel.Dock="Right"
@@ -483,6 +503,46 @@
                         </DockPanel>
                     </StackPanel>
                  </Border>
+
+                <Button DockPanel.Dock="Bottom"
+                    Classes="appear-from-bottom"
+                    Command="{Binding ReconnectCommand}"
+                    Opacity="{Binding !IsOnline,
+                        Converter={converters:BoolToOpacityConverter}}"
+                    Content="Подключиться">
+                    <Button.Transitions>
+                        <Transitions>
+                            <DoubleTransition Duration="0:0:.2" Property="Opacity" />
+                        </Transitions>
+                    </Button.Transitions>
+
+                     <Button.IsVisible>
+                        <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                            <Binding Path="!IsOnline" />
+                            <Binding Path="!IsHost" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                </Button>
+
+                <Button DockPanel.Dock="Bottom"
+                    Classes="appear-from-bottom"
+                    Command="{Binding RehostCommand}"
+                    Opacity="{Binding !IsOnline,
+                        Converter={converters:BoolToOpacityConverter}}"
+                    Content="Продолжить хостинг">
+                    <Button.Transitions>
+                        <Transitions>
+                            <DoubleTransition Duration="0:0:.2" Property="Opacity" />
+                        </Transitions>
+                    </Button.Transitions>
+
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                            <Binding Path="!IsOnline" />
+                            <Binding Path="IsHost" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                </Button>
 
                 <!-- Messages -->
 

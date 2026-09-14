@@ -36,7 +36,7 @@ public interface ITransport
     /// <summary>
     /// Запустить сервер подключений (с желаемым id)
     /// </summary>
-    Task<Guid> StartHostingAsync(Guid? serverConnectionId = null, CancellationToken cancellationToken = default);
+    Task<Guid> StartHostingAsync(Guid? serverConnectionId = null, short? prefferedPort = null, int? sequentialAttempts = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Настроить доступ и получить все точки подключения

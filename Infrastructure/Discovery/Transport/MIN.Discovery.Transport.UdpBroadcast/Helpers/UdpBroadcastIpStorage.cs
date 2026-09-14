@@ -17,7 +17,7 @@ internal class UdpBroadcastIpStorage : IDisposable
 
     public UdpBroadcastIpStorage(IAppDataProvider appDataProvider)
     {
-        var directory = Directory.CreateDirectory(Path.Combine(appDataProvider.BaseDirectory, "network")).FullName;
+        var directory = Directory.CreateDirectory(Path.Combine(appDataProvider.VersionedDirectory, "network")).FullName;
         addressesPath = Path.Combine(directory, "broadcastAddreses.json");
 
         jsonOptions = new JsonSerializerOptions

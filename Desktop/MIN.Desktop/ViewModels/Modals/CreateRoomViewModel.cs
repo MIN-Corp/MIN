@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Stores.Contracts.Registries.Interfaces;
 using MIN.Core.Transport.Contracts.Helpers;
 using MIN.Core.Transport.Contracts.Models;
 using MIN.Desktop.Contracts.Enums;
@@ -35,6 +36,14 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     [NotifyDataErrorInfo]
     [RoomCapacity]
     public partial int RoomMaxPlayers { get; set; } = 8;
+
+    [IntValue]
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
+    [NotifyDataErrorInfo]
+    [Required(ErrorMessage = "Введите порт")]
+    [Range(1024, ushort.MaxValue, ErrorMessage = "Порт должен быть от 1024 до 65535")]
+    public partial int Port { get; set; } = 5550;
 
     /// <summary>
     /// Локальное обнаружение
@@ -97,7 +106,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="CreateRoomViewModel"/>
     /// </summary>
-    public CreateRoomViewModel()
+    public CreateRoomViewModel(IRoomConnectionRegistry registry)
     {
         var installedVpns = NetworkHelper.GetVpnIps();
 
@@ -110,6 +119,8 @@ public partial class CreateRoomViewModel : ModalViewModelBase
         {
             HamachiInstalled = true;
         }
+
+        Port += registry.GetServerConnectionCount();
     }
 
     /// <summary>
@@ -130,6 +141,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
         EnablePortForwarding = NetworkOptions.EnablePortForwarding;
         EnableRadmin = NetworkOptions.EnableRadmin;
         EnableWeb = NetworkOptions.EnableWeb;
+        Port = NetworkOptions.PrefferredPort;
     }
 
     [RelayCommand(CanExecute = nameof(CanCreate))]
@@ -153,6 +165,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
 
         NetworkOptions = new()
         {
+            PrefferredPort = (short)Port,
             EnableLocalDiscovery = EnableLocalDiscovery,
             EnablePortForwarding = EnablePortForwarding,
             EnableRadmin = EnableRadmin,

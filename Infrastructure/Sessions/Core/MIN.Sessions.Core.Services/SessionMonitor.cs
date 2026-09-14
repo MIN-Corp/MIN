@@ -55,12 +55,12 @@ public class SessionMonitor : IHostedService
         await sessionScanner.ScanAsync(cancellationToken);
         await sessionProcessBridge.StartListeningAsync(cancellationToken);
 
-        eventBus.Subscribe<RoomClosedEvent>(OnRoomClosed);
+        eventBus.Subscribe<RoomWentOfflineEvent>(WentOffline);
         eventBus.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
         eventBus.Subscribe<SessionDeactivatedEvent>(OnSessionDeactivated);
     }
 
-    private async Task OnRoomClosed(RoomClosedEvent e, CancellationToken cancellationToken)
+    private async Task WentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
         => await sessionProcessManager.StopForRoomAsync(e.RoomId);
 
     private async Task OnSessionDeactivated(SessionDeactivatedEvent e, CancellationToken cancellationToken)

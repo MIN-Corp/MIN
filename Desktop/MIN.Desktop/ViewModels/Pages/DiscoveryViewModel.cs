@@ -112,21 +112,19 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
 
     private async Task<bool> ResolveParticipant()
     {
-        if (Settings.DefaultParticipantName != string.Empty)
+        var selfParticipant = featureCollection.Core.IdentityService.SelfParticipant;
+
+        if (selfParticipant.Name != string.Empty)
         {
-            localParticipant.Name = Settings.DefaultParticipantName;
-            featureCollection.Core.IdentityService.SetParticipant(localParticipant);
+            localParticipant.Name = selfParticipant.Name;
         }
         else
         {
-            var participantCreatingResult = await dialogService.ShowDialogAsync<CreateParticipantViewModel>();
-            if (participantCreatingResult != null && participantCreatingResult == false)
+            bool participantCreatingResult = await dialogService.ShowDialogAsync<CreateParticipantViewModel>();
+            if (participantCreatingResult == false)
             {
                 return false;
             }
-
-            Settings.DefaultParticipantName = featureCollection.Core.IdentityService.SelfParticipant.Name;
-            featureCollection.Helper.SettingsProvider.SaveSettings(Settings);
         }
         return true;
     }
@@ -135,10 +133,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// Обработчик создания комнаты
     /// </summary>
     [RelayCommand]
-    public async Task CreateRoomUI()
-    {
-        await CreateRoom();
-    }
+    public async Task CreateRoomUI() => await CreateRoom();
 
     private async Task CreateRoom(RoomInfo? loopRoom = null, NetworkOptions? loopNetworkOptions = null)
     {
@@ -180,7 +175,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
         }
         catch (OperationCanceledException)
         {
-            await featureCollection.Core.Lifecycle.StopHostingAsync(roomInfo.Id);
+            await featureCollection.Core.Lifecycle.ForgetHostingAsync(roomInfo.Id);
             await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomInfo.Id);
             InAppNotifier.Info("Создание комнаты было отменено");
             ChangeView(this);
@@ -188,7 +183,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
         }
         catch (Exception ex)
         {
-            await featureCollection.Core.Lifecycle.StopHostingAsync(roomInfo.Id);
+            await featureCollection.Core.Lifecycle.ForgetHostingAsync(roomInfo.Id);
             await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomInfo.Id);
             InAppNotifier.Error($"Не удалось создать комнату: {ex.Message}");
             ChangeView(this);

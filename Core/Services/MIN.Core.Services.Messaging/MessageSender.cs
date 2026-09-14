@@ -115,9 +115,15 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
             .Append(CoreRegistryConstants.LocalConnectionId);
 
         var tasks = participants
-            .Select(participant => context.Connections.GetConnectionIdFromParticipantId(participant.Id))
-            .Where(connectionId => !excludeConnectionIds.Contains(connectionId))
-            .Select(connectionId => SendAsync(message, roomId, connectionId, cancellationToken));
+            .Select(participant => new
+            {
+                ParticipantId = participant.Id,
+                HasConnection = context.Connections.TryGetConnectionIdFromParticipantId(participant.Id, out var connectionId),
+                ConnectionId = connectionId,
+            })
+            .Where(x => x.HasConnection && !excludeConnectionIds.Contains(x.ConnectionId))
+            .Select(x => SendAsync(message, roomId, x.ConnectionId, cancellationToken));
+
 
         await Task.WhenAll(tasks);
     }

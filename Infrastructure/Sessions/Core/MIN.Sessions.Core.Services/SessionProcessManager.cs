@@ -3,6 +3,7 @@ using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -20,6 +21,7 @@ public class SessionProcessManager : ISessionProcessManager
     private const int ProcessWaitingTimeOutMs = 30_000;
 
     private readonly Dictionary<ProcessContext, Process> pendingProcesses = [];
+    private readonly Dictionary<ProcessContext, EventHandler> currentExitHandlers = [];
     private readonly Dictionary<ProcessContext, Process> runningProcesses = [];
     private readonly Dictionary<ProcessContext, ISessionProcessTransport> transports = [];
     private readonly IMessageRouter messageRouter;
@@ -29,8 +31,6 @@ public class SessionProcessManager : ISessionProcessManager
     private readonly ISubRoomManager subRoomManager;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
-
-    private EventHandler? currentExitHandler;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="SessionProcessManager"/>
@@ -62,12 +62,7 @@ public class SessionProcessManager : ISessionProcessManager
 
         if (context.Role == SessionProcessRole.Client)
         {
-            await eventBus.PublishAsync(new SessionProcessStartedEvent()
-            {
-                RoomId = context.RoomId,
-                SubRoomId = context.SubRoomId,
-                Session = session,
-            }, cancellationToken);
+            await eventBus.PublishAsync(new SessionProcessStartedEvent() { RoomId = context.RoomId, SubRoomId = context.SubRoomId, Session = session }, cancellationToken).ConfigureAwait(false);
         }
 
         if (!Path.Exists(fullPath))
@@ -79,7 +74,11 @@ public class SessionProcessManager : ISessionProcessManager
         transports[context] = processTransport;
         processBridge.RegisterTransport(context, processTransport);
 
-        await processTransport.StartAsync(context.RoomId, cancellationToken);
+        var profile = Profiling.IsEnabled ? Stopwatch.StartNew() : null;
+
+        await processTransport.StartAsync(context.RoomId, cancellationToken).ConfigureAwait(false);
+        LogPhase(profile, $"session transport start {context.Role}");
+
         var connectionString = processTransport.GetConnectionString();
 
         var psi = new ProcessStartInfo
@@ -100,6 +99,7 @@ public class SessionProcessManager : ISessionProcessManager
         }
 
         var startedProcess = Process.Start(psi);
+        LogPhase(profile, $"session process spawn {session.Name}");
 
         if (startedProcess == null || startedProcess.HasExited)
         {
@@ -111,8 +111,12 @@ public class SessionProcessManager : ISessionProcessManager
 
         var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        await processTransport.WaitForConnectionAsync(context, ProcessWaitingTimeOutMs, connectCts.Token);
-        var readySuccess = await processBridge.WaitForReadyMessage(context, ProcessWaitingTimeOutMs, connectCts.Token);
+        await processTransport.WaitForConnectionAsync(context, ProcessWaitingTimeOutMs, connectCts.Token).ConfigureAwait(false);
+        LogPhase(profile, $"session wait connection {context.Role}");
+
+        var readySuccess = await processBridge.WaitForReadyMessage(context, ProcessWaitingTimeOutMs, connectCts.Token).ConfigureAwait(false);
+        LogPhase(profile, $"session wait ready {session.Name}");
+
         pendingProcesses.Remove(context);
         if (readySuccess == false)
         {
@@ -125,8 +129,8 @@ public class SessionProcessManager : ISessionProcessManager
         runningProcesses[context] = startedProcess;
 
         startedProcess.EnableRaisingEvents = true;
-        currentExitHandler = async (_, _) => await AnnounceExit(session, context, cancellationToken);
-        startedProcess.Exited += currentExitHandler;
+        currentExitHandlers[context] = async (_, _) => await AnnounceExit(session, context, cancellationToken).ConfigureAwait(false);
+        startedProcess.Exited += currentExitHandlers[context];
 
         return true;
     }
@@ -140,24 +144,13 @@ public class SessionProcessManager : ISessionProcessManager
                 return;
             }
 
-            await messageRouter.RouteAsync(new SessionServerShutdownMessage()
-            {
-                SubRoomId = context.SubRoomId,
-                Reason = $"Сервер сессии {session.Name} был закрыт хостом"
-            }, context.RoomId, identityService.SelfParticipant.Id, cancellationToken);
+            await messageRouter.RouteAsync(new SessionServerShutdownMessage() { SubRoomId = context.SubRoomId, Reason = $"Сервер сессии {session.Name} был закрыт хостом" }, context.RoomId, identityService.SelfParticipant.Id, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            await eventBus.PublishAsync(new SessionProcessEndedEvent()
-            {
-                RoomId = context.RoomId,
-                SubRoomId = context.SubRoomId,
-            }, cancellationToken);
+            await eventBus.PublishAsync(new SessionProcessEndedEvent() { RoomId = context.RoomId, SubRoomId = context.SubRoomId }, cancellationToken).ConfigureAwait(false);
 
-            await messageRouter.RouteAsync(new SessionLeaveMessage()
-            {
-                SubRoomId = context.SubRoomId,
-            }, context.RoomId, identityService.SelfParticipant.Id, cancellationToken);
+            await messageRouter.RouteAsync(new SessionLeaveMessage() { SubRoomId = context.SubRoomId }, context.RoomId, identityService.SelfParticipant.Id, cancellationToken).ConfigureAwait(false);
         }
         runningProcesses.Remove(context);
     }
@@ -169,7 +162,15 @@ public class SessionProcessManager : ISessionProcessManager
     {
         if (runningProcesses.TryGetValue(context, out var process))
         {
-            await StopProcessWithTimeOut(context, process, clearAnnounce: false);
+            try
+            {
+                await StopProcessWithTimeOut(context, process, clearAnnounce: false).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.Log($"Произошла ошибка при закрытии сессии {ex.Message}",
+                    Helpers.Contracts.Models.Enums.LogLevel.Error);
+            }
         }
         runningProcesses.Remove(context);
     }
@@ -179,15 +180,29 @@ public class SessionProcessManager : ISessionProcessManager
         var roomPendingProcesses = pendingProcesses.Keys.Where(x => x.RoomId == roomId).ToList();
         foreach (var context in roomPendingProcesses)
         {
-            await StopProcessWithTimeOut(context, pendingProcesses[context]);
+            try
+            {
+                await StopProcessWithTimeOut(context, pendingProcesses[context]).ConfigureAwait(false);
+            }
+            catch
+            {
+                continue;
+            }
             pendingProcesses.Remove(context);
         }
 
         var roomRunningProcesses = runningProcesses.Keys.Where(x => x.RoomId == roomId).ToList();
         foreach (var context in roomRunningProcesses)
         {
-            await StopProcessWithTimeOut(context, runningProcesses[context]);
-            runningProcesses.Remove(context);
+            try
+            {
+                await StopProcessWithTimeOut(context, runningProcesses[context]).ConfigureAwait(false);
+                runningProcesses.Remove(context);
+            }
+            catch
+            {
+                continue;
+            }
         }
     }
 
@@ -195,21 +210,36 @@ public class SessionProcessManager : ISessionProcessManager
     {
         foreach (var process in pendingProcesses)
         {
-            await StopProcessWithTimeOut(process.Key, process.Value);
+            try
+            {
+                await StopProcessWithTimeOut(process.Key, process.Value).ConfigureAwait(false);
+            }
+            catch
+            {
+                continue;
+            }
         }
         pendingProcesses.Clear();
+
         foreach (var process in runningProcesses)
         {
-            await StopProcessWithTimeOut(process.Key, process.Value);
+            try
+            {
+                await StopProcessWithTimeOut(process.Key, process.Value).ConfigureAwait(false);
+            }
+            catch
+            {
+                continue;
+            }
         }
         runningProcesses.Clear();
     }
 
     private async Task StopProcessWithTimeOut(ProcessContext context, Process process, bool clearAnnounce = true)
     {
-        if (currentExitHandler != null && clearAnnounce)
+        if (currentExitHandlers[context] != null && clearAnnounce)
         {
-            process.Exited -= currentExitHandler;
+            process.Exited -= currentExitHandlers[context];
         }
         else if (!clearAnnounce)
         {
@@ -222,22 +252,29 @@ public class SessionProcessManager : ISessionProcessManager
 
         await processBridge.SendCloseMessage(context);
 
-        var exited = await Task.WhenAny(
-            process.WaitForExitAsync(),
-            Task.Delay(ProcessWaitingTimeOutMs)
-        ) == process.WaitForExitAsync();
+        var exitTask = process.WaitForExitAsync(CancellationToken.None);
 
-        if (exited)
-        {
-            transportFactory.Destroy(transports[context]);
-            processBridge.UnregisterTransport(context);
-        }
-        else
+        var exited = await Task.WhenAny(exitTask, Task.Delay(ProcessWaitingTimeOutMs)).ConfigureAwait(false) == exitTask;
+
+        if (!exited)
         {
             process.Kill();
-            await process.WaitForExitAsync();
-            transportFactory.Destroy(transports[context]);
-            processBridge.UnregisterTransport(context);
+            await process.WaitForExitAsync(CancellationToken.None);
         }
+
+        transportFactory.Destroy(transports[context]);
+        processBridge.UnregisterTransport(context);
+    }
+
+    private void LogPhase(Stopwatch? sw, string phase)
+    {
+        if (sw == null)
+        {
+            return;
+        }
+        sw.Stop();
+        logger.Log($"[PROFILE] {phase} = {sw.Elapsed.TotalMilliseconds:F1} ms (thread {Environment.CurrentManagedThreadId})",
+            durationMs: sw.Elapsed.TotalMilliseconds);
+        sw.Restart();
     }
 }

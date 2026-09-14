@@ -113,7 +113,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         roomScope.Subscribe<ParticipantJoinedEvent>(OnParticipantJoined);
         roomScope.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdatedMessageEvent);
-        roomScope.Subscribe<RoomClosedEvent>(OnRoomLeft);
+        roomScope.Subscribe<RoomDestroyedEvent>(OnRoomDestroyed);
         roomScope.Subscribe<RoomJoinedEvent>(OnRoomJoined);
         errorToken = eventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured);
     }
@@ -131,6 +131,11 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantJoined(ParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (eventMessage.IsRejoin)
+        {
+            return Task.CompletedTask;
+        }
+
         room.ParticipantCount++;
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
@@ -138,12 +143,17 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantLeft(ParticipantLeftEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (!eventMessage.Message.IsLeftRoom)
+        {
+            return Task.CompletedTask;
+        }
+
         room.ParticipantCount--;
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
     }
 
-    private Task OnRoomLeft(RoomClosedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnRoomDestroyed(RoomDestroyedEvent eventMessage, CancellationToken cancellationToken)
     {
         if (asHost)
         {

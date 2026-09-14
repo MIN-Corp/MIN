@@ -18,9 +18,24 @@ public interface IRoomLifecycleManager
     Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Пометить комнату, как забытую
+    /// </summary>
+    void MarkRoomForDeletion(Guid roomId);
+
+    /// <summary>
     /// Отключиться от удалённой комнаты (клиентская сторона)
     /// </summary>
-    Task DisconnectAsync(Guid roomId, Guid connectionId, DisconnectReason reason);
+    Task DisconnectAsync(Guid roomId, Guid connectionId);
+
+    /// <summary>
+    /// Отключиться от удалённой комнаты и забыть её (клиентская сторона)
+    /// </summary>
+    Task ForgetRoomAsync(Guid roomId, Guid connectionId);
+
+    /// <summary>
+    /// Хост уведомлён о выходе, можно отключиться
+    /// </summary>
+    void CompleteRoomLeaveAck(Guid roomId);
 
     /// <summary>
     /// Начать хостинг комнаты (серверная сторона)
@@ -33,9 +48,9 @@ public interface IRoomLifecycleManager
     Task<IEnumerable<IEndpoint>> UpdateNetworkOptions(Guid roomId, NetworkOptions newNetworkOptions, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Остановить хостинг комнаты
+    /// Пометить участника, как вышедшего из комнаты надолго
     /// </summary>
-    Task StopHostingAsync(Guid roomId);
+    void MarkParticipantAsLeftRoom(Guid roomId, Guid participantId);
 
     /// <summary>
     /// Кикнуть участника из комнаты
@@ -46,4 +61,14 @@ public interface IRoomLifecycleManager
     /// Кикнуть участника по соединению из комнаты
     /// </summary>
     Task KickConnectionAsync(Guid roomId, Guid connectionId, DisconnectReason reason);
+
+    /// <summary>
+    /// Остановить хостинг комнаты
+    /// </summary>
+    Task StopHostingAsync(Guid roomId);
+
+    /// <summary>
+    /// Остановить хостинг комнаты и забыть её
+    /// </summary>
+    Task ForgetHostingAsync(Guid roomId);
 }

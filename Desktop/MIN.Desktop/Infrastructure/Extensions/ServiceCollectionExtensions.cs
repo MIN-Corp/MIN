@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.Reflection;
+using System.Threading;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -32,6 +34,7 @@ public static partial class ServiceCollectionExtensions
         => services
             // UI
             .AddServices()
+            .AddSingleton<TrayService>()
             .AddSingleton<Window, MainWindow>()
             .AddSingleton<MainWindowViewModel>()
             .AddSingleton<Func<IMultiRoutingWindow>>(provider => provider.GetRequiredService<MainWindowViewModel>)
@@ -42,26 +45,48 @@ public static partial class ServiceCollectionExtensions
 
                 var window = provider.GetRequiredService<Window>();
                 window.DataContext = provider.GetRequiredService<MainWindowViewModel>();
-                var isClosing = false;
+                var servicesStopped = false;
 
-                window.Closing += async (_, e) =>
+                var trayService = provider.GetRequiredService<TrayService>();
+                trayService.ExitRequested += () =>
                 {
-                    cts.CancelAfter(TimeSpan.FromSeconds(5));
+                    if (window is MainWindow mainWindow)
+                    {
+                        mainWindow.MinimizeToTrayEnabled = false;
+                        window.Close();
+                    }
+                };
 
-                    if (isClosing)
+                window.Closing += OnClose;
+                window.Closed += (_, e) => trayService?.Dispose();
+
+                async void OnClose(object? sender, WindowClosingEventArgs e)
+                {
+                    if (servicesStopped)
                     {
                         return;
                     }
 
-                    isClosing = true;
                     e.Cancel = true;
+                    servicesStopped = true;
+
                     foreach (var svc in hostedServices)
                     {
-                        await svc.StopAsync(cts.Token);
+                        try
+                        {
+                            using var stopCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                            stopCts.CancelAfter(TimeSpan.FromSeconds(15));
+                            await svc.StopAsync(stopCts.Token);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"{svc.GetType().Name} failed at stopping : {ex.Message}");
+                            continue;
+                        }
                     }
 
                     window.Close();
-                };
+                }
 
                 return window;
             })

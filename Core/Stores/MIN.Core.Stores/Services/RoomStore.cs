@@ -42,15 +42,18 @@ public sealed class RoomStore : IRoomStore
         return false;
     }
 
-    Room IRoomStore.GetRoomFor(Guid participantId, Guid roomId)
+    Room IRoomStore.GetRoomFor(Guid participantId, Guid roomId, bool asRejoin)
     {
         if (roomsById.TryGetValue(roomId, out var room))
         {
             var context = roomFactory.GetOrCreateContext(roomId);
             var snapshot = room.Clone();
-            snapshot.ChatHistory = context.Messages.GetRecentHistory()
-                .Where(x => x.IsPublic || x.RecipientId == participantId || x.SenderId == participantId)
-                .ToList();
+            if (!asRejoin)
+            {
+                snapshot.ChatHistory = context.Messages.GetRecentHistory()
+                   .Where(x => x.IsPublic || x.RecipientId == participantId || x.SenderId == participantId)
+                   .ToList();
+            }
             snapshot.TotalMessageCount = GetMessagesCountFor(context, participantId);
             snapshot.LocalRoomSettings.NotificationsEnabled = false;
             return snapshot;

@@ -8,9 +8,14 @@ namespace MIN.Core.Stores.Contracts.Registries.Interfaces;
 public interface IParticipantConnectionRegistry
 {
     /// <summary>
-    /// Попытаться установить ассоциацию соеднинения с участником
+    /// Установить ассоциацию соеднинения с участником
     /// </summary>
-    bool TryRegister(Guid connectionId, ParticipantInfo participant);
+    void Register(Guid connectionId, ParticipantInfo participant);
+
+    /// <summary>
+    /// Есть ли какой-то участник с таким идентификатором соединения
+    /// </summary>
+    bool ConnectionExists(Guid connectionId);
 
     /// <summary>
     /// Установить ассоциацию соеднинения с локальным участником

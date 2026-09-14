@@ -44,12 +44,15 @@ internal sealed class ParticipantJoinHandler : BaseHandler
             case RoomJoinRequestMessage roomJoinRequestMessage:
                 var room = roomStore.GetRoom(context.RoomContext.RoomId);
 
-                if (room.IsFull)
+                var isReturning = context.RoomContext.Participants.TryGetParticipantById(roomJoinRequestMessage.SenderId, out var existing)
+                    && existing?.CurrentStatus == OnlineStatus.Offline;
+
+                if (!isReturning && room.IsFull)
                 {
                     return HandlerResult.WithErrorHandled("Комната заполнена. Попробуйте позже.", critical: true);
                 }
 
-                if (context.RoomContext.Participants.TryGetParticipantById(roomJoinRequestMessage.SenderId, out _))
+                if (!isReturning && existing != null)
                 {
                     return HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.", critical: true);
                 }
@@ -59,22 +62,29 @@ internal sealed class ParticipantJoinHandler : BaseHandler
             case RoomJoinResponseMessage _:
                 return HandlerResult.WithResponse(new ParticipantJoinedMessage()
                 {
-                    Participant = new Participant(identityService.SelfParticipant)
+                    Participant = new Participant(identityService.SelfParticipant),
                 });
-
-            case ParticipantAcceptedMessage _:
-                return HandlerResult.WithResponse(new RoomInfoRequestMessage());
 
             case ParticipantJoinedMessage participantJoinedMessage:
                 LogInfo($"Участник {participantJoinedMessage.Participant.Name} зашёл в комнату с id {context.RoomContext.RoomId}");
 
-                context.RoomContext.Participants.AddParticipant(participantJoinedMessage.Participant);
-                context.RoomContext.Messages.AddMessage(message);
+                var isRejoin = context.RoomContext.Participants.TryGetParticipantById(participantJoinedMessage.Participant.Id, out var participant);
+
+                if (isRejoin)
+                {
+                    participant!.CurrentStatus = OnlineStatus.Online;
+                }
+                else
+                {
+                    context.RoomContext.Participants.AddParticipant(participantJoinedMessage.Participant);
+                    context.RoomContext.Messages.AddMessage(message);
+                }
 
                 await eventBus.PublishAsync(new ParticipantJoinedEvent()
                 {
                     RoomId = context.RoomContext.RoomId,
                     Message = participantJoinedMessage,
+                    IsRejoin = isRejoin,
                 }, context.CancellationToken);
 
                 if (context.Role == Role.Host)
@@ -83,6 +93,12 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 }
 
                 return HandlerResult.Success();
+
+            case ParticipantAcceptedMessage _:
+                return HandlerResult.WithResponse(new RoomInfoRequestMessage()
+                {
+                    IsRejoin = context.RoomContext.Messages.GetFirstMessage() != null
+                });
 
             default:
                 throw new HandlerTypeMismatch(this, message);

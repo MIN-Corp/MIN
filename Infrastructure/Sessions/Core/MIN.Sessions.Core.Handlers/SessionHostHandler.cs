@@ -94,7 +94,7 @@ internal sealed class SessionHostHandler : BaseHandler
         var processContext = new ProcessContext(roomId, subRoomId.Value, SessionProcessRole.Server);
 
         var hostResult = await sessionProcessManager.StartAsync(session,
-            processContext, context.CancellationToken);
+            processContext, context.CancellationToken).ConfigureAwait(false);
 
         if (hostResult == false)
         {
@@ -115,9 +115,9 @@ internal sealed class SessionHostHandler : BaseHandler
             };
 
             await sessionProcessBridge.SendIpcMessage(new ParticipantConnectedMessage(senderParicipantInfo.Id.ToString(), senderParicipantInfo.Name),
-                processContext, message.SenderId, context.CancellationToken);
+                processContext, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 
-            await messageRouter.RouteAsync(hostReadyMessage, roomId, message.SenderId, context.CancellationToken);
+            await messageRouter.RouteAsync(hostReadyMessage, roomId, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 
             if (context.SelfId == message.SenderId)
             {
@@ -126,14 +126,14 @@ internal sealed class SessionHostHandler : BaseHandler
                     NeedToAnnounce = false,
                     SessionId = session.SessionId,
                     SubRoomId = subRoomId.Value,
-                }, context.RoomContext.RoomId, context.SelfId, context.CancellationToken);
+                }, context.RoomContext.RoomId, context.SelfId, context.CancellationToken).ConfigureAwait(false);
 
                 return HandlerResult.Success();
             }
             else
             {
                 // sending him ready as he didnt received by sender filtering
-                await messageSender.SendAsync(hostReadyMessage, roomId, context.ConnectionId, context.CancellationToken);
+                await messageSender.SendAsync(hostReadyMessage, roomId, context.ConnectionId, context.CancellationToken).ConfigureAwait(false);
 
                 return HandlerResult.WithResponse(new SessionJoinResponseMessage()
                 {
@@ -151,7 +151,7 @@ internal sealed class SessionHostHandler : BaseHandler
                 NeedToAnnounce = true,
                 SessionId = session.SessionId,
                 SubRoomId = subRoomId.Value,
-            }, roomId, context.SelfId, context.CancellationToken);
+            }, roomId, context.SelfId, context.CancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -160,7 +160,7 @@ internal sealed class SessionHostHandler : BaseHandler
                 NeedToAnnounce = true,
                 SessionId = session.SessionId,
                 SubRoomId = subRoomId.Value,
-            }, roomId, context.RoomContext.Connections.GetConnectionIdFromParticipantId(message.SenderId), context.CancellationToken);
+            }, roomId, context.RoomContext.Connections.GetConnectionIdFromParticipantId(message.SenderId), context.CancellationToken).ConfigureAwait(false);
         }
 
         return HandlerResult.Success();

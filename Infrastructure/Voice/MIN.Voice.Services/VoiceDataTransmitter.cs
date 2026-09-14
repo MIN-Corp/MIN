@@ -23,8 +23,6 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
     private Channel<VoiceDataMessage> queue = null!;
     private Channel<byte[]> captureQueue = null!;
     private CancellationTokenSource? sendCts;
-    private Task? sendTask;
-    private Task? processTask;
 
     private Guid roomId;
     private int subRoomId;
@@ -72,8 +70,8 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
         });
 
         sendCts = new CancellationTokenSource();
-        processTask = ProcessCapturedFramesAsync(sendCts.Token);
-        sendTask = SendPumpAsync(sendCts.Token);
+        _ = ProcessCapturedFramesAsync(sendCts.Token);
+        _ = SendPumpAsync(sendCts.Token);
 
         voiceAudioDetector.Reset();
         audioCaptureService.FrameCaptured += OnFrameCaptured;
@@ -95,8 +93,6 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
         sendCts = null;
         captureQueue.Writer.TryComplete();
         queue.Writer.TryComplete();
-        sendTask = null;
-        processTask = null;
 
         voiceAudioDetector.Reset();
     }

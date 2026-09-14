@@ -12,9 +12,14 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
     private readonly ConcurrentDictionary<Guid, ParticipantInfo> participantByConnectionId = new();
     private readonly ConcurrentDictionary<Guid, Guid> connectionIdByParticipantId = new();
 
-    bool IParticipantConnectionRegistry.TryRegister(Guid connectionId, ParticipantInfo participant)
-        => participantByConnectionId.TryAdd(connectionId, participant)
-        && connectionIdByParticipantId.TryAdd(participant.Id, connectionId);
+    void IParticipantConnectionRegistry.Register(Guid connectionId, ParticipantInfo participant)
+    {
+        participantByConnectionId[connectionId] = participant;
+        connectionIdByParticipantId[participant.Id] = connectionId;
+    }
+
+    bool IParticipantConnectionRegistry.ConnectionExists(Guid connectionId)
+        => participantByConnectionId.ContainsKey(connectionId);
 
     void IParticipantConnectionRegistry.RegisterLocalParticipant(ParticipantInfo participant)
     {
@@ -24,7 +29,9 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
 
     void IParticipantConnectionRegistry.Unregister(Guid connectionId)
     {
-        if (participantByConnectionId.TryRemove(connectionId, out var participantInfo))
+        if (participantByConnectionId.TryRemove(connectionId, out var participantInfo)
+           && connectionIdByParticipantId.TryGetValue(participantInfo.Id, out var currentConnectionId)
+           && currentConnectionId == connectionId)
         {
             connectionIdByParticipantId.TryRemove(participantInfo.Id, out _);
         }

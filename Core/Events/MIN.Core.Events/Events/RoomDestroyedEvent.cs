@@ -4,9 +4,9 @@ using MIN.Core.Events.Contracts.Models;
 namespace MIN.Core.Events.Events;
 
 /// <summary>
-/// Событие, возникающее при закрытии комнаты
+/// Событие, возникающее при забытии комнаты
 /// </summary>
-public sealed record RoomClosedEvent : BaseEvent, IRoomScopedEvent
+public sealed record RoomDestroyedEvent : BaseEvent, IRoomScopedEvent
 {
     /// <inheritdoc />
     public Guid RoomId { get; init; }
