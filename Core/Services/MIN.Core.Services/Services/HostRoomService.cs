@@ -138,6 +138,7 @@ internal sealed class HostRoomService
         if (needToDisconnect)
         {
             room.IsOnline = false;
+            registry.DetachServerConnection(roomId);
             if (markedRoomsToDestroy.Remove(roomId))
             {
                 await DestroyRoom(roomId);
@@ -193,7 +194,7 @@ internal sealed class HostRoomService
 
         var roomId = roomInfo.Id;
 
-        if (registry.IsHosting(roomId))
+        if (registry.TryGetServerConnectionIdByRoomId(roomId, out _))
         {
             return roomStore.GetRoom(roomId);
         }
@@ -205,6 +206,8 @@ internal sealed class HostRoomService
 
         if (roomStore.TryGetRoom(roomId, out var existingRoom))
         {
+            existingRoom.IsOnline = true;
+            existingRoom.LocalRoomSettings.NetworkOptions = networkOptions;
             existingRoom.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
             roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -323,9 +326,17 @@ internal sealed class HostRoomService
 
     public async Task StopHostingAsync(Guid roomId)
     {
-        if (!registry.TryGetServerConnectionIdByRoomId(roomId, out var connectionId))
+        if (!registry.IsHosting(roomId))
         {
             return;
+        }
+
+        var isLive = registry.TryGetServerConnectionIdByRoomId(roomId, out var connectionId);
+
+        if (isLive)
+        {
+            await transport.StopHostingAsync(connectionId);
+            subRoomManager.ClearRoomSubRooms(roomId);
         }
 
         if (roomCancellationTokenSources.TryGetValue(roomId, out var cancellationTokenSource))
@@ -335,13 +346,15 @@ internal sealed class HostRoomService
             roomCancellationTokenSources.Remove(roomId);
         }
 
-        await transport.StopHostingAsync(connectionId);
-        subRoomManager.ClearRoomSubRooms(roomId);
-
         var context = roomFactory.GetOrCreateContext(roomId);
         context.Participants.MarkAllParticipansOffline(exceptId: identityService.SelfParticipant.Id);
+        var toDisconnect = context.Connections.UnregisterAllExceptLocal();
+        foreach (var participantConnectionId in toDisconnect)
+        {
+            await pingService.UnregisterHeartbeatSession(Role.Host, roomId, participantConnectionId);
+        }
 
-        registry.UnregisterServerConnection(roomId);
+        registry.DetachServerConnection(roomId);
         readyRoomInfos.TryRemove(roomId, out _);
 
         if (markedRoomsToDestroy.Remove(roomId))
@@ -361,6 +374,7 @@ internal sealed class HostRoomService
 
     private async Task DestroyRoom(Guid roomId)
     {
+        registry.UnregisterServerConnection(roomId);
         roomStore.Remove(roomId);
         roomFactory.DestroyContext(roomId);
         await eventBus.PublishAsync(new RoomWentOfflineEvent() { RoomId = roomId });

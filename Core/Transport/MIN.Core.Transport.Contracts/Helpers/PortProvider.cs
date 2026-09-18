@@ -17,9 +17,9 @@ public static class PortProvider
     /// <summary>
     /// Получить свободный порт
     /// </summary>
-    public static int AllocatePort(short? preferredPort = 0, int? sequentialAttempts = 15)
+    public static int AllocatePort(ushort? preferredPort = 0, int? sequentialAttempts = 15)
     {
-        if (preferredPort > 1024 && preferredPort < short.MaxValue && preferredPort != null && sequentialAttempts != null)
+        if (preferredPort > 1024 && preferredPort < ushort.MaxValue && preferredPort != null && sequentialAttempts != null)
         {
             for (var i = 0; i < sequentialAttempts; i++)
             {

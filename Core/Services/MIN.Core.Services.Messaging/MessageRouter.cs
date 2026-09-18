@@ -55,7 +55,7 @@ public sealed class MessageRouter : IMessageRouter
 
             if (message.RequiresLocalDuplication)
             {
-                await PublishLocally(message, roomId, role, null, cancellationToken).ConfigureAwait(false); // клиенту broadcast не нужен
+                await PublishLocally(message, roomId, role, null, cancellationToken).ConfigureAwait(false);
             }
 
             var hostId = roomStore.GetRoomHostParticipantId(roomId);

@@ -27,7 +27,8 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
         connectionIdByParticipantId[participant.Id] = CoreRegistryConstants.LocalConnectionId;
     }
 
-    void IParticipantConnectionRegistry.Unregister(Guid connectionId)
+    /// <inheritdoc />
+    public void Unregister(Guid connectionId)
     {
         if (participantByConnectionId.TryRemove(connectionId, out var participantInfo)
            && connectionIdByParticipantId.TryGetValue(participantInfo.Id, out var currentConnectionId)
@@ -35,6 +36,19 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
         {
             connectionIdByParticipantId.TryRemove(participantInfo.Id, out _);
         }
+    }
+
+    IEnumerable<Guid> IParticipantConnectionRegistry.UnregisterAllExceptLocal()
+    {
+        var toUnregister = connectionIdByParticipantId.Values.ToList();
+        foreach (var connectionId in toUnregister)
+        {
+            if (connectionId != CoreRegistryConstants.LocalConnectionId)
+            {
+                Unregister(connectionId);
+            }
+        }
+        return toUnregister;
     }
 
     ParticipantInfo IParticipantConnectionRegistry.GetParticipant(Guid connectionId)

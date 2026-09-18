@@ -15,14 +15,12 @@ public static class AvaloniaListExtensions
     public static void SortBy<T, TKey>(this AvaloniaList<T> list, Func<T, TKey> keySelector)
     {
         var sorted = list.OrderBy(keySelector).ToList();
-        for (var i = 0; i < sorted.Count; i++)
+        var orderChanged = sorted.Where((item, i) => !ReferenceEquals(list[i], item)).Any();
+        if (!orderChanged)
         {
-            var item = sorted[i];
-            var currentIndex = list.IndexOf(item);
-            if (currentIndex != i)
-            {
-                list.Move(currentIndex, i);
-            }
+            return;
         }
+        list.Clear();
+        list.AddRange(sorted);
     }
 }

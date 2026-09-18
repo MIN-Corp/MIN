@@ -39,7 +39,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, short? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
+    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         var connectionId = serverConnectionId != null
             ? serverConnectionId.Value

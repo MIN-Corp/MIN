@@ -4,6 +4,7 @@ using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
+using MIN.Core.Messaging.Contracts.Extensions;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.Sync;
 using MIN.Core.Stores.Contracts.Interfaces;
@@ -40,7 +41,7 @@ internal sealed class RoomSyncHandler : BaseHandler
                 {
                     MissedMessages = context.RoomContext.Messages
                         .GetMessagesNewerThan(syncRequest.MessagesAfterTimestamp, syncRequest.MessagesAfterMessageId)
-                        .Where(x => x.IsPublic || x.RecipientId == message.SenderId || x.SenderId == message.SenderId).ToList(),
+                        .SanitizeMessagesForParticipant(message.SenderId).ToList(),
                 });
 
             case RoomSyncResponseMessage syncResponse:
@@ -54,12 +55,16 @@ internal sealed class RoomSyncHandler : BaseHandler
 
                 await eventBus.PublishAsync(new RoomSyncedEvent()
                 {
+                    RoomId = roomId,
                     MissedMessages = missedMessages
                 }, context.CancellationToken);
 
+                var room = roomStore.GetRoom(roomId);
+                room.IsOnline = true;
+
                 return HandlerResult.WithEvent(new RoomStateChangedEvent()
                 {
-                    Room = roomStore.GetRoom(roomId),
+                    Room = room,
                 });
 
             default:

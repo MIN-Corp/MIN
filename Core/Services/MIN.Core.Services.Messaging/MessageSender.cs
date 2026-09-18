@@ -50,15 +50,10 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
     {
         if (message is IMessageWithSecuredFields messageWithSecured)
         {
-            messageWithSecured.Sanitize();
+            message = messageWithSecured.Sanitize();
         }
 
-        Guid? serverConnectionId = null;
-
-        if (registry.IsHosting(roomId))
-        {
-            serverConnectionId = registry.GetServerConnectionIdByRoomId(roomId);
-        }
+        registry.TryGetServerConnectionIdByRoomId(roomId, out var serverConnectionId);
 
         var serialized = serializer.Serialize(message);
 
@@ -90,12 +85,7 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
             IsRawPayload = true,
         };
 
-        Guid? serverConnectionId = null;
-
-        if (registry.IsHosting(roomId))
-        {
-            serverConnectionId = registry.GetServerConnectionIdByRoomId(roomId);
-        }
+        registry.TryGetServerConnectionIdByRoomId(roomId, out var serverConnectionId);
 
         await streamManager.SendAsync(messageStream, options, roomId, recipientConnectionId, serverConnectionId, cancellationToken);
     }

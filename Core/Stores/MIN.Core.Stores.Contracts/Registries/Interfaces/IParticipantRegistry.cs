@@ -51,4 +51,9 @@ public interface IParticipantConnectionRegistry
     /// Разорвать ассоциацию соеднинения с участником
     /// </summary>
     void Unregister(Guid connectionId);
+
+    /// <summary>
+    /// Разорвать ассоциацию соеднинения со всем участниками
+    /// </summary>
+    IEnumerable<Guid> UnregisterAllExceptLocal();
 }

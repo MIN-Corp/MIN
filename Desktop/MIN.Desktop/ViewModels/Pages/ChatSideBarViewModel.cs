@@ -4,6 +4,7 @@ using System.Threading;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities;
@@ -203,6 +204,11 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     /// </summary>
     public void ResortOnlineParticipants()
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(ResortOnlineParticipants);
+            return;
+        }
         RoomParticipants.SortBy(x => x.ParticipantLastSeenAt);
     }
 
@@ -211,6 +217,12 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     /// </summary>
     public void UpdateParticipantFlow(IEnumerable<Participant> participants)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => UpdateParticipantFlow(participants));
+            return;
+        }
+
         RoomParticipants.Clear();
 
         foreach (var participant in participants)

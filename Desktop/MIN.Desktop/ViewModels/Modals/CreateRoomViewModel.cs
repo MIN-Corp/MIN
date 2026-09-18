@@ -165,7 +165,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
 
         NetworkOptions = new()
         {
-            PrefferredPort = (short)Port,
+            PrefferredPort = (ushort)Port,
             EnableLocalDiscovery = EnableLocalDiscovery,
             EnablePortForwarding = EnablePortForwarding,
             EnableRadmin = EnableRadmin,

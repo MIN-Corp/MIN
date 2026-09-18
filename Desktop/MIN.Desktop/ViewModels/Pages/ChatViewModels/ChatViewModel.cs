@@ -94,12 +94,14 @@ public partial class ChatViewModel : RoutableViewModelBase
             OnNavigatedTo = ActionOnNavigatedTo;
             OnNavigatedFrom = ActionOnNavigatedFrom;
 
-            InitializeNotifications();
-            InitializeTimers();
-            InitializeLayoutStyles();
-            InitializeParentFormWindowStateEvents();
-            InitializeObservableCollections();
+            InitializeUIActions();
         }
+    }
+
+    private void InitializeUIActions()
+    {
+        InitializeLayoutStyles();
+        InitializeObservableCollections();
     }
 
     private async void ActionOnNavigatedTo(object? sender, EventArgs e)
@@ -195,6 +197,15 @@ public partial class ChatViewModel : RoutableViewModelBase
             loadingTcs?.SetResult();
             loadingTcs = null;
         }
+
+        InitializeConnectionActions();
+    }
+
+    private void InitializeConnectionActions()
+    {
+        InitializeNotifications();
+        InitializeTimers();
+        InitializeParentFormWindowStateEvents();
     }
 
     private async Task CleanUpServicesAsync(bool asForget)
@@ -242,10 +253,9 @@ public partial class ChatViewModel : RoutableViewModelBase
     /// <inheritdoc cref="IAsyncDisposable.DisposeAsync"/>
     public async ValueTask DisposeAsync()
     {
-        ClearParentFormEvents();
+        DisableAllConnectionActions();
         roomScope.Dispose();
         errorToken.Dispose();
-        typingTimer.Dispose();
         await roomCts.CancelAsync();
         roomCts.Dispose();
     }

@@ -376,13 +376,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         IsOnline = false;
         chatSideBarViewModel.IsOnline = false;
-        ClearParentFormEvents();
+        DisableAllConnectionActions();
         if (!string.IsNullOrEmpty(eventMessage.Reason))
         {
             NotifyIfNeeded(eventMessage.Reason);
             InAppNotifier.Info(eventMessage.Reason);
         }
-        await Disconnect(false);
+        if (!IsHost)
+        {
+            await Disconnect(false);
+        }
     }
 
     #endregion
@@ -393,7 +396,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             IsOnline = false;
             chatSideBarViewModel.IsOnline = false;
-            ClearParentFormEvents();
+            DisableAllConnectionActions();
             if (!string.IsNullOrEmpty(e.ErrorMessage))
             {
                 NotifyIfNeeded(e.ErrorMessage);

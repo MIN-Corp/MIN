@@ -63,7 +63,7 @@ public class ChannelTransport : ITransport, IAsyncDisposable
         }
     }
 
-    async Task<Guid> ITransport.StartHostingAsync(Guid? serverConnectionId, short? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
+    async Task<Guid> ITransport.StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         // Один id сервера на комнату для обеих ног
         var connectionId = serverConnectionId ?? Guid.NewGuid();

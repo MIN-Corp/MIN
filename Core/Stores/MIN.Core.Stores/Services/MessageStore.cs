@@ -132,7 +132,7 @@ public sealed class MessageStore : IMessageStore
         // Тай-брейк при равных Timestamp: Guid как таковой не даёт хронологического порядка,
         // но обеспечивает детерминированность, чтобы не потерять и не задублировать сообщения
         // с одинаковой меткой времени.
-        return anchorId.HasValue && m.Id.CompareTo(anchorId.Value) < 0;
+        return anchorId.HasValue && m.Id.CompareTo(anchorId.Value) > 0;
     }
 
     IMessage? IMessageStore.GetLastMessage()

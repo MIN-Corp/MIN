@@ -30,7 +30,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// </summary>
 public partial class ChatViewModel : RoutableViewModelBase
 {
-    private Window parentWindow = null!;
+    private readonly Window parentWindow = MainWindowViewModel.GetWindow()!;
     private bool isConnecting;
     private bool isTryingToHost;
     private CancellationTokenSource? createRoomCts;
@@ -51,8 +51,6 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private void InitializeNotifications()
     {
-        parentWindow = MainWindowViewModel.GetWindow()!;
-
         featureCollection.Helper.NotificationService.OnNotificationClick += OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked += NotificationTurnOffClicked;
     }
@@ -358,6 +356,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         chatSideBarViewModel.IsOnline = true;
         isConnecting = false;
         isTryingToHost = false;
+
+        InitializeConnectionActions();
     }
 
     [RelayCommand]

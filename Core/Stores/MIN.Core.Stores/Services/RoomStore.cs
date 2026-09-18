@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using MIN.Core.Entities;
+using MIN.Core.Messaging.Contracts.Extensions;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Models;
 
@@ -50,9 +51,7 @@ public sealed class RoomStore : IRoomStore
             var snapshot = room.Clone();
             if (!asRejoin)
             {
-                snapshot.ChatHistory = context.Messages.GetRecentHistory()
-                   .Where(x => x.IsPublic || x.RecipientId == participantId || x.SenderId == participantId)
-                   .ToList();
+                snapshot.ChatHistory = context.Messages.GetRecentHistory().SanitizeMessagesForParticipant(participantId).ToList();
             }
             snapshot.TotalMessageCount = GetMessagesCountFor(context, participantId);
             snapshot.LocalRoomSettings.NotificationsEnabled = false;
