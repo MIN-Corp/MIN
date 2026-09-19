@@ -126,7 +126,8 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     /// Открыть настройки
     /// </summary>
     [RelayCommand]
-    public void OpenSettingsViewAsync() => ChangeView(settingsSideBarViewModel);
+    public void OpenSettingsViewAsync()
+        => ChangeView(settingsSideBarViewModel);
 
     private void UnselectRecentRoomCard()
     {
@@ -202,6 +203,11 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
             RecentRooms.Remove(room);
             allRooms.Remove(room);
             room.Dispose();
+        }
+
+        if (selectedRecentRoomCardViewModel?.RoomId == roomId)
+        {
+            ChangeView(discoveryViewModel);
         }
     }
 

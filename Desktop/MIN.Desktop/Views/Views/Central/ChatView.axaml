@@ -97,13 +97,19 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
 
-                                    <MenuItem IsVisible="{Binding !IsHost}"
-                                            Classes="danger"
+                                    <MenuItem Classes="danger"
                                             Header="Отключиться от комнаты"
                                             Command="{Binding LeaveRoomCommand}">
                                         <MenuItem.Icon>
                                             <Svg Path="/Assets/Icons/leave.svg" />
                                         </MenuItem.Icon>
+
+                                        <MenuItem.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="IsOnline" />
+                                                <Binding Path="!IsHost" />
+                                            </MultiBinding>
+                                        </MenuItem.IsVisible>
                                     </MenuItem>
                                     <MenuItem IsVisible="{Binding IsHost}"
                                             Classes="danger"

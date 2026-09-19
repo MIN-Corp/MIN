@@ -85,8 +85,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     logger.Log($"Обработчик {handler.GetType().Name} провалился: {result.ErrorMessage}", LogLevel.Error);
                     if (result.ShowErrorMessage)
                     {
-                        await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка",
-                            needToDisconnect: context.Role == Role.Client && result.CriticalError, context).ConfigureAwait(false);
+                        await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка", context,
+                            needToDisconnect: context.Role == Role.Client && result.CriticalErrorForConnection, result.CriticalErrorForDestroy).ConfigureAwait(false);
                     }
                     continue;
                 }
@@ -114,11 +114,11 @@ public sealed class MessageDispatcher : IMessageDispatcher
                 {
                     if (message.SenderId == context.SelfId && context.Role == Role.Host)
                     {
-                        await PublishErrorEvent(result.ErrorMessage, needToDisconnect: false, context).ConfigureAwait(false);
+                        await PublishErrorEvent(result.ErrorMessage, context, needToDisconnect: false).ConfigureAwait(false);
                     }
                     else
                     {
-                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalError)
+                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalErrorForConnection)
                             .ConfigureAwait(false);
                     }
                     continue;
@@ -137,7 +137,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
             catch (Exception ex)
             {
                 logger.Log($"Handler {handler.GetType().Name} threw exception: {ex.Message}", LogLevel.Error);
-                await PublishErrorEvent(ex.Message, needToDisconnect: context.Role == Role.Client, context).ConfigureAwait(false);
+                await PublishErrorEvent(ex.Message, context, needToDisconnect: context.Role == Role.Client)
+                    .ConfigureAwait(false);
             }
         }
     }
@@ -201,11 +202,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
         }
     }
 
-    private async Task PublishErrorEvent(string message, bool needToDisconnect, MessageContext context)
+    private async Task PublishErrorEvent(string message, MessageContext context, bool needToDisconnect, bool needToDestroy = false)
         => await eventBus.PublishAsync(new ErrorOccurredEvent()
         {
             ErrorMessage = message,
             NeedToDisconnect = needToDisconnect,
+            NeedToDestroy = needToDestroy,
             RoomId = context.RoomContext.RoomId
         }, context.CancellationToken).ConfigureAwait(false);
 }

@@ -382,17 +382,13 @@ public partial class ChatViewModel : RoutableViewModelBase
             NotifyIfNeeded(eventMessage.Reason);
             InAppNotifier.Info(eventMessage.Reason);
         }
-        if (!IsHost)
-        {
-            await Disconnect(false);
-        }
     }
 
     #endregion
 
     private async Task OnErrorOccured(ErrorOccurredEvent e, CancellationToken cancellationToken)
     {
-        if (e.NeedToDisconnect)
+        if (e.NeedToDisconnect && e.RoomId == roomId)
         {
             IsOnline = false;
             chatSideBarViewModel.IsOnline = false;
@@ -401,7 +397,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             {
                 NotifyIfNeeded(e.ErrorMessage);
             }
-            await Disconnect(false);
+            await Disconnect(e.NeedToDestroy);
         }
     }
 }

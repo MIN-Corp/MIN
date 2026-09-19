@@ -155,7 +155,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnRoomDestroyed(RoomDestroyedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (asHost)
+        if (asHost || eventMessage.Reason == DisconnectReason.Kick)
         {
             Dispose();
             return Task.CompletedTask;

@@ -224,6 +224,12 @@ internal sealed class ClientRoomService
 
     public async Task ForgetRoomAsync(Guid roomId, Guid connectionId)
     {
+        if (!roomStore.GetRoom(roomId).IsOnline)
+        {
+            await DestroyRoom(roomId, DisconnectReason.LeftRoom);
+            return;
+        }
+
         MarkRoomForDeletion(roomId);
         var ackTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         pendingRoomLeaves[roomId] = ackTcs;
@@ -266,6 +272,10 @@ internal sealed class ClientRoomService
             RoomId = roomId,
             Reason = reason.GetDescription()
         });
-        await eventBus.PublishAsync(new RoomDestroyedEvent() { RoomId = roomId });
+        await eventBus.PublishAsync(new RoomDestroyedEvent()
+        {
+            RoomId = roomId,
+            Reason = reason
+        });
     }
 }
