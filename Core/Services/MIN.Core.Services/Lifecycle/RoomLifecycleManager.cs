@@ -94,8 +94,8 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
     void IRoomLifecycleManager.MarkParticipantAsLeftRoom(Guid roomId, Guid participantId)
         => hostService.MarkParticipantAsLeftRoom(roomId, participantId);
 
-    async Task IRoomLifecycleManager.KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason)
-        => await hostService.KickClientAsync(roomId, participantId, reason);
+    async Task IRoomLifecycleManager.KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason, string message)
+        => await hostService.KickClientAsync(roomId, participantId, reason, message);
 
     async Task IRoomLifecycleManager.KickConnectionAsync(Guid roomId, Guid connectionId, DisconnectReason reason)
         => await hostService.KickConnectionAsync(roomId, connectionId, reason);

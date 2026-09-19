@@ -44,6 +44,11 @@ internal sealed class ParticipantJoinHandler : BaseHandler
             case RoomJoinRequestMessage roomJoinRequestMessage:
                 var room = roomStore.GetRoom(context.RoomContext.RoomId);
 
+                if (room.LocalRoomSettings.PendingKickParticipantIds.Remove(roomJoinRequestMessage.SenderId, out var reason))
+                {
+                    return HandlerResult.WithErrorHandled(reason, critical: true);
+                }
+
                 var isReturning = context.RoomContext.Participants.TryGetParticipantById(roomJoinRequestMessage.SenderId, out var existing)
                     && existing?.CurrentStatus == OnlineStatus.Offline;
 

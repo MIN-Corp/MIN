@@ -7,7 +7,9 @@ using MIN.Core.Services.Contracts.Interfaces.Lifecycle;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Core.Stores.Contracts.Constants;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
+using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Models;
 using MIN.Discovery.Services.Contracts.Interfaces;
@@ -20,6 +22,7 @@ public sealed class ChatRoomService : IChatRoomService
     private readonly IMessageRouter messageRouter;
     private readonly IRoomConnectionRegistry registry;
     private readonly IRoomLifecycleManager lifecycleManager;
+    private readonly IRoomFactory roomFactory;
     private readonly INetworkErrorHandler networkErrorHandler;
     private readonly IDiscoveryService discoveryService;
     private readonly IIdentityService identityService;
@@ -30,6 +33,7 @@ public sealed class ChatRoomService : IChatRoomService
     public ChatRoomService(IMessageRouter messageRouter,
         IRoomConnectionRegistry registry,
         IRoomLifecycleManager lifecycleManager,
+        IRoomFactory roomFactory,
         INetworkErrorHandler networkErrorHandler,
         IDiscoveryService discoveryService,
         IIdentityService identityService)
@@ -37,6 +41,7 @@ public sealed class ChatRoomService : IChatRoomService
         this.messageRouter = messageRouter;
         this.registry = registry;
         this.lifecycleManager = lifecycleManager;
+        this.roomFactory = roomFactory;
         this.networkErrorHandler = networkErrorHandler;
         this.discoveryService = discoveryService;
         this.identityService = identityService;
@@ -47,6 +52,14 @@ public sealed class ChatRoomService : IChatRoomService
         if (!registry.IsHosting(roomId))
         {
             throw new InvalidOperationException("Ты не являешся хостом для этой комнаты");
+        }
+
+        var context = roomFactory.GetOrCreateContext(roomId);
+
+        if (!context.Connections.TryGetConnectionIdFromParticipantId(participantId, out _))
+        {
+            await lifecycleManager.KickClientAsync(roomId, participantId, DisconnectReason.Kick, reason);
+            return;
         }
 
         await networkErrorHandler.SendErrorAsync(reason, participantId, roomId, critical: true);

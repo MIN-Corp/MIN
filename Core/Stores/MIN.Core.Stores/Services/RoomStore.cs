@@ -54,7 +54,7 @@ public sealed class RoomStore : IRoomStore
                 snapshot.ChatHistory = context.Messages.GetRecentHistory().SanitizeMessagesForParticipant(participantId).ToList();
             }
             snapshot.TotalMessageCount = GetMessagesCountFor(context, participantId);
-            snapshot.LocalRoomSettings.NotificationsEnabled = false;
+            snapshot.LocalRoomSettings = new LocalRoomSettings();
             return snapshot;
         }
 

@@ -51,6 +51,11 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     public bool RemoveHeaders { get; }
 
     /// <summary>
+    /// Может ли пользователь интерактировать с сообщением
+    /// </summary>
+    public bool IsAvaibleForNetwork { get; }
+
+    /// <summary>
     /// Приватное ли сообщение
     /// </summary>
     public bool IsPrivate { get; init; }
@@ -96,7 +101,8 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
        Thickness timePadding,
        bool isLocal,
        bool isHost,
-       bool removeHeaders)
+       bool removeHeaders,
+       bool isAvaibleForNetwork)
     {
         this.dialogService = dialogService;
         Message = message;
@@ -107,6 +113,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
         IsHost = isHost;
         RemoveHeaders = removeHeaders;
         IsPrivate = !message.IsPublic;
+        IsAvaibleForNetwork = isAvaibleForNetwork;
     }
 
     /// <summary>

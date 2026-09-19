@@ -159,6 +159,7 @@ internal sealed class HostRoomService
             if (reason == DisconnectReason.Kick)
             {
                 markedParticipantsAsLeft.Remove((roomId, leavingParticipant.Id));
+                room.LocalRoomSettings.PendingKickParticipantIds.Remove(leavingParticipant.Id);
             }
             else
             {
@@ -275,7 +276,7 @@ internal sealed class HostRoomService
     public void MarkParticipantAsLeftRoom(Guid roomId, Guid participantId)
         => markedParticipantsAsLeft.Add((roomId, participantId));
 
-    public async Task KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason)
+    public async Task KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason, string message)
     {
         if (!registry.TryGetServerConnectionIdByRoomId(roomId, out var serverConnectionId))
         {
@@ -289,12 +290,38 @@ internal sealed class HostRoomService
 
         try
         {
-            if (reason == DisconnectReason.Kick)
+            if (context.Connections.TryGetConnectionIdFromParticipantId(participantId, out _))
             {
-                markedParticipantsAsLeft.Add((roomId, participantId));
+                // Online
+
+                if (reason == DisconnectReason.Kick)
+                {
+                    markedParticipantsAsLeft.Add((roomId, participantId));
+                }
+                var connectionId = context.Connections.GetConnectionIdFromParticipantId(participantId);
+                await transport.DisconnectClientAsync(connectionId, serverConnectionId, reason);
             }
-            var connectionId = context.Connections.GetConnectionIdFromParticipantId(participantId);
-            await transport.DisconnectClientAsync(connectionId, serverConnectionId, reason);
+            else
+            {
+                // Offline
+
+                if (reason != DisconnectReason.Kick)
+                {
+                    return;
+                }
+
+                var room = roomStore.GetRoom(roomId);
+                room.LocalRoomSettings.PendingKickParticipantIds[participantId] = message;
+
+                var hostParticipantId = roomStore.GetRoomHostParticipantId(roomId);
+                context.Participants.TryGetParticipantById(participantId, out var leavingParticipant);
+
+                await messageRouter.RouteAsync(new ParticipantLeftMessage()
+                {
+                    Participant = leavingParticipant!.ToParticipantInfo(),
+                    Reason = reason,
+                }, roomId, hostParticipantId, CancellationToken.None);
+            }
         }
         catch (ParticipantNotRegistredException ex)
         {
@@ -336,7 +363,7 @@ internal sealed class HostRoomService
         if (isLive)
         {
             await transport.StopHostingAsync(connectionId);
-            subRoomManager.ClearRoomSubRooms(roomId);
+            //subRoomManager.ClearRoomSubRooms(roomId);
         }
 
         if (roomCancellationTokenSources.TryGetValue(roomId, out var cancellationTokenSource))

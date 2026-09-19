@@ -55,7 +55,7 @@ public interface IRoomLifecycleManager
     /// <summary>
     /// Кикнуть участника из комнаты
     /// </summary>
-    Task KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason);
+    Task KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason, string message);
 
     /// <summary>
     /// Кикнуть участника по соединению из комнаты

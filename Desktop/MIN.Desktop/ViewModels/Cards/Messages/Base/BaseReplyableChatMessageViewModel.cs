@@ -48,14 +48,16 @@ public abstract partial class BaseReplyableChatMessageViewModel : BaseChatMessag
        Thickness timePadding,
        bool isLocal,
        bool isHost,
-       bool removeHeaders)
+       bool removeHeaders,
+       bool isAvaibleForNetwork)
         : base(message,
             dialogService,
             name,
             timePadding,
             isLocal,
             isHost,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         ReplyToDescription = replyable?.ReplyToMessageDescription;
         ReplyToMessageId = replyable?.ReplyToMessageId;

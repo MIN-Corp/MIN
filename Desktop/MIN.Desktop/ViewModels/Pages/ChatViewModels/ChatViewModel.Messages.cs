@@ -276,7 +276,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var removeHeaders = isSelf || lastChatMessage?.SenderId == msg.SenderId;
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
-        var card = new ChatTextMessageViewModel(msg, dialogService, timePadding, isSelf, isHost, removeHeaders, parentWindow.Clipboard);
+        var card = new ChatTextMessageViewModel(msg, dialogService, timePadding, isSelf, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
         card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
         card.OnEditRequested += (newContent) => OnMessageEditRequested(msg.Id, newContent);
         card.OnReplyRequested += () => SetReplyTo(msg);
@@ -298,7 +298,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatFileMessageViewModel(featureCollection.FileTransfer,
             dialogService, roomScope, msg, timePadding,
-            localParticipant, isHost, removeHeaders, parentWindow.Clipboard);
+            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
 
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
@@ -323,7 +323,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatFileImagePreviewMessageViewModel(featureCollection.FileTransfer,
             dialogService, roomScope, msg, timePadding,
-            localParticipant, isHost, removeHeaders, parentWindow.Clipboard);
+            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
 
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
@@ -348,7 +348,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
             roomScope, featureCollection.Core.EventBus, dialogService,
-            msg, localParticipant, timePadding, isHost, removeHeaders);
+            msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
         card.OnReplyRequested += () => SetReplyTo(msg);
 
@@ -367,7 +367,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var removeHeaders = isSelf || lastChatMessage?.SenderId == msg.SenderId;
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
-        var card = new ChatVoiceCallMessageViewModel(roomScope, msg, localParticipant, timePadding, isHost, removeHeaders);
+        var card = new ChatVoiceCallMessageViewModel(roomScope, msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
 
         card.OnJoinRequested += () => OnVoiceCallJoinRequested(msg.SubRoomId);
         card.OnLeaveRequested += () => OnVoiceCallLeaveRequested(msg.SubRoomId);
