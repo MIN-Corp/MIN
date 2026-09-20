@@ -5,18 +5,18 @@ namespace MIN.Core.Messaging.Contracts.Messages;
 /// <summary>
 /// Базовый класс для сообщений, имеющих текстовое представление и могут быть отредактированы
 /// </summary>
-public abstract class BaseContentMessage : BaseUpdatebleMessage, IContentEditable
+public abstract class BaseUpdatebleMessage : BaseMessage, IUpdateableMessage
 {
     /// <inheritdoc />
-    public string Content { get; set; } = string.Empty;
+    public bool IsUpdated { get; set; }
 
     /// <inheritdoc />
-    public override void Update(IMessage newer)
+    public DateTime UpdatedAt { get; set; }
+
+    /// <inheritdoc />
+    public virtual void Update(IMessage newer)
     {
-        if (newer is IContentEditable newContent)
-        {
-            Content = newContent.Content;
-            base.Update(newer);
-        }
+        IsUpdated = true;
+        UpdatedAt = DateTime.Now;
     }
 }

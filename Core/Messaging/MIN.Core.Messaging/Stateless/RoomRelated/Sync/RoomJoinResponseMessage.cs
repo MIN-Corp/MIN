@@ -19,4 +19,14 @@ public sealed class RoomSyncResponseMessage : BaseMessage
     /// Упущенные сообщения
     /// </summary>
     public List<IMessage> MissedMessages { get; set; } = [];
+
+    /// <summary>
+    /// Обновлённые сообщения
+    /// </summary>
+    public List<IMessage> UpdatedMessages { get; set; } = [];
+
+    /// <summary>
+    /// Идентификаторы существующих сообщений
+    /// </summary>
+    public List<Guid> ExistingMessageIds { get; set; } = [];
 }

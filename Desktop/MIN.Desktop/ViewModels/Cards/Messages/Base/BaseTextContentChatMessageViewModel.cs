@@ -72,7 +72,7 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseReplyabl
             isAvaibleForNetwork)
     {
         Content = contentEditable.Content;
-        IsEdited = contentEditable.IsEdited;
+        IsEdited = contentEditable.IsUpdated;
     }
 
     /// <summary>

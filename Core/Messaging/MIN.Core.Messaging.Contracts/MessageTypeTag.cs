@@ -198,7 +198,7 @@ public enum MessageTypeTag : byte
     /// <summary>
     /// Редактирование сообщения.
     /// </summary>
-    MessageEdit = 69,
+    MessageUpdate = 69,
 
     /// <summary>
     /// Реакция на сообщение (лайк, эмодзи).

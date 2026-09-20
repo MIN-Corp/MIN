@@ -90,8 +90,15 @@
                             Classes.on-primary="{Binding IsLocal}"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
-                            IsEnabled="{Binding CanJoin}"
                             Command="{Binding JoinSessionCommand}">
+
+                            <Button.IsEnabled>
+                                <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                    <Binding Path="CanJoin" />
+                                    <Binding Path="IsAvaibleForNetwork" />
+                                </MultiBinding>
+                            </Button.IsEnabled>
+
                             <TextBlock
                                 TextWrapping="Wrap"
                                 Text="{Binding JoinButtonStateText}" />

@@ -167,6 +167,14 @@ public partial class ChatViewModel : RoutableViewModelBase
         IsAvaibleForNetwork = value || IsHost;
     }
 
+    partial void OnIsAvaibleForNetworkChanged(bool value)
+    {
+        foreach (var message in Messages)
+        {
+            message.IsAvaibleForNetwork = value;
+        }
+    }
+
     /// <summary>
     /// Подгрузить данные о комнате и перезагрузить страницу
     /// </summary>

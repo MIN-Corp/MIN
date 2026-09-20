@@ -33,7 +33,7 @@ public sealed class MessageStore : IMessageStore
             var index = messages.FindIndex(p => p.Id == id);
             if (index >= 0)
             {
-                messages[index] = message;
+                (messages[index] as IUpdateableMessage)?.Update(message);
             }
         }
     }

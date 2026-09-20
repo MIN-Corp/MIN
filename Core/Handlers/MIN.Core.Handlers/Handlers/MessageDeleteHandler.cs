@@ -1,28 +1,28 @@
-﻿using MIN.Chat.Messaging;
-using MIN.Core.Entities.Contracts.Enums;
+﻿using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 using MIN.Helpers.Contracts.Interfaces;
 
-namespace MIN.Chat.Handlers;
+namespace MIN.Core.Handlers.Handlers;
 
-internal sealed class ChatDeleteHandler : BaseHandler
+internal sealed class MessageDeleteHandler : BaseHandler
 {
     private readonly static List<MessageTypeTag> allowedMessagesToDelete = [MessageTypeTag.ChatTextMessage, MessageTypeTag.FileMetadata];
 
     /// <summary>
-    /// Инициализирует новый экземлпяр <see cref="ChatDeleteHandler"/>
+    /// Инициализирует новый экземлпяр <see cref="MessageDeleteHandler"/>
     /// </summary>
-    public ChatDeleteHandler(ILoggerProvider logger) : base(logger) { }
+    public MessageDeleteHandler(ILoggerProvider logger) : base(logger) { }
 
     public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.MessageDelete];
 
     protected override Task<HandlerResult> HandleAsync(IMessage message, MessageContext context)
     {
-        var chatDeleteMessage = (ChatDeleteMessage)message;
+        var chatDeleteMessage = (MessageDeleteMessage)message;
 
         var existingMessage = context.RoomContext.Messages.GetMessageById(chatDeleteMessage.MessageIdToDelete);
 

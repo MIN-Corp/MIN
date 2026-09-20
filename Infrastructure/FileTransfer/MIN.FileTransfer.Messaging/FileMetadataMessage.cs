@@ -80,8 +80,8 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     {
         Id = metadata.Id;
         Content = metadata.Content;
-        IsEdited = metadata.IsEdited;
-        EditedAt = metadata.EditedAt;
+        IsUpdated = metadata.IsUpdated;
+        UpdatedAt = metadata.UpdatedAt;
         SenderId = metadata.SenderId;
         Sender = metadata.Sender;
         FileSize = metadata.FileSize;

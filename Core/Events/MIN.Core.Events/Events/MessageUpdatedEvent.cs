@@ -7,7 +7,7 @@ namespace MIN.Core.Events.Events;
 /// <summary>
 /// Сообщение было отредактировано
 /// </summary>
-public sealed record MessageEditedEvent : BaseEvent, IRoomScopedEvent
+public sealed record MessageUpdatedEvent : BaseEvent, IRoomScopedEvent
 {
     /// <inheritdoc />
     public Guid RoomId { get; init; }

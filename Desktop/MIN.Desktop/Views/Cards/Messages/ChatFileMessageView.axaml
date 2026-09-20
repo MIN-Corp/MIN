@@ -37,6 +37,7 @@
                 </MenuItem>
 
                 <MenuItem Header="Редактировать"
+                    IsEnabled="{Binding IsAvaibleForNetwork}" 
                     Command="{Binding ToggleEditingMessageCommand}">
                     <MenuItem.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">

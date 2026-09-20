@@ -61,7 +61,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         roomScope.Subscribe<RoomSyncedEvent>(OnRoomSyncedEvent);
 
         roomScope.Subscribe<MessageDeletedEvent>(ChatMessageDeleted);
-        roomScope.Subscribe<MessageEditedEvent>(ChatMessageEdited);
+        roomScope.Subscribe<MessageUpdatedEvent>(ChatMessageEdited);
         roomScope.Subscribe<OnlineStatusChangedEvent>(OnOnlineStatusChanged);
 
         roomScope.Subscribe<PingMeasuredEvent>(OnPingMeasured);
@@ -316,7 +316,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         return Task.CompletedTask;
     }
 
-    private Task ChatMessageEdited(MessageEditedEvent eventMessage, CancellationToken cancellationToken)
+    private Task ChatMessageEdited(MessageUpdatedEvent eventMessage, CancellationToken cancellationToken)
     {
         EditMessage(eventMessage.MessageId, eventMessage.Message.Content);
         return Task.CompletedTask;

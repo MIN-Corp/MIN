@@ -6,7 +6,9 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Extensions;
 using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 using MIN.Core.Messaging.Stateless.RoomRelated.Sync;
+using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -15,13 +17,16 @@ namespace MIN.Core.Handlers.Handlers;
 internal sealed class RoomSyncHandler : BaseHandler
 {
     private readonly IRoomStore roomStore;
+    private readonly IMessageRouter messageRouter;
     private readonly IEventBus eventBus;
 
     public RoomSyncHandler(IRoomStore roomStore,
+        IMessageRouter messageRouter,
         IEventBus eventBus,
         ILoggerProvider logger) : base(logger)
     {
         this.roomStore = roomStore;
+        this.messageRouter = messageRouter;
         this.eventBus = eventBus;
     }
 
@@ -37,11 +42,16 @@ internal sealed class RoomSyncHandler : BaseHandler
             case RoomSyncRequestMessage syncRequest:
                 LogInfo($"Отправляю упущенную информацию о комнате с id {roomId}");
 
+                var visible = context.RoomContext.Messages.GetHistory().SanitizeMessagesForParticipant(message.SenderId);
+
                 return HandlerResult.WithResponse(new RoomSyncResponseMessage()
                 {
                     MissedMessages = context.RoomContext.Messages
                         .GetMessagesNewerThan(syncRequest.MessagesAfterTimestamp, syncRequest.MessagesAfterMessageId)
                         .SanitizeMessagesForParticipant(message.SenderId).ToList(),
+                    UpdatedMessages =
+                        visible.Where(m => m is IUpdateableMessage updateable && updateable.UpdatedAt >= syncRequest.MessagesAfterTimestamp).ToList(),
+                    ExistingMessageIds = visible.Select(x => x.Id).Distinct().ToList()
                 });
 
             case RoomSyncResponseMessage syncResponse:
@@ -49,6 +59,27 @@ internal sealed class RoomSyncHandler : BaseHandler
                 foreach (var roomMessage in missedMessages)
                 {
                     context.RoomContext.Messages.AddMessage(roomMessage);
+                }
+
+                var deletedMessages = context.RoomContext.Messages.GetHistory()
+                    .Where(x => !syncResponse.ExistingMessageIds.Contains(x.Id)).Select(x => x.Id).ToList();
+
+                foreach (var deletedMessageId in deletedMessages)
+                {
+                    context.RoomContext.Messages.RemoveMessage(deletedMessageId);
+                    await messageRouter.PublishLocally(new MessageDeleteMessage
+                    {
+                        MessageIdToDelete = deletedMessageId,
+                    }, roomId, context.Role, cancellationToken: context.CancellationToken);
+                }
+
+                foreach (var updatedMessage in syncResponse.UpdatedMessages)
+                {
+                    await messageRouter.PublishLocally(new MessageUpdateMessage
+                    {
+                        MessageIdToEdit = updatedMessage.Id,
+                        NewMessage = updatedMessage
+                    }, roomId, context.Role, cancellationToken: context.CancellationToken);
                 }
 
                 LogInfo($"Получил упущенную информацию о комнате с id {roomId} сообщений {syncResponse.MissedMessages.Count}");
