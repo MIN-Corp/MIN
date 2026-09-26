@@ -1,27 +1,27 @@
-﻿using MIN.Chat.Messaging;
-using MIN.Common.Core.Contracts.Interfaces;
+﻿using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 using MIN.Helpers.Contracts.Interfaces;
 
-namespace MIN.Chat.Handlers;
+namespace MIN.Core.Handlers.Handlers;
 
-internal sealed class ChatEditHandler : BaseHandler
+internal sealed class MessageEditHandler : BaseHandler
 {
     /// <summary>
-    /// Инициализирует новый экземлпяр <see cref="ChatEditHandler"/>
+    /// Инициализирует новый экземлпяр <see cref="MessageEditHandler"/>
     /// </summary>
-    public ChatEditHandler(ILoggerProvider logger) : base(logger) { }
+    public MessageEditHandler(ILoggerProvider logger) : base(logger) { }
 
-    public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.MessageEdit];
+    public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.MessageUpdate];
 
     protected override Task<HandlerResult> HandleAsync(IMessage message, MessageContext context)
     {
-        var chatEditMessage = (ChatEditMessage)message;
+        var chatEditMessage = (MessageUpdateMessage)message;
 
         var existingMessage = context.RoomContext.Messages.GetMessageById(chatEditMessage.MessageIdToEdit);
         if (existingMessage == null)
@@ -51,9 +51,7 @@ internal sealed class ChatEditHandler : BaseHandler
 
         if (existingMessage is IContentEditable contentEditable)
         {
-            contentEditable.Content = chatEditMessage.NewContent;
-            contentEditable.IsEdited = true;
-            contentEditable.EditedAt = DateTime.Now;
+            contentEditable.Update(chatEditMessage.NewMessage);
 
             context.RoomContext.Messages.UpdateMessage(chatEditMessage.MessageIdToEdit, existingMessage);
 
@@ -66,7 +64,7 @@ internal sealed class ChatEditHandler : BaseHandler
                 }
             }
 
-            return Task.FromResult(HandlerResult.WithEvent(new MessageEditedEvent() { MessageId = chatEditMessage.MessageIdToEdit, Message = contentEditable, RoomId = context.RoomContext.RoomId }));
+            return Task.FromResult(HandlerResult.WithEvent(new MessageUpdatedEvent() { MessageId = chatEditMessage.MessageIdToEdit, Message = contentEditable, RoomId = context.RoomContext.RoomId }));
         }
 
         return Task.FromResult(HandlerResult.Success());

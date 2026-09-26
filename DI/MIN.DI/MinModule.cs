@@ -30,8 +30,8 @@ public class MinModule : Common.Mvc.Module
         services.RegisterModule<ChatModule>();
         services.RegisterModule<FileTransferModule>();
         services.RegisterModule<DiscoveryModule>();
-        services.RegisterModule<SessionModule>();
         services.RegisterModule<VoiceModule>();
+        services.RegisterModule<SessionModule>();
 
         services.RegisterAsImplementedInterfaces<MinFeatureCollection>(ServiceLifetime.Singleton);
     }

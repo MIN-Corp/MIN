@@ -129,12 +129,17 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdatedMessageEvent);
         roomScope.Subscribe<DescribableMessageReceivedEvent>(OnDescribableMessageReceivedEvent);
         roomScope.Subscribe<MessageDeletedEvent>(OnChatMessageDeleted);
-        roomScope.Subscribe<MessageEditedEvent>(OnChatMessageEdited);
-        roomScope.Subscribe<RoomClosedEvent>(OnRoomLeft);
+        roomScope.Subscribe<MessageUpdatedEvent>(OnChatMessageEdited);
+        roomScope.Subscribe<RoomDestroyedEvent>(OnRoomDestroyed);
     }
 
     private Task OnParticipantJoined(ParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (eventMessage.IsRejoin)
+        {
+            return Task.CompletedTask;
+        }
+
         currentAmount++;
         UpdateParticipantsInfo();
         return Task.CompletedTask;
@@ -142,12 +147,17 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantLeft(ParticipantLeftEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (!eventMessage.Message.IsLeftRoom)
+        {
+            return Task.CompletedTask;
+        }
+
         currentAmount--;
         UpdateParticipantsInfo();
         return Task.CompletedTask;
     }
 
-    private Task OnRoomLeft(RoomClosedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnRoomDestroyed(RoomDestroyedEvent eventMessage, CancellationToken cancellationToken)
     {
         Dispose();
         return Task.CompletedTask;
@@ -162,7 +172,7 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
         return Task.CompletedTask;
     }
 
-    private Task OnChatMessageEdited(MessageEditedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnChatMessageEdited(MessageUpdatedEvent eventMessage, CancellationToken cancellationToken)
     {
         if (lastMessageId == eventMessage.MessageId)
         {

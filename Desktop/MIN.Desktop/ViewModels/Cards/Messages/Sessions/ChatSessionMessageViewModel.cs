@@ -87,7 +87,8 @@ public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewM
         ParticipantInfo localParticipant,
         Thickness timePadding,
         bool isHostMessage,
-        bool removeHeaders)
+        bool removeHeaders,
+        bool isAvaibleForNetwork)
         : base(sessionReadyMessage,
             null,
             dialogService,
@@ -95,7 +96,8 @@ public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewM
             timePadding,
             localParticipant.Id == sessionReadyMessage.SenderId,
             isHostMessage,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
 
         this.dialogService = dialogService;

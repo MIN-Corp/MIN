@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Avalonia;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Enums;
@@ -51,6 +52,13 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     public bool RemoveHeaders { get; }
 
     /// <summary>
+    /// Может ли пользователь интерактировать с сообщением
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteMessageCommand))]
+    public partial bool IsAvaibleForNetwork { get; set; }
+
+    /// <summary>
     /// Приватное ли сообщение
     /// </summary>
     public bool IsPrivate { get; init; }
@@ -96,7 +104,8 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
        Thickness timePadding,
        bool isLocal,
        bool isHost,
-       bool removeHeaders)
+       bool removeHeaders,
+       bool isAvaibleForNetwork)
     {
         this.dialogService = dialogService;
         Message = message;
@@ -107,12 +116,13 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
         IsHost = isHost;
         RemoveHeaders = removeHeaders;
         IsPrivate = !message.IsPublic;
+        IsAvaibleForNetwork = isAvaibleForNetwork;
     }
 
     /// <summary>
     /// Удалить сообщение
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsAvaibleForNetwork))]
     protected virtual async Task DeleteMessage()
     {
         if (dialogService == null)

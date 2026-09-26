@@ -7,6 +7,7 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.RoomInfo;
+using MIN.Core.Messaging.Stateless.RoomRelated.Sync;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -34,14 +35,32 @@ internal sealed class RoomInfoHandler : BaseHandler
 
         switch (message)
         {
-            case RoomInfoRequestMessage _:
+            case RoomInfoRequestMessage roomInfoRequestMessage:
                 LogInfo($"Отправляю информацию о комнате с id {roomId}");
                 return HandlerResult.WithResponse(new RoomInfoResponseMessage()
                 {
-                    Room = roomStore.GetRoomFor(message.SenderId, roomId),
+                    Room = roomStore.GetRoomFor(message.SenderId, roomId, roomInfoRequestMessage.IsRejoin),
                 });
 
             case RoomInfoResponseMessage roomInfoResponse:
+
+                var lastMessage = context.RoomContext.Messages.GetLastMessage();
+
+                if (lastMessage != null)
+                {
+                    var room = roomStore.GetRoom(roomId);
+                    room.Name = roomInfoResponse.Room.Name;
+                    room.MaximumParticipants = roomInfoResponse.Room.MaximumParticipants;
+                    room.CurrentParticipants = roomInfoResponse.Room.CurrentParticipants;
+                    room.TotalMessageCount = roomInfoResponse.Room.TotalMessageCount;
+
+                    return HandlerResult.WithResponse(new RoomSyncRequestMessage()
+                    {
+                        MessagesAfterMessageId = lastMessage.Id,
+                        MessagesAfterTimestamp = lastMessage.Timestamp,
+                    });
+                }
+
                 roomStore.Register(roomInfoResponse.Room);
 
                 var history = roomInfoResponse.Room.ChatHistory;

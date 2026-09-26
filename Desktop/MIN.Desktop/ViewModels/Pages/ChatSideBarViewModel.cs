@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities;
@@ -12,6 +12,7 @@ using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.Infrastructure.Extensions;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
@@ -96,6 +97,12 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     public partial bool IsHost { get; set; }
 
     /// <summary>
+    /// Находиться ли сейчас комната онлайн
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsOnline { get; set; } = true;
+
+    /// <summary>
     /// Включены ли уведомления
     /// </summary>
     [ObservableProperty]
@@ -140,10 +147,21 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     partial void OnNotificationsEnabledChanged(bool value)
         => Room.LocalRoomSettings.NotificationsEnabled = value;
 
+    partial void OnIsOnlineChanged(bool value)
+    {
+        if (!value)
+        {
+            foreach (var participant in RoomParticipants)
+            {
+                participant.MarkAsOffline();
+            }
+        }
+    }
+
     /// <summary>
     /// Подгрузить данные о комнате и перезагрузить страницу
     /// </summary>
-    public Task LoadRoomDataAndRefresh(Room room, ParticipantInfo localParticipant)
+    public void LoadRoomDataAndRefresh(Room room, ParticipantInfo localParticipant)
     {
         this.localParticipant = localParticipant;
         Room = room;
@@ -151,7 +169,6 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
 
         UpdateStats(room);
         UpdateParticipantFlow(room.CurrentParticipants);
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -183,10 +200,29 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     }
 
     /// <summary>
+    /// Пересортировать участников в зависимости от того
+    /// </summary>
+    public void ResortOnlineParticipants()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(ResortOnlineParticipants);
+            return;
+        }
+        RoomParticipants.SortBy(x => x.ParticipantLastSeenAt);
+    }
+
+    /// <summary>
     /// Обновить список участников
     /// </summary>
     public void UpdateParticipantFlow(IEnumerable<Participant> participants)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => UpdateParticipantFlow(participants));
+            return;
+        }
+
         RoomParticipants.Clear();
 
         foreach (var participant in participants)

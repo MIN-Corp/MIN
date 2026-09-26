@@ -2,4 +2,4 @@
 
 namespace MIN.Desktop.Contracts.Designer;
 
-internal class DesignerChatViewModel() : ChatViewModel(null!, null!, null!, null!, null!);
+internal class DesignerChatViewModel() : ChatViewModel(null!, null!, null!, null!, null!, null!);

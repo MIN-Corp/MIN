@@ -19,9 +19,14 @@ public sealed class HandlerResult
     public bool StopPropagation { get; init; }
 
     /// <summary>
-    /// Флаг, указывающий, настолько ли критична ли ошибка, чтобы продолжать работу
+    /// Флаг, указывающий, настолько ли критична ли ошибка, чтобы оставатьсяя подключённым
     /// </summary>
-    public bool CriticalError { get; init; }
+    public bool CriticalErrorForConnection { get; init; }
+
+    /// <summary>
+    /// Флаг, указывающий, настолько ли критична ли ошибка, чтобы сохранить комнату
+    /// </summary>
+    public bool CriticalErrorForDestroy { get; init; }
 
     /// <summary>
     /// Флаг, указывающий, надо ли публиковать ErrorOccurredEvent, или обработчик сам обработает
@@ -56,14 +61,15 @@ public sealed class HandlerResult
     /// <summary>
     /// Создаёт результат с ошибкой
     /// </summary>
-    public static HandlerResult Failure(string errorMessage, bool stopPropagation = true, bool showErrorMessage = true, bool critical = false)
+    public static HandlerResult Failure(string errorMessage, bool stopPropagation = true, bool showErrorMessage = true, bool critical = false, bool destroy = false)
         => new()
         {
             IsSuccess = false,
             StopPropagation = stopPropagation,
             ShowErrorMessage = showErrorMessage,
             ErrorMessage = errorMessage,
-            CriticalError = critical
+            CriticalErrorForConnection = critical,
+            CriticalErrorForDestroy = destroy
         };
 
     /// <summary>
@@ -91,12 +97,13 @@ public sealed class HandlerResult
     /// <summary>
     /// Создаёт результат с возвратом ошибки отправителю
     /// </summary>
-    public static HandlerResult WithErrorHandled(string errorMessage, bool stopPropagation = false, bool critical = false)
+    public static HandlerResult WithErrorHandled(string errorMessage, bool stopPropagation = false, bool critical = false, bool destroy = false)
         => new()
         {
             IsSuccess = true,
             StopPropagation = stopPropagation,
             ErrorMessage = errorMessage,
-            CriticalError = critical,
+            CriticalErrorForConnection = critical,
+            CriticalErrorForDestroy = destroy,
         };
 }

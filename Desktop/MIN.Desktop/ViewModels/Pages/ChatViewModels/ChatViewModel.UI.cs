@@ -61,7 +61,6 @@ public partial class ChatViewModel : RoutableViewModelBase
     [ObservableProperty]
     public partial int MissedMessagesCount { get; set; }
 
-
     /// <summary>
     /// Показать приложенные файлаы
     /// </summary>

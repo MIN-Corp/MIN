@@ -1,4 +1,5 @@
-﻿using MIN.Core.Entities.Contracts.Enums;
+﻿using System.Diagnostics;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts;
@@ -10,6 +11,7 @@ using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Core.Stores.Contracts.Registries.Models;
 using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Core.SubRooms.Contracts.Interfaces.Messages;
+using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 
@@ -62,19 +64,29 @@ public sealed class MessageDispatcher : IMessageDispatcher
             {
                 if (broadcastExcludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds);
+                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
                     continue;
                 }
 
-                var result = await handler.HandleAsync(message, context);
+                var handlerSw = Profiling.IsEnabled ? Stopwatch.StartNew() : null;
+
+                var result = await handler.HandleAsync(message, context).ConfigureAwait(false);
+
+                if (handlerSw != null)
+                {
+                    handlerSw.Stop();
+                    logger.Log($"[PROFILE] handler {handler.GetType().Name} for {message.GetType().Name}" +
+                               $" = {handlerSw.Elapsed.TotalMilliseconds:F1} ms (thread {Environment.CurrentManagedThreadId})",
+                               durationMs: handlerSw.Elapsed.TotalMilliseconds);
+                }
 
                 if (!result.IsSuccess)
                 {
                     logger.Log($"Обработчик {handler.GetType().Name} провалился: {result.ErrorMessage}", LogLevel.Error);
                     if (result.ShowErrorMessage)
                     {
-                        await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка",
-                            needToDisconnect: context.Role == Role.Client && result.CriticalError, context);
+                        await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка", context,
+                            needToDisconnect: context.Role == Role.Client && result.CriticalErrorForConnection, result.CriticalErrorForDestroy).ConfigureAwait(false);
                     }
                     continue;
                 }
@@ -84,28 +96,30 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     result.Response.SenderId = context.SelfId;
                     if (context.ConnectionId == CoreRegistryConstants.LocalConnectionId)
                     {
-                        await DispatchAsync(result.Response, context, broadcastExcludeIds);
+                        await DispatchAsync(result.Response, context, broadcastExcludeIds).ConfigureAwait(false);
                     }
                     else
                     {
-                        await messageSender.SendAsync(result.Response, context.RoomContext.RoomId, context.ConnectionId, context.CancellationToken);
+                        await messageSender.SendAsync(result.Response, context.RoomContext.RoomId, context.ConnectionId, context.CancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
 
                 if (result.ResultEvent != null)
                 {
-                    await eventBus.PublishAsync(result.ResultEvent, context.CancellationToken);
+                    await eventBus.PublishAsync(result.ResultEvent, context.CancellationToken).ConfigureAwait(false);
                 }
 
                 if (result.ErrorMessage != null)
                 {
-                    if (context.Role == Role.Host)
+                    if (message.SenderId == context.SelfId && context.Role == Role.Host)
                     {
-                        await PublishErrorEvent(result.ErrorMessage, needToDisconnect: false, context);
+                        await PublishErrorEvent(result.ErrorMessage, context, needToDisconnect: false).ConfigureAwait(false);
                     }
                     else
                     {
-                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalError);
+                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalErrorForConnection)
+                            .ConfigureAwait(false);
                     }
                     continue;
                 }
@@ -117,13 +131,14 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
                 if (context.Role == Role.Host)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds);
+                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
             {
                 logger.Log($"Handler {handler.GetType().Name} threw exception: {ex.Message}", LogLevel.Error);
-                await PublishErrorEvent(ex.Message, needToDisconnect: context.Role == Role.Client, context);
+                await PublishErrorEvent(ex.Message, context, needToDisconnect: context.Role == Role.Client)
+                    .ConfigureAwait(false);
             }
         }
     }
@@ -133,23 +148,31 @@ public sealed class MessageDispatcher : IMessageDispatcher
         if (message.IsPublic)
         {
             var roomParticipantsIds = context.RoomContext.Participants.GetParticipants().Select(x => x.Id);
-            var senderConnectionId = context.RoomContext.Connections.GetConnectionIdFromParticipantId(message.SenderId);
+            var excludeConnectionIds = new List<Guid>();
 
-            var excludeConnectionIds = new List<Guid>
+            if (context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(message.SenderId, out var senderConnectionId))
             {
-                senderConnectionId
-            }.Concat(broadcastExcludeIds?.Where(roomParticipantsIds.Contains).Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId) ?? []).ToList();
+                excludeConnectionIds.Add(senderConnectionId);
+            }
+
+            excludeConnectionIds.AddRange(broadcastExcludeIds?
+                .Where(roomParticipantsIds.Contains)
+                .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
+                .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId)
+                ?? []);
 
             if (message is IWithinSubRoom withinSubRoomMessage)
             {
                 var subRoomParticipants = subRoomManager.GetParticipantIds(context.RoomContext.RoomId, withinSubRoomMessage.SubRoomId);
                 excludeConnectionIds.AddRange(roomParticipantsIds.Except(subRoomParticipants)
+                    .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
                     .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId));
             }
 
             try
             {
-                await messageSender.BroadcastAsync(message, context.RoomContext.RoomId, excludeConnectionIds, context.CancellationToken);
+                await messageSender.BroadcastAsync(message, context.RoomContext.RoomId, excludeConnectionIds, context.CancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -168,7 +191,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
             {
                 try
                 {
-                    await messageSender.SendAsync(message, context.RoomContext.RoomId, recipientConnectionId, context.CancellationToken);
+                    await messageSender.SendAsync(message, context.RoomContext.RoomId, recipientConnectionId, context.CancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -178,11 +202,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
         }
     }
 
-    private async Task PublishErrorEvent(string message, bool needToDisconnect, MessageContext context)
+    private async Task PublishErrorEvent(string message, MessageContext context, bool needToDisconnect, bool needToDestroy = false)
         => await eventBus.PublishAsync(new ErrorOccurredEvent()
         {
             ErrorMessage = message,
             NeedToDisconnect = needToDisconnect,
+            NeedToDestroy = needToDestroy,
             RoomId = context.RoomContext.RoomId
-        }, context.CancellationToken);
+        }, context.CancellationToken).ConfigureAwait(false);
 }

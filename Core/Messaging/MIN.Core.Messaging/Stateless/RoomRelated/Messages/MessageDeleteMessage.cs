@@ -1,12 +1,12 @@
 ﻿using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Messages;
 
-namespace MIN.Chat.Messaging;
+namespace MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 
 /// <summary>
 /// Действие удаления сообщение из чата
 /// </summary>
-public sealed class ChatDeleteMessage : BaseMessage
+public sealed class MessageDeleteMessage : BaseMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.MessageDelete;

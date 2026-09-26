@@ -53,9 +53,10 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
         ParticipantInfo localParticipant,
         bool isHostMessage,
         bool removeHeaders,
-        IClipboard? clipboard)
+        IClipboard? clipboard,
+        bool isAvaibleForNetwork)
         : base(fileTransferFeatureCollection, dialogService, roomScope, fileMetadataMessage,
-            timePadding, localParticipant, isHostMessage, removeHeaders, clipboard)
+            timePadding, localParticipant, isHostMessage, removeHeaders, clipboard, isAvaibleForNetwork)
     { }
 
     /// <inheritdoc />

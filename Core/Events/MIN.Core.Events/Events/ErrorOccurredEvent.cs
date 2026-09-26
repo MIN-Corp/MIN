@@ -18,6 +18,11 @@ public sealed record ErrorOccurredEvent : BaseEvent
     public bool NeedToDisconnect { get; init; }
 
     /// <summary>
+    /// Нужно ли забыть комнату
+    /// </summary>
+    public bool NeedToDestroy { get; init; }
+
+    /// <summary>
     /// Сообщение об ошибке
     /// </summary>
     public string ErrorMessage { get; init; } = string.Empty;

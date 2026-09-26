@@ -56,14 +56,14 @@ public class VoiceCallMonitor : IHostedService
 
     Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
-        eventBus.Subscribe<RoomClosedEvent>(OnRoomClosed);
+        eventBus.Subscribe<RoomWentOfflineEvent>(OnRoomWentOffline);
         eventBus.Subscribe<VoiceCallEstablishedEvent>(OnVoiceCallEstablished);
         eventBus.Subscribe<VoiceCallLeftEvent>(OnVoiceCallLeft);
         eventBus.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
         return Task.CompletedTask;
     }
 
-    private Task OnRoomClosed(RoomClosedEvent e, CancellationToken cancellationToken)
+    private Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
     {
         var voiceContext = voiceCallStateService.GetRoomVoiceCallContext();
 

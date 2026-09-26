@@ -89,7 +89,8 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         ParticipantInfo localParticipant,
         bool isHostMessage,
         bool removeHeaders,
-        IClipboard? clipboard)
+        IClipboard? clipboard,
+        bool isAvaibleForNetwork)
         : base(fileMetadataMessage,
             fileMetadataMessage,
             fileMetadataMessage,
@@ -98,7 +99,8 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             timePadding,
             localParticipant.Id == fileMetadataMessage.Sender.Id,
             isHostMessage,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         this.fileTransferFeatureCollection = fileTransferFeatureCollection;
         this.localParticipant = localParticipant;

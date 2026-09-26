@@ -6,7 +6,7 @@
 public interface IMessageWithSecuredFields
 {
     /// <summary>
-    /// Очистить поля
+    /// Возвращает копию с очищенными чувствительными полями; исходный объект не изменяется
     /// </summary>
-    void Sanitize();
+    IMessage Sanitize();
 }

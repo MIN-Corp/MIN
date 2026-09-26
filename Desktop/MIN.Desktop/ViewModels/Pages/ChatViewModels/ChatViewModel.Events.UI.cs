@@ -30,8 +30,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// </summary>
 public partial class ChatViewModel : RoutableViewModelBase
 {
-    private readonly System.Timers.Timer typingTimer = new() { Interval = 3000 };
-
+    private System.Timers.Timer? typingTimer;
     private bool isParentWindowActive = true;
     private int? activeVoiceChatSubroomId;
 
@@ -122,13 +121,14 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private void InitializeTimers()
     {
+        typingTimer = new() { Interval = 3000 };
         typingTimer.Elapsed += (s, e) => OnTypingTimerStop();
         callTimer.Tick += OnCallTimerTick;
     }
 
     private void OnTypingTimerStop()
     {
-        typingTimer.Stop();
+        typingTimer?.Stop();
         _ = SendSelfStatusChangedMessage(GetRestingStatus());
     }
 
@@ -228,7 +228,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     [RelayCommand]
     private async Task LeaveRoom()
     {
-        if (IsHost && room.ParticipantCount > 1)
+        if (IsHost && room.CurrentParticipants.Any(x => x.CurrentStatus == OnlineStatus.Online && x.Id != localParticipant.Id))
         {
             bool confirmation = await dialogService.ShowDialogAsync<DialogBoxViewModel>(model =>
             {
@@ -244,7 +244,26 @@ public partial class ChatViewModel : RoutableViewModelBase
             }
         }
 
-        await Disconnect();
+        await Disconnect(false);
+    }
+
+    [RelayCommand]
+    private async Task ForgetRoom()
+    {
+        bool confirmation = await dialogService.ShowDialogAsync<DialogBoxViewModel>(model =>
+        {
+            model.Title = $"Удаление комнаты {room.Name}";
+            model.Description = "Вы точно хотите удалить комнату? "
+            + "\nЭто удалит всю историю сообщений.";
+            model.ButtonOptions = ButtonOptions.YesNo;
+        });
+
+        if (!confirmation)
+        {
+            return;
+        }
+
+        await Disconnect(true);
     }
 
     [RelayCommand]
@@ -258,7 +277,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         if (editFormResult == true)
         {
             IsUpdatingNetwork = true;
-            updatingRoomCts = CancellationTokenSource.CreateLinkedTokenSource(appCts.Token);
+            updatingRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
 
             try
             {
@@ -309,6 +328,11 @@ public partial class ChatViewModel : RoutableViewModelBase
     [RelayCommand]
     private void MessageTextChanged()
     {
+        if (!IsOnline || typingTimer == null)
+        {
+            return;
+        }
+
         if (string.IsNullOrEmpty(SendingMessage))
         {
             OnTypingTimerStop();
@@ -335,8 +359,11 @@ public partial class ChatViewModel : RoutableViewModelBase
         parentWindow.Deactivated += Parent_Deactivate;
     }
 
-    private void ClearParentFormEvents()
+    private void DisableAllConnectionActions()
     {
+        typingTimer?.Dispose();
+        typingTimer = null;
+
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
 
@@ -346,7 +373,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private async void Parent_Deactivate(object? sender, EventArgs e)
     {
-        typingTimer.Stop();
+        typingTimer?.Stop();
         await SendSelfStatusChangedMessage(OnlineStatus.Offline);
         isParentWindowActive = false;
     }
@@ -407,7 +434,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             var timestamp = DateTime.Now.ToString("yyyy-dd-MM-HH-mm-ss-fffff");
             var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{timestamp}.png");
-            bitmap.Save(tempPath);
+            bitmap.Save(tempPath, new PngBitmapEncoderOptions());
             UploadFile(tempPath);
         }
     }

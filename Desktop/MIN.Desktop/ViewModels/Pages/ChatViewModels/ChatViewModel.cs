@@ -8,7 +8,6 @@ using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Constants;
-using MIN.Core.Transport.Contracts.Enum;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.ViewModels.Base;
@@ -27,10 +26,11 @@ public partial class ChatViewModel : RoutableViewModelBase
     private readonly IDialogService dialogService;
 
     private readonly IMinFeatureCollection featureCollection;
-    private readonly CancellationTokenSource appCts = new();
-    private readonly TaskCompletionSource loadingTcs = new();
-
+    private readonly IRoomConnectionUiService roomConnectionUiService;
+    private readonly CancellationTokenSource roomCts = new();
     private readonly ParticipantInfo localParticipant = null!;
+
+    private TaskCompletionSource? loadingTcs = new();
     private Guid roomId;
     private Guid connectionId;
     private Room room = null!;
@@ -45,6 +45,11 @@ public partial class ChatViewModel : RoutableViewModelBase
     public override EventHandler? OnNavigatedFrom { get; }
 
     /// <summary>
+    /// Идентификатор комнаты
+    /// </summary>
+    public Guid RoomId => roomId;
+
+    /// <summary>
     /// Имя комнаты
     /// </summary>
     [ObservableProperty]
@@ -57,9 +62,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     public partial bool IsHost { get; set; }
 
     /// <summary>
-    /// Идентификатор комнаты
+    /// Подключены ли мы сейчас к комнате, или хостим
     /// </summary>
-    public Guid RoomId => roomId;
+    [ObservableProperty]
+    public partial bool IsOnline { get; set; }
+
+    /// <summary>
+    /// Можем ли мы воспользоваться функцией комнаты
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsAvaibleForNetwork { get; set; }
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ChatViewModel"/>
@@ -68,9 +80,11 @@ public partial class ChatViewModel : RoutableViewModelBase
         MainSideBarViewModel mainSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
         IMinFeatureCollection featureCollection,
+        IRoomConnectionUiService roomConnectionUiService,
         IDialogService dialogService)
     {
         this.featureCollection = featureCollection;
+        this.roomConnectionUiService = roomConnectionUiService;
         this.mainSideBarViewModel = mainSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
         this.chatSideBarViewModel = chatSideBarViewModel;
@@ -83,12 +97,14 @@ public partial class ChatViewModel : RoutableViewModelBase
             OnNavigatedTo = ActionOnNavigatedTo;
             OnNavigatedFrom = ActionOnNavigatedFrom;
 
-            InitializeNotifications();
-            InitializeTimers();
-            InitializeLayoutStyles();
-            InitializeParentFormWindowStateEvents();
-            InitializeObservableCollections();
+            InitializeUIActions();
         }
+    }
+
+    private void InitializeUIActions()
+    {
+        InitializeLayoutStyles();
+        InitializeObservableCollections();
     }
 
     private async void ActionOnNavigatedTo(object? sender, EventArgs e)
@@ -141,7 +157,26 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     /// <inheritdoc />
-    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken = default) => await loadingTcs.Task;
+    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken = default)
+    {
+        if (loadingTcs != null)
+        {
+            await loadingTcs.Task;
+        }
+    }
+
+    partial void OnIsOnlineChanged(bool value)
+    {
+        IsAvaibleForNetwork = value || IsHost;
+    }
+
+    partial void OnIsAvaibleForNetworkChanged(bool value)
+    {
+        foreach (var message in Messages)
+        {
+            message.IsAvaibleForNetwork = value;
+        }
+    }
 
     /// <summary>
     /// Подгрузить данные о комнате и перезагрузить страницу
@@ -149,12 +184,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     public async Task LoadRoomDataAndRefresh(Room room, Guid connectionId)
     {
         ToggleRightSideBar();
-        await chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
+        chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
 
         this.room = room;
+        this.connectionId = connectionId;
+
         RoomName = room.Name;
         IsHost = localParticipant.Id == room.HostParticipant.Id;
-        this.connectionId = connectionId;
+        IsOnline = room.IsOnline;
+        chatSideBarViewModel.IsOnline = IsOnline;
+        IsAvaibleForNetwork = IsOnline || IsHost;
         roomId = room.Id;
         SubscribeToEvents(featureCollection.Core.EventBus);
 
@@ -166,38 +205,69 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
         else
         {
-            loadingTcs.SetResult();
+            loadingTcs?.SetResult();
+            loadingTcs = null;
         }
+
+        InitializeConnectionActions();
     }
 
-    private async Task CleanUpServicesAsync(Guid roomId, Guid connectionId)
+    private void InitializeConnectionActions()
+    {
+        InitializeNotifications();
+        InitializeTimers();
+        InitializeParentFormWindowStateEvents();
+    }
+
+    private async Task CleanUpServicesAsync(bool asForget)
     {
         if (IsHost)
         {
             await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomId);
-            await featureCollection.Core.Lifecycle.StopHostingAsync(roomId);
+            if (asForget)
+            {
+                await featureCollection.Core.Lifecycle.ForgetHostingAsync(roomId);
+            }
+            else
+            {
+                await featureCollection.Core.Lifecycle.StopHostingAsync(roomId);
+            }
         }
         else
         {
-            await featureCollection.Core.Lifecycle.DisconnectAsync(roomId, connectionId, DisconnectReason.None);
+            if (asForget)
+            {
+                await featureCollection.Core.Lifecycle.ForgetRoomAsync(roomId, connectionId);
+            }
+            else
+            {
+                await featureCollection.Core.Lifecycle.DisconnectAsync(roomId, connectionId);
+            }
         }
     }
 
-    private async Task Disconnect()
+    private async Task Disconnect(bool asForget)
     {
-        await DisposeAsync();
-        ChangeView(discoveryViewModel);
+        if (asForget)
+        {
+            await DisposeAsync();
+        }
+
+        await CleanUpServicesAsync(asForget);
+
+        if (asForget)
+        {
+            ChangeView(discoveryViewModel);
+        }
     }
 
     /// <inheritdoc cref="IAsyncDisposable.DisposeAsync"/>
     public async ValueTask DisposeAsync()
     {
-        ClearParentFormEvents();
+        DisableAllConnectionActions();
         roomScope.Dispose();
         errorToken.Dispose();
-        typingTimer.Dispose();
-        appCts.Cancel();
-        appCts.Dispose();
-        await CleanUpServicesAsync(roomId, connectionId);
+        await roomCts.CancelAsync();
+        roomCts.Dispose();
     }
 }

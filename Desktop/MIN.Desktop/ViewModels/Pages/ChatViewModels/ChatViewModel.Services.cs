@@ -1,14 +1,20 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Common.Core.Contracts.Interfaces;
+using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Registries.Models;
+using MIN.Desktop.Contracts.Enums;
+using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Windows;
@@ -23,7 +29,10 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// </summary>
 public partial class ChatViewModel : RoutableViewModelBase
 {
-    private Window parentWindow = null!;
+    private readonly Window parentWindow = MainWindowViewModel.GetWindow()!;
+    private bool isConnecting;
+    private bool isTryingToHost;
+    private CancellationTokenSource? createRoomCts;
     private Guid? replyToPreviewId;
 
     /// <summary>
@@ -41,8 +50,6 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private void InitializeNotifications()
     {
-        parentWindow = MainWindowViewModel.GetWindow()!;
-
         featureCollection.Helper.NotificationService.OnNotificationClick += OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked += NotificationTurnOffClicked;
     }
@@ -94,7 +101,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         await featureCollection.Chat.ChatFileService.RequestFileDownloadAsync(roomId,
             fileMetadata,
-            appCts.Token
+            roomCts.Token
         );
     }
 
@@ -104,7 +111,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             await featureCollection.Chat.ChatSessionService.SendSessionJoinRequest(roomId,
                 sessionReadyMessage,
-                appCts.Token
+                roomCts.Token
             );
         }
         catch (DirectoryNotFoundException e)
@@ -117,7 +124,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         try
         {
-            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(roomId, subRoomId, appCts.Token);
+            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(roomId, subRoomId, roomCts.Token);
         }
         catch (DirectoryNotFoundException e)
         {
@@ -129,7 +136,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (activeVoiceChatSubroomId != null)
         {
-            await featureCollection.Voice.MuteService.MuteSelf(roomId, activeVoiceChatSubroomId.Value, appCts.Token);
+            await featureCollection.Voice.MuteService.MuteSelf(roomId, activeVoiceChatSubroomId.Value, roomCts.Token);
         }
     }
 
@@ -137,7 +144,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (activeVoiceChatSubroomId != null)
         {
-            await featureCollection.Voice.MuteService.UnmuteSelf(roomId, activeVoiceChatSubroomId.Value, appCts.Token);
+            await featureCollection.Voice.MuteService.UnmuteSelf(roomId, activeVoiceChatSubroomId.Value, roomCts.Token);
         }
     }
 
@@ -151,21 +158,21 @@ public partial class ChatViewModel : RoutableViewModelBase
         => featureCollection.Voice.VoicePlayback.ChangeParticipantVolume(participantId, volume);
 
     private async Task OnVoiceCallLeaveRequested(int subRoomId)
-        => await featureCollection.Chat.ChatVoiceService.LeaveCallAsync(roomId, subRoomId, appCts.Token);
+        => await featureCollection.Chat.ChatVoiceService.LeaveCallAsync(roomId, subRoomId, roomCts.Token);
 
     private async Task RequestVoiceCallStateAsync()
-        => await featureCollection.Chat.ChatVoiceService.RequestCallStateAsync(roomId, appCts.Token);
+        => await featureCollection.Chat.ChatVoiceService.RequestCallStateAsync(roomId, roomCts.Token);
 
     private async Task OnCancelRequested(FileMetadataMessage fileMetadata)
         => await featureCollection.Chat.ChatFileService.CancelFileDownloadAsync(roomId,
             fileMetadata,
-            appCts.Token);
+            roomCts.Token);
 
     private async Task OnHistoryClearRequested()
     {
         try
         {
-            await featureCollection.Chat.ChatMessageService.ClearMessageHistoryAsync(roomId, appCts.Token);
+            await featureCollection.Chat.ChatMessageService.ClearMessageHistoryAsync(roomId, roomCts.Token);
         }
         catch (Exception ex)
         {
@@ -178,6 +185,15 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task SendSelfStatusChangedMessage(OnlineStatus newStatus)
     {
 #if DEBUG
+        try
+        {
+            await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(roomId,
+                newStatus,
+                roomCts.Token
+            );
+        }
+        catch { }
+
         await Task.CompletedTask;
         return;
 #else
@@ -185,7 +201,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(roomId,
                 newStatus,
-                appCts.Token
+                roomCts.Token
             );
         }
         catch { }
@@ -193,16 +209,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     private async Task SendSessionStartMessage(Session session)
-        => await featureCollection.Chat.ChatSessionService.SendSessionHostRequestAsync(roomId, session, appCts.Token);
+        => await featureCollection.Chat.ChatSessionService.SendSessionHostRequestAsync(roomId, session, roomCts.Token);
 
     private async Task SendVoiceCallStartMessage()
-        => await featureCollection.Chat.ChatVoiceService.StartCallAsync(roomId, appCts.Token);
+        => await featureCollection.Chat.ChatVoiceService.StartCallAsync(roomId, roomCts.Token);
 
     private async Task OnMessageDeleteRequested(Guid id)
-        => await featureCollection.Chat.ChatMessageService.DeleteMessageAsync(roomId, id, appCts.Token);
+        => await featureCollection.Chat.ChatMessageService.DeleteMessageAsync(roomId, id, roomCts.Token);
 
     private async Task OnMessageEditRequested(Guid id, string newContent)
-        => await featureCollection.Chat.ChatMessageService.EditTextMessageAsync(roomId, id, newContent, appCts.Token);
+        => await featureCollection.Chat.ChatMessageService.EditTextMessageAsync(roomId, id, newContent, roomCts.Token);
 
     [RelayCommand(CanExecute = nameof(IsMessageValid))]
     private async Task SendMessage()
@@ -215,7 +231,7 @@ public partial class ChatViewModel : RoutableViewModelBase
                     SendingMessage.Trim(),
                     chatSideBarViewModel.PrivateChatParticipantId,
                     replyToPreviewId,
-                    appCts.Token
+                    roomCts.Token
                 );
             }
 
@@ -249,7 +265,7 @@ public partial class ChatViewModel : RoutableViewModelBase
                    fileAttachement.File.FilePath,
                    chatSideBarViewModel.PrivateChatParticipantId,
                    replyToPreviewId,
-                   appCts.Token
+                   roomCts.Token
                );
             }
 
@@ -262,5 +278,116 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             InAppNotifier.Error($"Не удалось отправить сообщение: {ex.Message}");
         }
+    }
+
+    private bool IsClientOfflineAndNotConnecting() => !isConnecting;
+
+    [RelayCommand(CanExecute = nameof(IsClientOfflineAndNotConnecting))]
+    private async Task Reconnect()
+    {
+        isConnecting = true;
+
+        var connectCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
+
+        // TODO: make endpoint choosable
+        var chosenEndpoint = room.ConnectionAddresses.First();
+
+        var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
+        {
+            Cts = connectCts,
+            ExpectedRoomId = roomId,
+            Endpoint = chosenEndpoint,
+            OnRoomReady = async (room, connectionId) =>
+            {
+                if (room == null)
+                {
+                    isConnecting = false;
+                    return;
+                }
+
+                await RefreshAfterReconnect(room, connectionId);
+            }
+        }, connectCts.Token);
+
+        if (reconnectResult.Failure != null && reconnectResult.RoomIdentityMismatchException != null)
+        {
+            switch (reconnectResult.RoomMismatchChoice)
+            {
+                case RoomMismatchChoice.JoinNew:
+                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, null);
+                    break;
+                case RoomMismatchChoice.Replace:
+                    await Disconnect(asForget: true);
+                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, null);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        isConnecting = false;
+    }
+
+    private async Task RefreshAfterReconnect(Room updatedRoom, Guid connectionId)
+    {
+        chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
+
+        room = updatedRoom;
+        this.connectionId = connectionId;
+
+        RoomName = room.Name;
+        IsHost = localParticipant.Id == room.HostParticipant.Id;
+        IsOnline = room.IsOnline;
+        IsAvaibleForNetwork = IsOnline || IsHost;
+
+        await UpdateChatFlow();
+
+        if (!IsHost)
+        {
+            await RequestVoiceCallStateAsync();
+        }
+        else
+        {
+            loadingTcs?.SetResult();
+        }
+
+        IsOnline = true;
+        chatSideBarViewModel.IsOnline = true;
+        isConnecting = false;
+        isTryingToHost = false;
+
+        InitializeConnectionActions();
+    }
+
+    [RelayCommand]
+    private async Task Rehost()
+    {
+        if (isTryingToHost)
+        {
+            createRoomCts?.Cancel();
+            return;
+        }
+
+        isTryingToHost = true;
+        createRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
+
+        var hostResult = await roomConnectionUiService.HostAsync(new RoomHostArgs()
+        {
+            RoomInfo = new RoomInfo(room),
+            NetworkOptions = room.LocalRoomSettings.NetworkOptions,
+            OnRoomReady = async room =>
+            {
+                await RefreshAfterReconnect(room, CoreRegistryConstants.LocalConnectionId);
+                InAppNotifier.Success($"Комната {room.Name} успешно хоститься!");
+            }
+        }, createRoomCts.Token);
+
+        if (hostResult.Failure != null)
+        {
+            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomId);
+            InAppNotifier.Info(hostResult.ErrorMessage ?? "Не удалось создать комнату");
+        }
+
+        createRoomCts = null;
     }
 }

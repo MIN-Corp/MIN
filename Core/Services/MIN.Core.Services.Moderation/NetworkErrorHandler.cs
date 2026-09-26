@@ -116,7 +116,7 @@ public class NetworkErrorHandler : INetworkErrorHandler
     {
         if (ResetParticipantRejectAckTimer(e.ParticipantId))
         {
-            await DisconnectClient(e.ParticipantId, e.RoomId);
+            await DisconnectClient(e.ParticipantId, e.RoomId, e.ErrorMessage);
         }
         else
         {
@@ -128,7 +128,7 @@ public class NetworkErrorHandler : INetworkErrorHandler
     {
         if (state is ParticipantContext connection && ResetParticipantRejectAckTimer(connection.ParticipantId))
         {
-            await DisconnectClient(connection.ParticipantId, connection.RoomId);
+            await DisconnectClient(connection.ParticipantId, connection.RoomId, string.Empty);
         }
     }
 
@@ -140,8 +140,8 @@ public class NetworkErrorHandler : INetworkErrorHandler
         }
     }
 
-    private async Task DisconnectClient(Guid participantId, Guid roomId)
-        => await lifecycleManager.KickClientAsync(roomId, participantId, DisconnectReason.Kick);
+    private async Task DisconnectClient(Guid participantId, Guid roomId, string message)
+        => await lifecycleManager.KickClientAsync(roomId, participantId, DisconnectReason.Kick, message);
 
     private async Task DisconnectConnection(Guid connectionId, Guid roomId)
         => await lifecycleManager.KickConnectionAsync(roomId, connectionId, DisconnectReason.Kick);

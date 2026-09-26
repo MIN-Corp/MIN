@@ -51,7 +51,7 @@
                         HorizontalAlignment="Left"
                         HotKey="Escape" />
                     <Button
-                        Command="{Binding ConnectCommand}"
+                        Command="{Binding ProceedCommand}"
                         Content="Подключиться"
                         HorizontalAlignment="Right"
                         HotKey="Enter" />

@@ -59,7 +59,8 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseReplyabl
         Thickness timePadding,
         bool isLocal,
         bool isHost,
-        bool removeHeaders)
+        bool removeHeaders,
+        bool isAvaibleForNetwork)
         : base(message,
             replyable,
             dialogService,
@@ -67,10 +68,11 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseReplyabl
             timePadding,
             isLocal,
             isHost,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         Content = contentEditable.Content;
-        IsEdited = contentEditable.IsEdited;
+        IsEdited = contentEditable.IsUpdated;
     }
 
     /// <summary>
