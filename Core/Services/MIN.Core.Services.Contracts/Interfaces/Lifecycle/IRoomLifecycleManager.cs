@@ -15,7 +15,7 @@ public interface IRoomLifecycleManager
     /// <summary>
     /// Подключиться к удалённой комнате (клиентская сторона)
     /// </summary>
-    Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, CancellationToken cancellationToken = default);
+    Task<ConnectionResult> ConnectAsync(IEndpoint endpointm, Guid? expectedRoomId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Пометить комнату, как забытую

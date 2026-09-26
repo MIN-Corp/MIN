@@ -103,6 +103,7 @@ public static partial class ServiceCollectionExtensions
         services.RegisterAsImplementedInterfaces<NotificationService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<DialogService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ChatViewModelFactory>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<RoomConnectionUiService>(ServiceLifetime.Singleton);
         services.RegisterModule<MinModule>();
         return services;
     }

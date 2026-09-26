@@ -10,6 +10,7 @@ using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.Handshake;
 using MIN.Core.Messaging.Stateless.RoomRelated.Leaving;
 using MIN.Core.Protocol.Contracts.Interfaces;
+using MIN.Core.Services.Contracts.Exceptions;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Services.Contracts.Models;
 using MIN.Core.Stores.Contracts.Interfaces;
@@ -75,7 +76,7 @@ internal sealed class ClientRoomService
     public bool TryResolveRoom(RawMessageReceivedEventArgs e, out Guid roomId)
         => registry.TryGetRoomIdByClientConnectionId(e.ConnectionId, out roomId);
 
-    public async Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, CancellationToken cancellationToken)
+    public async Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, CancellationToken cancellationToken)
     {
         var connectionResult = new ConnectionResult();
 
@@ -102,6 +103,14 @@ internal sealed class ClientRoomService
                 throw new InvalidOperationException("Вы уже подключены к этой комнате");
             }
 
+            roomExistedBefore = roomStore.RoomExists(expectedRoomId ?? result.RoomInfo.Id);
+
+            if (expectedRoomId.HasValue && result.RoomInfo.Id != expectedRoomId.Value)
+            {
+                await transport.DisconnectAsync(connectionResult.ConnectionId, DisconnectReason.Error);
+                throw new RoomIdentityMismatchException(connectionResult.ConnectionId, expectedRoomId.Value, roomExistedBefore, result.RoomInfo);
+            }
+
             connectionResult.RoomId = result.RoomInfo.Id;
             logger.Log($"Протокол успешен, комната {connectionResult.RoomId}");
 
@@ -111,8 +120,6 @@ internal sealed class ClientRoomService
 
             roomFactory.GetOrCreateContext(connectionResult.RoomId)
                 .Connections.RegisterLocalParticipant(selfParticipant);
-
-            roomExistedBefore = roomStore.RoomExists(connectionResult.RoomId);
 
             var room = roomExistedBefore
                 ? roomStore.GetRoom(connectionResult.RoomId)

@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MIN.Desktop.ViewModels.Modals"
+        xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:behaviors="using:MIN.Desktop.Infrastructure.Behaviors.Focus"
+        xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="330"
+        MinWidth="330"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        x:Class="MIN.Desktop.Views.Modals.RoomMismatchModal"
+        x:DataType="vm:RoomMismatchViewModel"
+        Title="MIN - Смена комнаты">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:RoomMismatchViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <controls:CustomTitleBar CanMinimize="False" CanMaximize="False" />
+
+        <StackPanel Margin="0,8,0,0"
+            Spacing="8">
+            <TextBlock Padding="8"
+                MaxWidth="280.0">
+                При попытке подключения к комнате, на её месте оказалсь другая комната:
+            </TextBlock>
+
+            <Border Classes="card"
+                Width="256">
+                <StackPanel Spacing="8">
+                    <TextBlock HorizontalAlignment="Center"
+                        Text="Комната " />
+
+                    <SelectableTextBlock HorizontalAlignment="Center"
+                        Classes="header4"
+                        Text="{Binding ActualRoom.Name,
+                            Converter={converters:TruncateWithEllipsisConverter},
+                            ConverterParameter=20}" />
+
+                    <StackPanel Spacing="8"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            Text="Создатель: " />
+                        <TextBlock Text="{Binding ActualRoom.HostParticipant.Name,
+                                Converter={converters:TruncateWithEllipsisConverter},
+                                ConverterParameter=20}" />
+                    </StackPanel>
+
+                    <!-- Room create time -->
+
+                    <StackPanel Spacing="8"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock Text="Создана: " />
+                        <TextBlock Text="{Binding ActualRoom.CreatedAt,
+                            Converter={converters:DateConverter},
+                            ConverterParameter={x:Static converters:DateMode.Short}}" />
+                    </StackPanel>
+
+                    <!-- Cabinet -->
+
+                    <StackPanel Spacing="8"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock Text="Кабинет: " />
+                        <TextBlock Text="{Binding ActualRoom.Cabinet}" />
+                    </StackPanel>
+
+                    <!-- Computer -->
+
+                    <StackPanel Spacing="8"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock Text="№ Компьютера: " />
+                        <TextBlock Text="{Binding ActualRoom.PcNumber}" />
+                    </StackPanel>
+
+                    <!-- Connected -->
+
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Text="Подключено: " />
+                        <TextBlock Text="{Binding ActualRoom.ParticipantCount}" />
+                        <TextBlock Text="/" />
+                        <TextBlock Text="{Binding ActualRoom.MaximumParticipants}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock
+                HorizontalAlignment="Center"
+                MaxWidth="280.0">
+                Как с ней поступить?
+            </TextBlock>
+
+            <Border Padding="8,0,8,8">
+                <StackPanel Spacing="8">
+                    <Button
+                        Command="{Binding JoinNewCommand}"
+                        Content="Присоединиться к новой комнате"
+                        HotKey="Enter" />
+                    <Button
+                        IsVisible="{Binding IsReconnect}"
+                        Classes="danger"
+                        Command="{Binding ReplaceCommand}"
+                        Content="Заменить на текущую" />
+                    <Button
+                        Command="{Binding CloseCommand}"
+                        Content="Отмена"
+                        Classes="secondary"
+                        FontWeight="Bold"
+                        HotKey="Escape" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </DockPanel>
+</Window>

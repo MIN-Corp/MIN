@@ -26,6 +26,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private readonly IDialogService dialogService;
 
     private readonly IMinFeatureCollection featureCollection;
+    private readonly IRoomConnectionUiService roomConnectionUiService;
     private readonly CancellationTokenSource roomCts = new();
     private readonly ParticipantInfo localParticipant = null!;
 
@@ -79,9 +80,11 @@ public partial class ChatViewModel : RoutableViewModelBase
         MainSideBarViewModel mainSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
         IMinFeatureCollection featureCollection,
+        IRoomConnectionUiService roomConnectionUiService,
         IDialogService dialogService)
     {
         this.featureCollection = featureCollection;
+        this.roomConnectionUiService = roomConnectionUiService;
         this.mainSideBarViewModel = mainSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
         this.chatSideBarViewModel = chatSideBarViewModel;
