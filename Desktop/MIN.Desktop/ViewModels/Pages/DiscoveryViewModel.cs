@@ -38,6 +38,7 @@ namespace MIN.Desktop.ViewModels.Pages;
 public partial class DiscoveryViewModel : RoutableViewModelBase
 {
     private readonly IChatViewModelFactory chatViewModelFactory;
+    private readonly IChatViewsRegistry chatViewsRegistry;
     private readonly IRoomConnectionUiService roomConnectionUiService;
     private readonly IMinFeatureCollection featureCollection;
     private readonly IDialogService dialogService;
@@ -77,12 +78,14 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// Инициализирует новый экземпляр <see cref="DiscoveryViewModel"/>
     /// </summary>
     public DiscoveryViewModel(IChatViewModelFactory chatViewModelFactory,
+        IChatViewsRegistry chatViewsRegistry,
         IRoomConnectionUiService roomConnectionUiService,
         IMinFeatureCollection featureCollection,
         ICtsProvider ctsProvider,
         IDialogService dialogService)
     {
         this.chatViewModelFactory = chatViewModelFactory;
+        this.chatViewsRegistry = chatViewsRegistry;
         this.roomConnectionUiService = roomConnectionUiService;
         this.featureCollection = featureCollection;
         this.dialogService = dialogService;
@@ -157,7 +160,6 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
         }
 
         var roomInfo = createViewModelResult!.Room;
-        var roomId = roomInfo.Id;
 
         createRoomCts = CancellationTokenSource.CreateLinkedTokenSource(lifeTimeCts.Token);
 
@@ -250,7 +252,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
                 discoveryInfo.Room,
                 discoveryInfo.Endpoints,
                 localParticipant.Id == discoveryInfo.Room.HostParticipant.Id,
-                featureCollection.Core.Registry.IsConnected(discoveryInfo.Room.Id),
+                featureCollection.Core.RoomStore.RoomExists(discoveryInfo.Room.Id),
                 clipboard);
 
             card.Clicked += async (origin) =>
@@ -260,6 +262,12 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
                 {
                     card.IsConnecting = false;
                 }
+            };
+
+            card.RoomDestroyed += () =>
+            {
+                card.Dispose();
+                DiscoveredRooms.Remove(card);
             };
 
             DiscoveredRooms.Add(card);
@@ -272,6 +280,12 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// </summary>
     public async Task OnRoomJoin(IEndpoint endpoint, Guid? expectedRoomId)
     {
+        if (expectedRoomId is Guid targetId && chatViewsRegistry.TryGet(targetId, out var existingChat))
+        {
+            ChangeView(existingChat!);
+            return;
+        }
+
         if (!await ResolveParticipant())
         {
             return;
@@ -305,12 +319,12 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             switch (joinResult.RoomMismatchChoice)
             {
                 case RoomMismatchChoice.JoinNew:
-                    await OnRoomJoin(endpoint, null);
+                    await OnRoomJoin(endpoint, joinResult.RoomIdentityMismatchException.ActualRoom.Id);
                     break;
                 case RoomMismatchChoice.Replace:
                     await featureCollection.Core.Lifecycle.ForgetRoomAsync(joinResult.RoomIdentityMismatchException.ExpectedRoomId,
                         joinResult.RoomIdentityMismatchException.ConnectionId);
-                    await OnRoomJoin(endpoint, null);
+                    await OnRoomJoin(endpoint, joinResult.RoomIdentityMismatchException.ActualRoom.Id);
                     break;
                 default:
                     break;

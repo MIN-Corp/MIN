@@ -12,6 +12,7 @@ using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Events.Events;
 using MIN.Desktop.Contracts.Enums;
+using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Models.ReferenceCommands;
 using MIN.Desktop.Contracts.Models.ReferenceCommands.Layout;
 using MIN.Desktop.Infrastructure.Extensions;
@@ -29,10 +30,10 @@ namespace MIN.Desktop.ViewModels.Pages;
 public partial class MainSideBarViewModel : RoutableViewModelBase
 {
     private readonly IMinFeatureCollection featureCollection;
+    private readonly IChatViewsRegistry chatViewsRegistry;
     private readonly SettingsSideBarViewModel settingsSideBarViewModel;
     private readonly DiscoveryViewModel discoveryViewModel;
     private readonly TrayService trayService;
-    private readonly Dictionary<Guid, ChatViewModel> activeChatViews = [];
     private readonly List<RecentRoomCardViewModel> allRooms = [];
     private readonly List<RoomInfo> savedRooms = [];
     private readonly ParticipantInfo localParticipant = null!;
@@ -72,11 +73,13 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     /// Инициализирует новый экземпляр <see cref="MainSideBarViewModel"/>
     /// </summary>
     public MainSideBarViewModel(IMinFeatureCollection featureCollection,
+        IChatViewsRegistry chatViewsRegistry,
         SettingsSideBarViewModel settingsSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
         TrayService trayService)
     {
         this.featureCollection = featureCollection;
+        this.chatViewsRegistry = chatViewsRegistry;
         this.settingsSideBarViewModel = settingsSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
         this.trayService = trayService;
@@ -152,9 +155,16 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     public void RegisterChat(RoomInfo roomInfo, ChatViewModel viewModel)
     {
         var roomId = roomInfo.Id;
+        var existing = allRooms.FirstOrDefault(x => x.RoomId == roomId);
+        if (existing != null)
+        {
+            SelectChatCard(existing);
+            return;
+        }
+
         var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
 
-        activeChatViews[roomId] = viewModel;
+        chatViewsRegistry.Register(roomId, viewModel);
 
         var card = new RecentRoomCardViewModel(featureCollection.Core.EventBus,
             context, roomInfo, localParticipant.Id == roomInfo.HostParticipant.Id);
@@ -189,7 +199,8 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
 
     private void UnregisterChat(Guid roomId)
     {
-        activeChatViews.Remove(roomId);
+        chatViewsRegistry.Unregister(roomId);
+
         var room = allRooms.FirstOrDefault(x => x.RoomId == roomId);
 
         if (room != null)

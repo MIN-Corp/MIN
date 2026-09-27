@@ -100,7 +100,7 @@ internal sealed class ClientRoomService
             if (registry.IsConnected(result.RoomInfo.Id) || registry.IsHosting(result.RoomInfo.Id))
             {
                 await transport.DisconnectAsync(connectionResult.ConnectionId, DisconnectReason.Error);
-                throw new InvalidOperationException("Вы уже подключены к этой комнате");
+                throw new InvalidOperationException("Вы уже подключены к этой комнате по этому адресу");
             }
 
             roomExistedBefore = roomStore.RoomExists(expectedRoomId ?? result.RoomInfo.Id);

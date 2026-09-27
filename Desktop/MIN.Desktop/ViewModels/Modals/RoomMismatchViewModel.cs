@@ -12,7 +12,10 @@ namespace MIN.Desktop.ViewModels.Modals;
 public partial class RoomMismatchViewModel : ModalViewModelBase
 {
     [ObservableProperty]
-    public partial RoomInfo ActualRoom { get; set; }
+    public partial string Cabinet { get; set; }
+
+    [ObservableProperty]
+    public partial RoomInfo? ActualRoom { get; set; }
 
     /// <summary>
     /// Появилось ли это окно во время reconnect
@@ -20,6 +23,12 @@ public partial class RoomMismatchViewModel : ModalViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ReplaceCommand))]
     public partial bool IsReconnect { get; set; }
+
+    /// <summary>
+    /// Существует ли новая комната уже в списке?
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsActualRoomOpen { get; set; }
 
     /// <summary>
     /// Выбор действия

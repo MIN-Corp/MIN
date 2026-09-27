@@ -314,11 +314,12 @@ public partial class ChatViewModel : RoutableViewModelBase
             switch (reconnectResult.RoomMismatchChoice)
             {
                 case RoomMismatchChoice.JoinNew:
-                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, null);
+                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
                     break;
                 case RoomMismatchChoice.Replace:
+                    connectionId = reconnectResult.RoomIdentityMismatchException.ConnectionId;
                     await Disconnect(asForget: true);
-                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, null);
+                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
                     break;
                 default:
                     break;

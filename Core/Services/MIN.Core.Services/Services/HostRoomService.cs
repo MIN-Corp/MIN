@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using MIN.Common.Core.Extensions;
+﻿using MIN.Common.Core.Extensions;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Extensions;
@@ -39,7 +38,6 @@ internal sealed class HostRoomService
     private readonly ILoggerProvider logger;
     private readonly PingService pingService;
 
-    private readonly ConcurrentDictionary<Guid, RoomInfo> readyRoomInfos = [];
     private readonly HashSet<(Guid, Guid)> markedParticipantsAsLeft = [];
     private readonly HashSet<Guid> markedRoomsToDestroy = [];
     private readonly Dictionary<Guid, CancellationTokenSource> roomCancellationTokenSources = [];
@@ -98,7 +96,7 @@ internal sealed class HostRoomService
         protocolPhase.Add(e.ConnectionId);
         logger.Log($"Новое подключение к комнате {roomId}: {e.RemoteEndPoint ?? "unknown"}");
 
-        var roomInfo = readyRoomInfos[roomId];
+        var roomInfo = new RoomInfo(roomStore.GetRoom(roomId));
         var result = await hostHandshake.HandleServerAsync(
             e.ServerConnectionId!.Value, e.ConnectionId, roomInfo, roomCancellationTokenSources[roomId].Token);
 
@@ -216,7 +214,6 @@ internal sealed class HostRoomService
             existingContext.Connections.RegisterLocalParticipant(localParticipant);
 
             registry.RegisterServerConnection(roomId, connectionId);
-            readyRoomInfos[roomId] = roomInfo;
 
             return existingRoom;
         }
@@ -252,7 +249,6 @@ internal sealed class HostRoomService
         logger.Log($"Комната создана: {string.Join(',', room.ConnectionAddresses)} ({roomInfo.Name})");
 
         registry.RegisterServerConnection(roomId, connectionId);
-        readyRoomInfos[roomId] = roomInfo;
 
         return roomStore.GetRoom(roomId);
     }
@@ -363,6 +359,7 @@ internal sealed class HostRoomService
         if (isLive)
         {
             await transport.StopHostingAsync(connectionId);
+            // TODO:
             //subRoomManager.ClearRoomSubRooms(roomId);
         }
 
@@ -382,7 +379,6 @@ internal sealed class HostRoomService
         }
 
         registry.DetachServerConnection(roomId);
-        readyRoomInfos.TryRemove(roomId, out _);
 
         if (markedRoomsToDestroy.Remove(roomId))
         {

@@ -13,7 +13,7 @@ public class RoomJoinResult
     /// <summary>
     /// Ошибка подключения
     /// </summary>
-    public JoinFailure? Failure { get; init; } = JoinFailure.Error;
+    public JoinFailure? Failure { get; init; }
 
     /// <summary>
     /// Выбор по смене комнате (если комната сменилась)

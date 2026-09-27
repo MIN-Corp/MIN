@@ -16,15 +16,18 @@ namespace MIN.Desktop.Infrastructure.Services;
 internal class RoomConnectionUiService : IRoomConnectionUiService
 {
     private readonly IMinFeatureCollection featureCollection;
+    private readonly IChatViewsRegistry chatViewsRegistry;
     private readonly IDialogService dialogService;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="RoomConnectionUiService"/>
     /// </summary>
     public RoomConnectionUiService(IMinFeatureCollection featureCollection,
+        IChatViewsRegistry chatViewsRegistry,
         IDialogService dialogService)
     {
         this.featureCollection = featureCollection;
+        this.chatViewsRegistry = chatViewsRegistry;
         this.dialogService = dialogService;
     }
 
@@ -97,13 +100,25 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
                 ConnectionId = connectionResult.ConnectionId,
             };
         }
+        catch (OperationCanceledException)
+        {
+            loadingVm?.CloseByCode();
+            return new RoomJoinResult()
+            {
+                Failure = JoinFailure.Cancelled,
+            };
+        }
         catch (RoomIdentityMismatchException ex)
         {
             loadingVm?.CloseByCode();
             var choiceDialog = await dialogService.ShowDialogAsync<RoomMismatchViewModel>(vm =>
             {
                 vm.ActualRoom = ex.ActualRoom;
+                vm.Cabinet = string.IsNullOrEmpty(ex.ActualRoom.Cabinet)
+                    ? DesktopConstants.UndefinedPcName
+                    : ex.ActualRoom.Cabinet;
                 vm.IsReconnect = ex.ExistedBefore;
+                vm.IsActualRoomOpen = chatViewsRegistry.TryGet(ex.ActualRoom.Id, out _);
             });
 
             var choice = choiceDialog?.Choice ?? RoomMismatchChoice.Cancel;
