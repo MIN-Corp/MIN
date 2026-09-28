@@ -3,8 +3,8 @@ using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -19,8 +19,8 @@ namespace MIN.Sessions.Core.Services;
 /// </summary>
 public class SessionMonitor : IHostedService
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly IEventBus eventBus;
+    private readonly IRoomFactory roomFactory;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
     private readonly ISessionProcessManager sessionProcessManager;
@@ -31,8 +31,8 @@ public class SessionMonitor : IHostedService
     /// <summary>
     /// Инициализирует новый экзепмляр <see cref="SessionMonitor"/>
     /// </summary>
-    public SessionMonitor(ISubRoomManager subRoomManager,
-        IEventBus eventBus,
+    public SessionMonitor(IEventBus eventBus,
+        IRoomFactory roomFactory,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
         ISessionProcessManager sessionProcessManager,
@@ -40,8 +40,8 @@ public class SessionMonitor : IHostedService
         IIdentityService identityService,
         ILoggerProvider logger)
     {
-        this.subRoomManager = subRoomManager;
         this.eventBus = eventBus;
+        this.roomFactory = roomFactory;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
         this.sessionProcessManager = sessionProcessManager;
@@ -71,12 +71,14 @@ public class SessionMonitor : IHostedService
         var roomId = e.RoomId;
         var participantId = e.Message.Participant.Id;
 
-        var activeSubRooms = subRoomManager.GetRoomSubRooms(roomId).Where(x => x.Purpose == SubRoomPurpose.Activity && x.IsActive);
+        var context = roomFactory.GetOrCreateContext(roomId);
+
+        var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Activity && x.IsActive);
         foreach (var subRoom in activeSubRooms)
         {
-            if (subRoomManager.IsInSubRoom(roomId, subRoom.Id, participantId))
+            if (context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
             {
-                var isLast = !subRoomManager.LeaveSubRoom(roomId, subRoom.Id, participantId);
+                var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
 
                 var leaveMessage = new SessionParticipantLeftMessage()
                 {

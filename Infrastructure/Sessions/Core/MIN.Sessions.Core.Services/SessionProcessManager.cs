@@ -2,7 +2,7 @@
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
@@ -26,9 +26,9 @@ public class SessionProcessManager : ISessionProcessManager
     private readonly Dictionary<ProcessContext, ISessionProcessTransport> transports = [];
     private readonly IMessageRouter messageRouter;
     private readonly IEventBus eventBus;
+    private readonly IRoomFactory roomFactory;
     private readonly ISessionProcessBridge processBridge;
     private readonly ISessionTransportFactory transportFactory;
-    private readonly ISubRoomManager subRoomManager;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
@@ -37,17 +37,17 @@ public class SessionProcessManager : ISessionProcessManager
     /// </summary>
     public SessionProcessManager(IMessageRouter messageRouter,
         IEventBus eventBus,
+        IRoomFactory roomFactory,
         ISessionProcessBridge processBridge,
         ISessionTransportFactory transportFactory,
-        ISubRoomManager subRoomManager,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
         this.messageRouter = messageRouter;
         this.eventBus = eventBus;
+        this.roomFactory = roomFactory;
         this.processBridge = processBridge;
         this.transportFactory = transportFactory;
-        this.subRoomManager = subRoomManager;
         this.identityService = identityService;
         this.logger = logger;
     }
@@ -139,7 +139,9 @@ public class SessionProcessManager : ISessionProcessManager
     {
         if (context.Role == SessionProcessRole.Server)
         {
-            if (subRoomManager.GetParticipantCount(context.RoomId, context.SubRoomId) == 0)
+            var roomContext = roomFactory.GetOrCreateContext(context.RoomId);
+
+            if (roomContext.SubRooms.GetParticipantCount(context.SubRoomId) == 0)
             {
                 return;
             }

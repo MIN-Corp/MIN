@@ -1,7 +1,7 @@
 ﻿using MIN.Core.Entities.Contracts.Models;
-using MIN.Core.SubRooms.Contracts.Enums;
+using MIN.Core.Stores.Contracts.Enums;
 
-namespace MIN.Core.SubRooms.Contracts.Models;
+namespace MIN.Core.Stores.Contracts.Models.SubRooms;
 
 /// <summary>
 /// Инфорация о подкомнате

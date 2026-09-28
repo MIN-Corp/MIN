@@ -1,4 +1,4 @@
-﻿namespace MIN.Core.SubRooms.Contracts.Enums;
+﻿namespace MIN.Core.Stores.Contracts.Enums;
 
 /// <summary>
 /// Результат входа в подкомнату

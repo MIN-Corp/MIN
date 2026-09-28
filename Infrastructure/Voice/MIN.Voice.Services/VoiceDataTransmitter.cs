@@ -1,7 +1,7 @@
 ﻿using System.Threading.Channels;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Models;
+using MIN.Core.Stores.Contracts.Models.SubRooms;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 using MIN.Voice.Messaging;

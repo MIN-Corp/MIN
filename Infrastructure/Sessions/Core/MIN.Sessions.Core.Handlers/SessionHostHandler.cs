@@ -5,8 +5,7 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.Ipc;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -18,22 +17,19 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionHostHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly IMessageSender messageSender;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
     private readonly ISessionProcessBridge sessionProcessBridge;
     private readonly ISessionProcessManager sessionProcessManager;
 
-    public SessionHostHandler(ISubRoomManager subRoomManager,
-        IMessageSender messageSender,
+    public SessionHostHandler(IMessageSender messageSender,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
         ISessionProcessBridge sessionProcessBridge,
         ISessionProcessManager sessionProcessManager,
         ILoggerProvider logger) : base(logger)
     {
-        this.subRoomManager = subRoomManager;
         this.messageSender = messageSender;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
@@ -61,7 +57,7 @@ internal sealed class SessionHostHandler : BaseHandler
         var roomId = context.RoomContext.RoomId;
 
         if (sessionHostRequestMessage.SubRoomId != null
-            && !subRoomManager.ActivateSubRoom(roomId, sessionHostRequestMessage.SubRoomId.Value, senderParicipantInfo))
+            && !context.RoomContext.SubRooms.ActivateSubRoom(sessionHostRequestMessage.SubRoomId.Value, senderParicipantInfo))
         {
             return HandlerResult.WithErrorHandled("Хост не смог создать подкомнату");
         }
@@ -86,7 +82,7 @@ internal sealed class SessionHostHandler : BaseHandler
 
         if (subRoomId == null)
         {
-            var subRoomInfo = subRoomManager.HostSubRoom(roomId, senderParicipantInfo, SubRoomPurpose.Activity, session.MaximumParticipants);
+            var subRoomInfo = context.RoomContext.SubRooms.HostSubRoom(senderParicipantInfo, SubRoomPurpose.Activity, session.MaximumParticipants);
             isHosted = true;
             subRoomId = subRoomInfo.Id;
         }
@@ -98,7 +94,7 @@ internal sealed class SessionHostHandler : BaseHandler
 
         if (hostResult == false)
         {
-            subRoomManager.TryStopSubRoom(roomId, subRoomId.Value, message.SenderId);
+            context.RoomContext.SubRooms.TryStopSubRoom(subRoomId.Value, message.SenderId);
             return HandlerResult.WithErrorHandled("У хоста повреждёна или утеряна программа сервера");
         }
 

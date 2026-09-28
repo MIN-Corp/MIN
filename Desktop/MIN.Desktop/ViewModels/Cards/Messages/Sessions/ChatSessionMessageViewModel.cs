@@ -23,7 +23,7 @@ namespace MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 /// <summary>
 /// Сообщение сессии участника
 /// </summary>
-public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewModel, IDisposable
+public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMessageViewModel, IDisposable
 {
     private readonly IDialogService dialogService = null!;
     private readonly int? maximumParticipants;
@@ -90,6 +90,7 @@ public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewM
         bool removeHeaders,
         bool isAvaibleForNetwork)
         : base(sessionReadyMessage,
+            sessionReadyMessage,
             null,
             dialogService,
             sessionReadyMessage.Sender.Name,

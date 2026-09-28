@@ -3,8 +3,8 @@ using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
@@ -17,7 +17,7 @@ namespace MIN.Voice.Services;
 /// </summary>
 public class VoiceCallMonitor : IHostedService
 {
-    private readonly ISubRoomManager subRoomManager;
+    private readonly IRoomFactory roomFactory;
     private readonly IEventBus eventBus;
     private readonly IMessageRouter messageRouter;
     private readonly IMuteService muteService;
@@ -31,7 +31,7 @@ public class VoiceCallMonitor : IHostedService
     /// <summary>
     /// Инициализирует новый экзепмляр <see cref="VoiceCallMonitor"/>
     /// </summary>
-    public VoiceCallMonitor(ISubRoomManager subRoomManager,
+    public VoiceCallMonitor(IRoomFactory roomFactory,
         IEventBus eventBus,
         IMessageRouter messageRouter,
         IMuteService muteService,
@@ -42,7 +42,7 @@ public class VoiceCallMonitor : IHostedService
         IIdentityService identityService,
         ILoggerProvider logger)
     {
-        this.subRoomManager = subRoomManager;
+        this.roomFactory = roomFactory;
         this.eventBus = eventBus;
         this.messageRouter = messageRouter;
         this.muteService = muteService;
@@ -98,12 +98,14 @@ public class VoiceCallMonitor : IHostedService
         var roomId = e.RoomId;
         var participantId = e.Message.Participant.Id;
 
-        var activeSubRooms = subRoomManager.GetRoomSubRooms(roomId).Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive);
+        var context = roomFactory.GetOrCreateContext(roomId);
+
+        var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive);
         foreach (var subRoom in activeSubRooms)
         {
-            if (subRoomManager.IsInSubRoom(roomId, subRoom.Id, participantId))
+            if (context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
             {
-                var isLast = !subRoomManager.LeaveSubRoom(roomId, subRoom.Id, participantId);
+                var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
 
                 await messageRouter.RouteAsync(new VoiceParticipantLeftMessage()
                 {

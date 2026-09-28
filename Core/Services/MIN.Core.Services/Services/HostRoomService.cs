@@ -14,7 +14,6 @@ using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Exceptions;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Events;
 using MIN.Core.Transport.Contracts.Interfaces;
@@ -31,7 +30,6 @@ internal sealed class HostRoomService
     private readonly ITransport transport;
     private readonly IRoomStore roomStore;
     private readonly IEventBus eventBus;
-    private readonly ISubRoomManager subRoomManager;
     private readonly IRoomConnectionRegistry registry;
     private readonly IIdentityService identityService;
     private readonly IMessageRouter messageRouter;
@@ -48,7 +46,6 @@ internal sealed class HostRoomService
         ITransport transport,
         IRoomStore roomStore,
         IEventBus eventBus,
-        ISubRoomManager subRoomManager,
         IRoomConnectionRegistry registry,
         IIdentityService identityService,
         IMessageRouter messageRouter,
@@ -60,7 +57,6 @@ internal sealed class HostRoomService
         this.transport = transport;
         this.roomStore = roomStore;
         this.eventBus = eventBus;
-        this.subRoomManager = subRoomManager;
         this.registry = registry;
         this.identityService = identityService;
         this.messageRouter = messageRouter;
@@ -359,8 +355,6 @@ internal sealed class HostRoomService
         if (isLive)
         {
             await transport.StopHostingAsync(connectionId);
-            // TODO:
-            //subRoomManager.ClearRoomSubRooms(roomId);
         }
 
         if (roomCancellationTokenSources.TryGetValue(roomId, out var cancellationTokenSource))

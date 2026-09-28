@@ -318,7 +318,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private Task ChatMessageEdited(MessageUpdatedEvent eventMessage, CancellationToken cancellationToken)
     {
-        EditMessage(eventMessage.MessageId, eventMessage.Message.Content);
+        UpdateMessage(eventMessage.MessageId, eventMessage.NewMessage);
         return Task.CompletedTask;
     }
 

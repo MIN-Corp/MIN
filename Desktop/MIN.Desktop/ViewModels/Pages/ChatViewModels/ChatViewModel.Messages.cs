@@ -135,16 +135,16 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
     }
 
-    private void EditMessage(Guid id, string newContent)
+    private void UpdateMessage(Guid id, IMessage newMessage)
     {
         var existingCard = Messages.FirstOrDefault(x => x.Message?.Id == id);
         if (existingCard == null)
         {
             return;
         }
-        if (existingCard is BaseTextContentChatMessageViewModel baseTextContentChatMessageViewModel)
+        if (existingCard is BaseUpdateableReplyableChatMessageViewModel baseUpdateable)
         {
-            baseTextContentChatMessageViewModel.MessageEdited(newContent);
+            baseUpdateable.Update(newMessage);
         }
         var replyables = Messages.OfType<BaseReplyableChatMessageViewModel>();
         foreach (var replyable in replyables)

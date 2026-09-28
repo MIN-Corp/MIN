@@ -20,5 +20,5 @@ public sealed record MessageUpdatedEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Обновлённое сообщение
     /// </summary>
-    public required IContentEditable Message { get; init; }
+    public required IMessage NewMessage { get; init; }
 }

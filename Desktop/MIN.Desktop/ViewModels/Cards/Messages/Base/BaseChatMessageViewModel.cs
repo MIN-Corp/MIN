@@ -21,7 +21,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// <summary>
     /// Сообщение
     /// </summary>
-    public IMessage? Message { get; }
+    public IMessage? Message { get; set; }
 
     /// <summary>
     /// Имя отправителя сообщения

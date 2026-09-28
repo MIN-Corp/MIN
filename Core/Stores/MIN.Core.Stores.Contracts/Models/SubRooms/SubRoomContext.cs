@@ -1,4 +1,4 @@
-﻿namespace MIN.Core.SubRooms.Contracts.Models;
+﻿namespace MIN.Core.Stores.Contracts.Models.SubRooms;
 
 /// <summary>
 /// Контекст подкомнаты в какой-то комнате

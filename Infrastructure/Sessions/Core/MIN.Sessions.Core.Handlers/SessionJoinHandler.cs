@@ -7,7 +7,6 @@ using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
@@ -19,20 +18,17 @@ namespace MIN.Sessions.Core.Handlers;
 internal sealed class SessionJoinHandler : BaseHandler
 {
     private readonly ISessionProcessManager sessionProcessManager;
-    private readonly ISubRoomManager subRoomManager;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
     private readonly IIdentityService identityService;
 
     public SessionJoinHandler(ISessionProcessManager sessionProcessManager,
-        ISubRoomManager subRoomManager,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
         IIdentityService identityService,
         ILoggerProvider logger) : base(logger)
     {
         this.sessionProcessManager = sessionProcessManager;
-        this.subRoomManager = subRoomManager;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
         this.identityService = identityService;
@@ -59,7 +55,7 @@ internal sealed class SessionJoinHandler : BaseHandler
                     return HandlerResult.Failure("Получил сообщение от неизвестного отправителя", stopPropagation: false, critical: true);
                 }
 
-                var subRoomInfo = subRoomManager.GetSubRoom(roomId, sessionJoinRequestMessage.SubRoomId);
+                var subRoomInfo = context.RoomContext.SubRooms.GetSubRoom(sessionJoinRequestMessage.SubRoomId);
 
                 if (subRoomInfo == null)
                 {

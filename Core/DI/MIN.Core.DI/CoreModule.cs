@@ -23,7 +23,6 @@ using MIN.Core.Stores.Factories;
 using MIN.Core.Stores.Registries;
 using MIN.Core.Stores.Services;
 using MIN.Core.Streaming;
-using MIN.Core.SubRooms.Services;
 using MIN.Core.Transport;
 
 namespace MIN.Core.DI;
@@ -66,8 +65,7 @@ public class CoreModule : Module
         services.RegisterAsImplementedInterfaces<ParticipantConnectionRegistry>(ServiceLifetime.Transient);
         services.RegisterAsImplementedInterfaces<MessageStore>(ServiceLifetime.Transient);
         services.RegisterAsImplementedInterfaces<ParticipantStore>(ServiceLifetime.Transient);
-
-        services.RegisterAsImplementedInterfaces<SubRoomManager>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<SubRoomManager>(ServiceLifetime.Transient);
 
         services.RegisterAsImplementedInterfaces<MessageSender>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<MessageRouter>(ServiceLifetime.Singleton);

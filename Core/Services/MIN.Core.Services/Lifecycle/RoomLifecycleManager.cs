@@ -14,7 +14,6 @@ using MIN.Core.Services.Contracts.Models;
 using MIN.Core.Services.Services;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Events;
 using MIN.Core.Transport.Contracts.Interfaces;
@@ -47,7 +46,6 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
         IMessageEncryptor encryptor,
         IRoomConnectionRegistry registry,
         IVersionProvider versionProvider,
-        ISubRoomManager subRoomManager,
         IEventBus eventBus,
         ILoggerProvider logger)
     {
@@ -61,7 +59,7 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
             messageSender, identityService, encryptor, registry, versionProvider, eventBus, logger, pingService);
 
         hostService = new HostRoomService(roomFactory, hostHandshake, transport, roomStore, eventBus,
-            subRoomManager, registry, identityService, messageRouter, logger, pingService);
+            registry, identityService, messageRouter, logger, pingService);
 
         SubscribeToEvents();
     }

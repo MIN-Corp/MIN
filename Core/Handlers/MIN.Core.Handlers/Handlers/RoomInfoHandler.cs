@@ -52,6 +52,7 @@ internal sealed class RoomInfoHandler : BaseHandler
                     room.Name = roomInfoResponse.Room.Name;
                     room.MaximumParticipants = roomInfoResponse.Room.MaximumParticipants;
                     room.CurrentParticipants = roomInfoResponse.Room.CurrentParticipants;
+                    context.RoomContext.Participants.Bind(room.CurrentParticipants);
                     room.TotalMessageCount = roomInfoResponse.Room.TotalMessageCount;
 
                     return HandlerResult.WithResponse(new RoomSyncRequestMessage()

@@ -9,7 +9,6 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Core.Stores.Contracts.Registries.Models;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Core.SubRooms.Contracts.Interfaces.Messages;
 using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
@@ -23,7 +22,6 @@ public sealed class MessageDispatcher : IMessageDispatcher
     private readonly IEnumerable<IMessageHandler> handlers;
     private readonly IMessageSender messageSender;
     private readonly IEventBus eventBus;
-    private readonly ISubRoomManager subRoomManager;
     private readonly INetworkErrorHandler errorHandler;
     private readonly ILoggerProvider logger;
 
@@ -33,14 +31,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
     public MessageDispatcher(IEnumerable<IMessageHandler> handlers,
         IMessageSender messageSender,
         IEventBus eventBus,
-        ISubRoomManager subRoomManager,
         INetworkErrorHandler errorHandler,
         ILoggerProvider logger)
     {
         this.handlers = handlers;
         this.messageSender = messageSender;
         this.eventBus = eventBus;
-        this.subRoomManager = subRoomManager;
         this.errorHandler = errorHandler;
         this.logger = logger;
     }
@@ -163,7 +159,7 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
             if (message is IWithinSubRoom withinSubRoomMessage)
             {
-                var subRoomParticipants = subRoomManager.GetParticipantIds(context.RoomContext.RoomId, withinSubRoomMessage.SubRoomId);
+                var subRoomParticipants = context.RoomContext.SubRooms.GetParticipantIds(withinSubRoomMessage.SubRoomId);
                 excludeConnectionIds.AddRange(roomParticipantsIds.Except(subRoomParticipants)
                     .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
                     .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId));

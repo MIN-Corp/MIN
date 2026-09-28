@@ -1,8 +1,9 @@
-﻿using MIN.Core.SubRooms.Contracts.Models;
+﻿namespace MIN.Core.Stores.Contracts.Models.SubRooms;
 
-namespace MIN.Core.SubRooms.Models;
-
-internal sealed class SubRoomState
+/// <summary>
+/// Состояние подкомнат с счётчиком
+/// </summary>
+public sealed class SubRoomState
 {
     /// <summary>
     /// Словарь подкомнат
