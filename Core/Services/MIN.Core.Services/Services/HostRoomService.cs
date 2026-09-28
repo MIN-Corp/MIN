@@ -208,6 +208,7 @@ internal sealed class HostRoomService
 
             var existingContext = roomFactory.GetOrCreateContext(roomId);
             existingContext.Connections.RegisterLocalParticipant(localParticipant);
+            existingRoom.TotalMessageCount = existingContext.Messages.GetMessageCount();
 
             registry.RegisterServerConnection(roomId, connectionId);
 

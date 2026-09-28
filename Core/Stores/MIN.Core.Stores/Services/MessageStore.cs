@@ -105,7 +105,7 @@ public sealed class MessageStore : IMessageStore
         return anchorId.HasValue && m.Id.CompareTo(anchorId.Value) < 0;
     }
 
-    IEnumerable<IMessage> IMessageStore.GetMessagesNewerThan(DateTime? latestLoadedTimestamp, Guid? latestLoadedMessageId, int pageSize)
+    IEnumerable<IMessage> IMessageStore.GetMessagesNewerThan(DateTime? latestLoadedTimestamp, Guid? latestLoadedMessageId, int? pageSize)
     {
         lock (messages)
         {
@@ -116,8 +116,12 @@ public sealed class MessageStore : IMessageStore
                 query = query.Where(m => IsNewerThanAnchor(m, latestLoadedTimestamp.Value, latestLoadedMessageId));
             }
 
+            if (pageSize != null)
+            {
+                query = query.Take(pageSize.Value);
+            }
+
             return query
-                .Take(pageSize)
                 .ToList();
         }
     }

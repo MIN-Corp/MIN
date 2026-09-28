@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -53,7 +54,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var isCurrentPrivate = message.RecipientId == localParticipant.Id
             || (message.SenderId == localParticipant.Id && message.RecipientId != null);
 
-        BaseChatMessageViewModel? messageCard = null;
+        BaseChatMessageViewModel? messageCard;
         switch (message)
         {
             case ChatTextMessage m:
@@ -81,6 +82,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             case IDescribable d:
                 messageCard = CreateDescribableLabel(d, message);
                 break;
+
             default:
                 return;
         }
@@ -111,6 +113,37 @@ public partial class ChatViewModel : RoutableViewModelBase
         else if (IsAtBottom)
         {
             await ScrollToBottom();
+        }
+    }
+
+    private async Task UpdateChatFlow()
+    {
+        Messages.Clear();
+        RemoveLoadMoreLabel();
+        hasScrolledHistory = false;
+        renderedMessageCount = 0;
+        maxRenderedMessages = StoreConstants.MessagesPageSize;
+        oldestLoadedTimestamp = null;
+        oldestLoadedMessageId = null;
+
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var messages = context.Messages.GetRecentHistory().ToList();
+
+        await RenderMessages(messages);
+
+        if (room.TotalMessageCount > StoreConstants.MessagesPageSize)
+        {
+            ShowLoadMoreLabel();
+        }
+        oldestLoadedTimestamp = messages[0].Timestamp;
+        oldestLoadedMessageId = messages[0].Id;
+    }
+
+    private async Task RenderMessages(List<IMessage> messages, bool appendOnTop = false)
+    {
+        foreach (var message in messages)
+        {
+            await AddMessageToChatFlow(message, appendOnTop);
         }
     }
 
@@ -196,8 +229,11 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         maxRenderedMessages += StoreConstants.MessagesPageSize;
 
-        if (olderInMemory.Count < StoreConstants.MessagesPageSize
-            && context.Messages.GetMessageCount() < room.TotalMessageCount)
+        var messagesCount = context.Messages.GetMessageCount();
+
+        if (!IsHost
+            && olderInMemory.Count < StoreConstants.MessagesPageSize
+            && messagesCount < room.TotalMessageCount)
         {
             await featureCollection.Chat.ChatRoomService.SendChatHistoryRequest(
                 roomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
@@ -219,7 +255,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
             .Any();
 
-        if (stillMoreExists || context.Messages.GetMessageCount() < room.TotalMessageCount)
+        if (stillMoreExists || messagesCount < room.TotalMessageCount)
         {
             ShowLoadMoreLabel();
         }
@@ -231,16 +267,30 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         for (var i = 0; i < Messages.Count; i++)
         {
-            if (Messages[i] != loadMoreLabel)
+            if (Messages[i] == loadMoreLabel || Messages[i].Message == null)
             {
-                oldestLoadedTimestamp = Messages[i + 1].Message?.Timestamp;
-                oldestLoadedMessageId = Messages[i + 1].Message?.Id;
-                Messages.RemoveAt(i);
-                renderedMessageCount--;
-                break;
+                continue;
             }
-        }
 
+            var trimmedMessage = Messages[i].Message!;
+            Messages.RemoveAt(i);
+            renderedMessageCount--;
+
+            oldestLoadedTimestamp = trimmedMessage.Timestamp;
+            oldestLoadedMessageId = trimmedMessage.Id;
+
+            for (var j = i; j < Messages.Count; j++)
+            {
+                if (Messages[j].Message != null)
+                {
+                    oldestLoadedTimestamp = Messages[j].Message!.Timestamp;
+                    oldestLoadedMessageId = Messages[j].Message!.Id;
+                    break;
+                }
+            }
+
+            break;
+        }
         ShowLoadMoreLabel();
     }
 

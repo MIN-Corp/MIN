@@ -152,6 +152,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         if (hasScrolledHistory)
         {
             Messages.Clear();
+            renderedMessageCount = 0;
             RemoveLoadMoreLabel();
         }
     }
