@@ -1,4 +1,5 @@
-﻿using MIN.Helpers.Contracts.Interfaces;
+﻿using MIN.Helpers.Contracts.Helpers;
+using MIN.Helpers.Contracts.Interfaces;
 
 namespace MIN.Helpers.Services;
 
@@ -26,6 +27,6 @@ public sealed class AppDataProvider : IAppDataProvider
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         VersionedDirectory = Path.Combine(appData, "MIN", $"v.{versionProvider.Version}");
-        SharedDirectory = Path.Combine(appData, "MIN", "Shared");
+        SharedDirectory = SharedDirectoryProvider.GetSharedDirectory();
     }
 }

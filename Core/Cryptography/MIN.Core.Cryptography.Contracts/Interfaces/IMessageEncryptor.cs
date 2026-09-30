@@ -1,7 +1,7 @@
 ﻿namespace MIN.Core.Cryptography.Contracts.Interfaces;
 
 /// <summary>
-/// Помощник в шифровании
+/// Помощник в шифровании сообщений
 /// </summary>
 public interface IMessageEncryptor
 {
