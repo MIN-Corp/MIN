@@ -1,0 +1,77 @@
+﻿using MIN.Common.Core.Contracts.Interfaces;
+using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Events.Events;
+using MIN.Core.Handlers.Contracts.Base;
+using MIN.Core.Handlers.Contracts.Models;
+using MIN.Core.Messaging.Contracts;
+using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
+using MIN.Helpers.Contracts.Interfaces;
+
+namespace MIN.Core.Handlers.Handlers;
+
+internal sealed class MessageUpdateHandler : BaseHandler
+{
+    /// <summary>
+    /// Инициализирует новый экземлпяр <see cref="MessageUpdateHandler"/>
+    /// </summary>
+    public MessageUpdateHandler(ILoggerProvider logger) : base(logger) { }
+
+    public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.MessageUpdate];
+
+    protected override Task<HandlerResult> HandleAsync(IMessage message, MessageContext context)
+    {
+        var messageUpdate = (MessageUpdateMessage)message;
+
+        var existingMessage = context.RoomContext.Messages.GetMessageById(messageUpdate.MessageIdToEdit);
+        if (existingMessage == null)
+        {
+            LogWarning("Поступило сообщение на редактирование, но его не нашлось в памяти");
+
+            if (context.Role == Role.Host)
+            {
+                return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели отредактировать, не найдено"));
+            }
+
+            return Task.FromResult(HandlerResult.Success());
+        }
+
+        if (context.Role == Role.Host)
+        {
+            if (existingMessage.SenderId != message.SenderId)
+            {
+                return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели отредактировать, было отправлено не вами"));
+            }
+
+            if (existingMessage is not IUpdateableMessage)
+            {
+                return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели отредактировать, не может быть отредактировано"));
+            }
+        }
+
+        if (existingMessage is IUpdateableMessage updateable)
+        {
+            updateable.Update(messageUpdate.NewMessage);
+
+            context.RoomContext.Messages.UpdateMessage(messageUpdate.MessageIdToEdit, existingMessage);
+
+            var replyables = context.RoomContext.Messages.GetHistory().OfType<IReplyable>();
+            foreach (var replyable in replyables)
+            {
+                if (replyable.ReplyToMessageId == messageUpdate.MessageIdToEdit)
+                {
+                    replyable.ReplyToMessageDescription = (updateable as IDescribable)?.GetDescription();
+                }
+            }
+
+            return Task.FromResult(HandlerResult.WithEvent(new MessageUpdatedEvent()
+            {
+                MessageId = messageUpdate.MessageIdToEdit,
+                NewMessage = messageUpdate.NewMessage,
+                RoomId = context.RoomContext.RoomId
+            }));
+        }
+
+        return Task.FromResult(HandlerResult.Success());
+    }
+}

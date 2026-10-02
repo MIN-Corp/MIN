@@ -130,8 +130,27 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
         {
             ParticipantStatus = isSelf ? OnlineStatus.Online : eventMessage.Status;
             IsOffline = ParticipantStatus == OnlineStatus.Offline;
+            if (eventMessage.Status == OnlineStatus.Offline)
+            {
+                ParticipantLastSeenAt = DateTime.Now;
+            }
         }
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Пометить как оффлайн (себя не помечает)
+    /// </summary>
+    public void MarkAsOffline()
+    {
+        if (IsOffline)
+        {
+            return;
+        }
+
+        ParticipantStatus = isSelf ? OnlineStatus.Online : OnlineStatus.Offline;
+        IsOffline = ParticipantStatus == OnlineStatus.Offline;
+        ParticipantLastSeenAt = DateTime.Now;
     }
 
     /// <summary>

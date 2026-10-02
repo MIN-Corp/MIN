@@ -26,7 +26,18 @@ public sealed class HandshakeAckMessage : BaseMessage
     public ParticipantInfo Participant { get; set; } = null!;
 
     /// <summary>
-    /// Публичный ключ сервера/хоста.
+    /// Хеш публичного ключа хоста (в случае его несовпадения)
     /// </summary>
-    public byte[] PublicKey { get; set; } = null!;
+    /// <remarks>
+    /// null - если уверены, что это первая встреча
+    /// </remarks>
+    public byte[]? PublicKeyFingerprint { get; set; } = null!;
+
+    /// <summary>
+    /// Публичный ключ хоста
+    /// </summary>
+    /// <remarks>
+    /// null - если уже была встреча и нужно проверить сохранившееся
+    /// </remarks>
+    public byte[]? PublicKey { get; set; } = null!;
 }

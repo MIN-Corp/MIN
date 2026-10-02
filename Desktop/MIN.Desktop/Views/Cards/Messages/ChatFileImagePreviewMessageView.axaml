@@ -39,6 +39,7 @@
                 </MenuItem>
 
                 <MenuItem Header="Редактировать"
+                    IsEnabled="{Binding IsAvaibleForNetwork}" 
                     Command="{Binding ToggleEditingMessageCommand}">
                     <MenuItem.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
@@ -201,7 +202,7 @@
                         Classes="info"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
-                        IsVisible="{Binding IsEdited}"
+                        IsVisible="{Binding IsUpdated}"
                         Text="(изменено)" />
 
                     <SelectableTextBlock

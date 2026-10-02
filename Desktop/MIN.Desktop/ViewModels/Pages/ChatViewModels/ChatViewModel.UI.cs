@@ -7,8 +7,6 @@ using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
-using MIN.Core.Messaging.Contracts.Interfaces;
-using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.ViewModels.Base;
@@ -61,38 +59,12 @@ public partial class ChatViewModel : RoutableViewModelBase
     [ObservableProperty]
     public partial int MissedMessagesCount { get; set; }
 
-
     /// <summary>
     /// Показать приложенные файлаы
     /// </summary>
     public bool SomeFilesAttached => AttachedFiles.Count > 0;
 
     #region Update
-
-    private async Task UpdateChatFlow()
-    {
-        Messages.Clear();
-
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
-        var messages = context.Messages.GetHistory().ToList();
-
-        await RenderMessages(messages);
-
-        if (room.TotalMessageCount > StoreConstants.MessagesPageSize)
-        {
-            ShowLoadMoreLabel();
-            oldestLoadedTimestamp = messages[0].Timestamp;
-            oldestLoadedMessageId = messages[0].Id;
-        }
-    }
-
-    private async Task RenderMessages(List<IMessage> messages, bool appendOnTop = false)
-    {
-        foreach (var message in messages)
-        {
-            await AddMessageToChatFlow(message, appendOnTop);
-        }
-    }
 
     private void InitializeObservableCollections()
     {

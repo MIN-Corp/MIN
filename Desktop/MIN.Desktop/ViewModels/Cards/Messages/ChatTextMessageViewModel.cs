@@ -34,7 +34,8 @@ public partial class ChatTextMessageViewModel : BaseTextContentChatMessageViewMo
         bool isLocal,
         bool isHostMessage,
         bool removeHeaders,
-        IClipboard? clipboard)
+        IClipboard? clipboard,
+       bool isAvaibleForNetwork)
         : base(chatMessage,
             chatMessage,
             chatMessage,
@@ -43,7 +44,8 @@ public partial class ChatTextMessageViewModel : BaseTextContentChatMessageViewMo
             timePadding,
             isLocal,
             isHostMessage,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         ChatMessage = chatMessage;
         this.clipboard = clipboard;

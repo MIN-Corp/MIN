@@ -105,13 +105,18 @@
                                 <TextBlock VerticalAlignment="Center" Text="Связь: "/>
 
                                 <TextBlock VerticalAlignment="Center"
+                                        IsVisible="{Binding IsOnline}"
                                         Foreground="{Binding Ping,
                                             Converter={converters:PingToBrushConverter}}"
                                         Text="{Binding Ping}" />
                                 <TextBlock VerticalAlignment="Center"
+                                        IsVisible="{Binding IsOnline}"
                                         Foreground="{Binding Ping,
                                             Converter={converters:PingToBrushConverter}}"
                                         Text=" мс" />
+                                <TextBlock VerticalAlignment="Center"
+                                        IsVisible="{Binding !IsOnline}"
+                                        Text=" оффлайн" />
                             </TextBlock>
                              
                             <ItemsControl ItemsSource="{Binding ConnectionAddresses}">

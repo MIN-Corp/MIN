@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.Xaml.Interactivity;
 
 namespace MIN.Desktop.Infrastructure.Behaviors.ScrollViewers;
@@ -9,6 +10,8 @@ namespace MIN.Desktop.Infrastructure.Behaviors.ScrollViewers;
 /// </summary>
 public class AutoScrollToBottomBehavior : StyledElementBehavior<ScrollViewer>
 {
+    private const int ScrollMaxAttempts = 3;
+
     /// <summary>
     /// Авто скролл вверх
     /// </summary>
@@ -63,7 +66,26 @@ public class AutoScrollToBottomBehavior : StyledElementBehavior<ScrollViewer>
     {
         if (e.NewValue is true)
         {
+            ScrollToEndWhenSettled(sv);
+        }
+    }
+
+    private static async void ScrollToEndWhenSettled(ScrollViewer sv)
+    {
+        var dispatcher = Dispatcher.UIThread;
+
+        for (var attempt = 0; attempt < ScrollMaxAttempts; attempt++)
+        {
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+
             sv.ScrollToEnd();
+
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+
+            if (sv.Offset.Y + sv.Viewport.Height >= sv.Extent.Height - 0.5)
+            {
+                break;
+            }
         }
     }
 }

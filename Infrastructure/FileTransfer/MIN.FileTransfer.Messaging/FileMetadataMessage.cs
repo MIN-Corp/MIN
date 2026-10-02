@@ -65,11 +65,8 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
 
     string IDescribable.GetDescription() => $"{Sender.Name}: {FileName}";
 
-    void IMessageWithSecuredFields.Sanitize()
-    {
-        AsDownloaded = false;
-        FilePath = null;
-    }
+    IMessage IMessageWithSecuredFields.Sanitize()
+        => new FileMetadataMessage(this) { FilePath = null };
 
     /// <summary>
     /// Инициализирует новый экзмемпляр <see cref="FileMetadataMessage"/>
@@ -83,8 +80,8 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     {
         Id = metadata.Id;
         Content = metadata.Content;
-        IsEdited = metadata.IsEdited;
-        EditedAt = metadata.EditedAt;
+        IsUpdated = metadata.IsUpdated;
+        UpdatedAt = metadata.UpdatedAt;
         SenderId = metadata.SenderId;
         Sender = metadata.Sender;
         FileSize = metadata.FileSize;
@@ -94,6 +91,7 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
         ReplyToMessageId = metadata.ReplyToMessageId;
         ReplyToMessageDescription = metadata.ReplyToMessageDescription;
         TransferId = metadata.TransferId;
+        Timestamp = metadata.Timestamp;
         AsDownloaded = metadata.AsDownloaded;
     }
 }

@@ -2,7 +2,6 @@
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Lifecycle;
 using MIN.Core.Stores.Contracts.Interfaces;
-using MIN.Core.Stores.Contracts.Registries.Interfaces;
 
 namespace MIN.Core.DI.FeatureCollection;
 
@@ -17,8 +16,8 @@ public interface ICoreFeatureCollection
     /// <inheritdoc cref="IRoomFactory"/>
     IRoomFactory RoomFactory { get; }
 
-    /// <inheritdoc cref="IRoomConnectionRegistry"/>
-    IRoomConnectionRegistry Registry { get; }
+    /// <inheritdoc cref="IRoomStore"/>
+    IRoomStore RoomStore { get; }
 
     /// <inheritdoc cref="IEventBus"/>
     IEventBus EventBus { get; }

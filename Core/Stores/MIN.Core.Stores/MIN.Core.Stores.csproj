@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Helpers\MIN.Helpers.Contracts\MIN.Helpers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Cryptography\MIN.Core.Cryptography.Contracts\MIN.Core.Cryptography.Contracts.csproj" />
+    <ProjectReference Include="..\..\Serialization\MIN.Core.Serialization.Contracts\MIN.Core.Serialization.Contracts.csproj" />
     <ProjectReference Include="..\MIN.Core.Stores.Contracts\MIN.Core.Stores.Contracts.csproj" />
   </ItemGroup>
 

@@ -8,7 +8,7 @@ namespace MIN.Core.Stores.Registries;
 /// <inheritdoc cref="IRoomConnectionRegistry"/>
 public class RoomConnectionRegistry : IRoomConnectionRegistry
 {
-    private readonly ConcurrentDictionary<Guid, Guid> hostedRooms = new();             // RoomId -> ServerConnectionId
+    private readonly ConcurrentDictionary<Guid, Guid?> hostedRooms = new();            // RoomId -> ServerConnectionId
     private readonly ConcurrentDictionary<Guid, Guid> roomsByServerConnection = new(); // ServerConnectionId -> RoomId
     private readonly ConcurrentDictionary<Guid, Guid> connectedRooms = new();          // RoomId -> ConnectionId
     private readonly ConcurrentDictionary<Guid, Guid> roomsByClientConnection = new(); // ConnectionId -> RoomId
@@ -31,24 +31,53 @@ public class RoomConnectionRegistry : IRoomConnectionRegistry
     {
         if (hostedRooms.TryRemove(roomId, out var serverConnectionId))
         {
-            roomsByServerConnection.TryRemove(serverConnectionId, out _);
+            roomsByServerConnection.TryRemove(serverConnectionId ?? Guid.Empty, out _);
         }
     }
 
+    void IRoomConnectionRegistry.DetachServerConnection(Guid roomId)
+    {
+        if (hostedRooms.TryGetValue(roomId, out var serverConnectionId) && serverConnectionId.HasValue)
+        {
+            roomsByServerConnection.TryRemove(serverConnectionId.Value, out _);
+        }
+        hostedRooms[roomId] = null;
+    }
+
     Guid IRoomConnectionRegistry.GetServerConnectionIdByRoomId(Guid roomId)
-        => hostedRooms.TryGetValue(roomId, out var id) ? id : throw new RoomNotRegistredException(roomId);
+    {
+        hostedRooms.TryGetValue(roomId, out var currentConnectionId);
+
+        if (currentConnectionId.HasValue)
+        {
+            return currentConnectionId.Value;
+        }
+
+        throw new RoomNotRegistredException(roomId);
+    }
 
     Guid IRoomConnectionRegistry.GetRoomIdByServerConnectionId(Guid serverConnectionId)
         => roomsByServerConnection.TryGetValue(serverConnectionId, out var roomId)
             ? roomId : throw new ConnectionNotRegistredException(serverConnectionId);
 
     bool IRoomConnectionRegistry.TryGetServerConnectionIdByRoomId(Guid? roomId, out Guid connectionId)
-        => hostedRooms.TryGetValue(roomId ?? Guid.Empty, out connectionId);
+    {
+        hostedRooms.TryGetValue(roomId ?? Guid.Empty, out var currentConnectionId);
+
+        if (currentConnectionId.HasValue)
+        {
+            connectionId = currentConnectionId.Value;
+            return true;
+        }
+
+        connectionId = Guid.Empty;
+        return false;
+    }
 
     bool IRoomConnectionRegistry.TryGetRoomIdByServerConnectionId(Guid? serverConnectionId, out Guid roomId)
         => roomsByServerConnection.TryGetValue(serverConnectionId ?? Guid.Empty, out roomId);
 
-    int IRoomConnectionRegistry.GetServerConnectionCount() => hostedRooms.Count;
+    int IRoomConnectionRegistry.GetServerConnectionCount() => hostedRooms.Values.Count(v => v.HasValue);
 
     void IRoomConnectionRegistry.RegisterClientConnection(Guid roomId, Guid connectionId)
     {

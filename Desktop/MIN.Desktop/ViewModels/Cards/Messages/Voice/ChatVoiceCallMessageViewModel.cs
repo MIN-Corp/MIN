@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Events.Contracts.Interfaces;
+using MIN.Desktop.ViewModels.Cards.Messages.Base;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
 
@@ -16,7 +17,7 @@ namespace MIN.Desktop.ViewModels.Cards.Messages.Voice;
 /// <summary>
 /// Сообщение звонка участника
 /// </summary>
-public partial class ChatVoiceCallMessageViewModel : BaseChatMessageViewModel
+public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageViewModel
 {
     private readonly VoiceCallStartedMessage voiceCallStartedMessage;
     private readonly DispatcherTimer callTimer = new(TimeSpan.FromSeconds(1), DispatcherPriority.Background, Dispatcher.UIThread);
@@ -69,14 +70,17 @@ public partial class ChatVoiceCallMessageViewModel : BaseChatMessageViewModel
         ParticipantInfo localParticipant,
         Thickness timePadding,
         bool isHostMessage,
-        bool removeHeaders)
+        bool removeHeaders,
+        bool isAvaibleForNetwork)
         : base(voiceCallStartedMessage,
+            voiceCallStartedMessage,
             null,
             voiceCallStartedMessage.Sender.Name,
             timePadding,
             localParticipant.Id == voiceCallStartedMessage.SenderId,
             isHostMessage,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         AsEnded = voiceCallStartedMessage.IsEnded;
         AsJoined = localParticipant.Id == voiceCallStartedMessage.SenderId && !AsEnded;

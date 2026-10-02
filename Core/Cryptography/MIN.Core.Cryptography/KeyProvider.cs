@@ -1,18 +1,21 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
-using MIN.Core.Cryptography.Contracts.Interfaces;
 using MIN.Core.Cryptography.Contracts.Models;
+using MIN.Helpers.Contracts.Interfaces;
 
 namespace MIN.Core.Cryptography;
 
-/// <inheritdoc cref="IKeyProvider"/>
-public sealed class KeyProvider : IKeyProvider, IDisposable
+/// <summary>
+/// Помошник с ключами
+/// </summary>
+public sealed class KeyProvider : IDisposable
 {
     private const string ProtectorKey = "MIN.Core.Cryptography.KeyProtection";
 
-    private readonly IKeyStorage storage;
+    private readonly FileSystemKeyStorage storage;
     private readonly IDataProtector protector;
+    private readonly ILoggerProvider logger;
     private KeyPair? cachedKeys;
     private readonly SemaphoreSlim cacheLock = new(1, 1);
     private bool disposed;
@@ -20,21 +23,26 @@ public sealed class KeyProvider : IKeyProvider, IDisposable
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="KeyProvider"/>
     /// </summary>
-    public KeyProvider(IKeyStorage storage, IDataProtectionProvider dataProtection)
+    public KeyProvider(IDataProtectionProvider dataProtection,
+       IAppDataProvider appDataProvider,
+       ILoggerProvider logger)
     {
-        this.storage = storage;
+        storage = new FileSystemKeyStorage(appDataProvider, logger);
         protector = dataProtection.CreateProtector(ProtectorKey);
+        this.logger = logger;
     }
 
-    /// <inheritdoc />
-    public async Task<KeyPair> GetLocalKeysAsync()
+    /// <summary>
+    /// Получить или сгенерировать локальную пару ключей
+    /// </summary>
+    public async Task<KeyPair> GetLocalKeysAsync(CancellationToken cancellationToken = default)
     {
         if (cachedKeys != null)
         {
             return cachedKeys;
         }
 
-        await cacheLock.WaitAsync();
+        await cacheLock.WaitAsync(cancellationToken);
         try
         {
             if (cachedKeys != null)
@@ -42,12 +50,12 @@ public sealed class KeyProvider : IKeyProvider, IDisposable
                 return cachedKeys;
             }
 
-            cachedKeys = await storage.LoadLocalKeyPairAsync();
+            cachedKeys = await storage.LoadLocalKeyPairAsync(cancellationToken);
 
             if (cachedKeys == null)
             {
                 cachedKeys = GenerateNewKeys();
-                await storage.SaveLocalKeyPairAsync(cachedKeys);
+                await storage.SaveLocalKeyPairAsync(cachedKeys, cancellationToken);
             }
 
             return cachedKeys;
@@ -58,9 +66,9 @@ public sealed class KeyProvider : IKeyProvider, IDisposable
         }
     }
 
-    private async Task<ECDiffieHellman> GetEcdhPrivateKeyAsync()
+    private async Task<ECDiffieHellman> GetEcdhPrivateKeyAsync(CancellationToken cancellationToken = default)
     {
-        var keys = await GetLocalKeysAsync();
+        var keys = await GetLocalKeysAsync(cancellationToken);
         var decryptedPem = Unprotect(keys.EncryptedEcdhPrivateKeyPem);
         var ecdh = ECDiffieHellman.Create();
         ecdh.ImportFromPem(decryptedPem);
@@ -68,9 +76,12 @@ public sealed class KeyProvider : IKeyProvider, IDisposable
         return ecdh;
     }
 
-    async Task<byte[]> IKeyProvider.ComputeSharedSecretAsync(byte[] partnerPublicKeyBytes)
+    /// <summary>
+    /// Вычислить общий секрет с собеседником по его публичному ECDH-ключу
+    /// </summary>
+    public async Task<byte[]> ComputeSharedSecretAsync(byte[] partnerPublicKeyBytes, CancellationToken cancellationToken = default)
     {
-        using var myEcdh = await GetEcdhPrivateKeyAsync();
+        using var myEcdh = await GetEcdhPrivateKeyAsync(cancellationToken);
 
         using var partnerEcdh = ECDiffieHellman.Create();
         partnerEcdh.ImportSubjectPublicKeyInfo(partnerPublicKeyBytes, out _);
@@ -91,10 +102,55 @@ public sealed class KeyProvider : IKeyProvider, IDisposable
         return aesKey;
     }
 
-    async Task IKeyProvider.SavePartnerPublicKeyAsync(Guid partnerId, byte[] partnerPublicKeyBytes)
+    /// <summary>
+    /// Вычислить общий секрет из сохранённого публичного ключа собеседника
+    /// </summary>
+    /// <returns>Общий секрет или null, если ключ не сохранён или повреждён</returns>
+    public async Task<byte[]?> TryComputeStoredSharedSecretAsync(Guid partnerId, CancellationToken cancellationToken = default)
+    {
+        var storedKey = await storage.LoadPartnerPublicKeyAsync(partnerId, cancellationToken);
+        if (storedKey == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await ComputeSharedSecretAsync(storedKey, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.Log($"Сохранённый ключ партнёра {partnerId} повреждён: {ex.Message}",
+                Helpers.Contracts.Models.Enums.LogLevel.Warning);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Вычислить отпечаток публичного ключа (SHA-256 от SPKI-байтов, детерминирован между сессиями)
+    /// </summary>
+    public static byte[] ComputeKeyFingerprint(byte[] publicKeyBytes)
+    {
+        ArgumentNullException.ThrowIfNull(publicKeyBytes);
+
+        if (publicKeyBytes.Length == 0)
+        {
+            throw new ArgumentException("Публичный ключ пуст", nameof(publicKeyBytes));
+        }
+
+        return SHA256.HashData(publicKeyBytes);
+    }
+
+    /// <summary>
+    /// Сохранить публичный ключ собеседника
+    /// </summary>
+    public async Task SavePartnerPublicKeyAsync(Guid partnerId, byte[] partnerPublicKeyBytes)
         => await storage.SavePartnerPublicKeyAsync(partnerId, partnerPublicKeyBytes);
 
-    async Task<byte[]?> IKeyProvider.GetPartnerPublicKeyAsync(Guid partnerId)
+    /// <summary>
+    /// Получить сохранённый публичный ключ собеседника
+    /// </summary>
+    public async Task<byte[]?> GetPartnerPublicKeyAsync(Guid partnerId, CancellationToken cancellationToken = default)
         => await storage.LoadPartnerPublicKeyAsync(partnerId);
 
     private KeyPair GenerateNewKeys()
@@ -133,6 +189,7 @@ public sealed class KeyProvider : IKeyProvider, IDisposable
         }
 
         cacheLock.Dispose();
+        storage.Dispose();
         disposed = true;
     }
 }

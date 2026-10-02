@@ -15,5 +15,5 @@ public interface ISettingsStorage
     /// <summary>
     /// Сохранить настройки
     /// </summary>
-    void Save(Settings settings);
+    Task Save(Settings settings);
 }

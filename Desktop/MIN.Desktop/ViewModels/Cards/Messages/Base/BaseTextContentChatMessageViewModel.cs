@@ -12,19 +12,13 @@ namespace MIN.Desktop.ViewModels.Cards.Messages;
 /// <summary>
 /// Базовая view модель текстового сообщения, способное отредактироваться
 /// </summary>
-public abstract partial class BaseTextContentChatMessageViewModel : BaseReplyableChatMessageViewModel
+public abstract partial class BaseTextContentChatMessageViewModel : BaseUpdateableReplyableChatMessageViewModel
 {
     /// <summary>
     /// Идёт редактирование
     /// </summary>
     [ObservableProperty]
     public partial bool IsEditing { get; set; }
-
-    /// <summary>
-    /// Сообщение уже отредактировано
-    /// </summary>
-    [ObservableProperty]
-    public partial bool IsEdited { get; set; }
 
     /// <summary>
     /// Новый контент
@@ -49,7 +43,7 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseReplyabl
     public BaseTextContentChatMessageViewModel() { }
 
     /// <summary>
-    /// Инициализирует новый экземпляр <see cref="BaseChatMessageViewModel"/>
+    /// Инициализирует новый экземпляр <see cref="BaseTextContentChatMessageViewModel"/>
     /// </summary>
     public BaseTextContentChatMessageViewModel(IMessage message,
         IContentEditable contentEditable,
@@ -59,28 +53,31 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseReplyabl
         Thickness timePadding,
         bool isLocal,
         bool isHost,
-        bool removeHeaders)
+        bool removeHeaders,
+        bool isAvaibleForNetwork)
         : base(message,
+            contentEditable,
             replyable,
             dialogService,
             name,
             timePadding,
             isLocal,
             isHost,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         Content = contentEditable.Content;
-        IsEdited = contentEditable.IsEdited;
     }
 
-    /// <summary>
-    /// Пришла новая версия сообщения
-    /// </summary>
-    public void MessageEdited(string newContent)
+    /// <inheritdoc />
+    public override void Update(IMessage newMessage)
     {
-        Content = newContent;
-        IsEdited = true;
-        IsEditing = false;
+        base.Update(newMessage);
+        if (newMessage is IContentEditable newContent)
+        {
+            Content = newContent.Content;
+            IsEditing = false;
+        }
     }
 
     /// <summary>

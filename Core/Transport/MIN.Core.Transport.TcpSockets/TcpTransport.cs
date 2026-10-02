@@ -39,12 +39,13 @@ public class TcpTransport : ITransport, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, CancellationToken cancellationToken)
+    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         var connectionId = serverConnectionId != null
             ? serverConnectionId.Value
             : Guid.NewGuid();
-        var port = PortProvider.AllocatePort();
+
+        var port = PortProvider.AllocatePort(prefferedPort, sequentialAttempts);
         var server = new TcpSocketServer(logger, port);
 
         server.OnMessageReceived += (TcpSocketServer server, (TcpSocketConnection conn, byte[] msg) eventArgs) =>

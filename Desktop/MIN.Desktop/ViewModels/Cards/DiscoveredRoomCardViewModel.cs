@@ -69,6 +69,11 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
     public Action<AddressOrigin>? Clicked { get; set; }
 
     /// <summary>
+    /// Событие по удалении комнаты
+    /// </summary>
+    public Action? RoomDestroyed { get; set; }
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="DiscoveredRoomCardViewModel"/>
     /// </summary>
     public DiscoveredRoomCardViewModel(IEventBus eventBus,
@@ -113,7 +118,8 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         roomScope.Subscribe<ParticipantJoinedEvent>(OnParticipantJoined);
         roomScope.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdatedMessageEvent);
-        roomScope.Subscribe<RoomClosedEvent>(OnRoomLeft);
+        roomScope.Subscribe<RoomWentOfflineEvent>(RoomWentOffline);
+        roomScope.Subscribe<RoomDestroyedEvent>(OnRoomDestroyed);
         roomScope.Subscribe<RoomJoinedEvent>(OnRoomJoined);
         errorToken = eventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured);
     }
@@ -131,6 +137,11 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantJoined(ParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (eventMessage.IsRejoin)
+        {
+            return Task.CompletedTask;
+        }
+
         room.ParticipantCount++;
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
@@ -138,22 +149,26 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantLeft(ParticipantLeftEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (!eventMessage.Message.IsLeftRoom)
+        {
+            return Task.CompletedTask;
+        }
+
         room.ParticipantCount--;
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
     }
 
-    private Task OnRoomLeft(RoomClosedEvent eventMessage, CancellationToken cancellationToken)
+    private Task RoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (asHost)
-        {
-            Dispose();
-            return Task.CompletedTask;
-        }
-
-        joined = false;
-        room.ParticipantCount--;
+        joined = true;
         ManageConnectButtonAccessability();
+        return Task.CompletedTask;
+    }
+
+    private Task OnRoomDestroyed(RoomDestroyedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        RoomDestroyed?.Invoke();
         return Task.CompletedTask;
     }
 

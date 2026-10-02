@@ -1,4 +1,5 @@
-﻿using MIN.Core.Events.Events;
+﻿using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
@@ -20,10 +21,22 @@ internal sealed class ParticipantLeftHandler : BaseHandler
         var participantLeftMessage = (ParticipantLeftMessage)message;
 
         var leavingParticipantId = participantLeftMessage.Participant.Id;
-        context.RoomContext.Messages.AddMessage(message);
-        context.RoomContext.Participants.RemoveParticipant(leavingParticipantId);
 
-        LogInfo($"Участник {participantLeftMessage.Participant.Name} ({participantLeftMessage.Participant.Id}) вышел из комнаты");
+        LogInfo($"Участник {participantLeftMessage.Participant.Name} ({leavingParticipantId}) вышел из комнаты");
+
+        if (participantLeftMessage.IsLeftRoom)
+        {
+            context.RoomContext.Messages.AddMessage(message);
+            context.RoomContext.Participants.RemoveParticipant(leavingParticipantId);
+        }
+        else
+        {
+            if (context.RoomContext.Participants.TryGetParticipantById(leavingParticipantId, out var participant))
+            {
+                participant!.CurrentStatus = OnlineStatus.Offline;
+                participant.LastSeenOnline = DateTime.Now;
+            }
+        }
 
         return Task.FromResult(HandlerResult.WithEvent(new ParticipantLeftEvent()
         {

@@ -10,15 +10,29 @@ public static class PortProvider
 {
     private readonly static int minPort = 49152;
     private readonly static int maxPort = 65535;
+    private readonly static int randomAttempts = 50;
     private readonly static HashSet<int> reserved = [];
     private readonly static Random random = new();
 
     /// <summary>
     /// Получить свободный порт
     /// </summary>
-    public static int AllocatePort()
+    public static int AllocatePort(ushort? preferredPort = 0, int? sequentialAttempts = 15)
     {
-        for (var i = 0; i < 50; i++)
+        if (preferredPort > 1024 && preferredPort < ushort.MaxValue && preferredPort != null && sequentialAttempts != null)
+        {
+            for (var i = 0; i < sequentialAttempts; i++)
+            {
+                var port = preferredPort.Value + i;
+                if (!reserved.Contains(port) && IsPortFree(port))
+                {
+                    reserved.Add(port);
+                    return port;
+                }
+            }
+        }
+
+        for (var i = 0; i < randomAttempts; i++)
         {
             var port = random.Next(minPort, maxPort + 1);
             if (!reserved.Contains(port) && IsPortFree(port))
@@ -27,6 +41,7 @@ public static class PortProvider
                 return port;
             }
         }
+
         throw new InvalidOperationException("No free port in dynamic range");
     }
 
