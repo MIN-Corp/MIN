@@ -18,10 +18,12 @@ using MIN.Core.Serialization.Json;
 using MIN.Core.Services.Lifecycle;
 using MIN.Core.Services.Messaging;
 using MIN.Core.Services.Moderation;
+using MIN.Core.Services.Persistence;
 using MIN.Core.Services.Pipeline;
 using MIN.Core.Stores.Factories;
 using MIN.Core.Stores.Registries;
 using MIN.Core.Stores.Services;
+using MIN.Core.Stores.Services.Persistence;
 using MIN.Core.Streaming;
 using MIN.Core.Transport;
 using MIN.Helpers.Contracts.Helpers;
@@ -62,6 +64,10 @@ public class CoreModule : Module
 
         services.RegisterAsImplementedInterfaces<RoomStore>(ServiceLifetime.Singleton);
 
+        services.RegisterAsImplementedInterfaces<RoomFileStore>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<RoomSnapshotMapper>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<RoomPersistenceService>(ServiceLifetime.Singleton);
+
         services.RegisterAsImplementedInterfaces<NetworkErrorHandler>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<RoomConnectionRegistry>(ServiceLifetime.Singleton);
 
@@ -88,6 +94,7 @@ public class CoreModule : Module
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessage, ICoreMessagingAnchor>(ServiceLifetime.Singleton);
 
         services.RegisterMultipleInterfacesAssignableTo<IHostedService, InboundMessagePipeline>(ServiceLifetime.Singleton);
+        services.RegisterMultipleInterfacesAssignableTo<IHostedService, RoomPersistenceService>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<CoreFeatureCollection>(ServiceLifetime.Singleton);
     }

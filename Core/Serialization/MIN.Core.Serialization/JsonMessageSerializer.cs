@@ -17,6 +17,8 @@ public sealed class JsonMessageSerializer : IMessageSerializer
     private readonly ConcurrentDictionary<MessageTypeTag, Func<byte[], IMessage>> deserializers = new();
     private readonly JsonSerializerOptions serializerOptions;
 
+    JsonSerializerOptions IMessageSerializer.SerializerOptions => serializerOptions;
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="JsonMessageSerializer"/>
     /// </summary>

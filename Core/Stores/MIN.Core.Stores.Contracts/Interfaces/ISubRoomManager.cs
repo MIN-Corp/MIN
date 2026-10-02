@@ -1,5 +1,6 @@
 ﻿using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Enums;
+using MIN.Core.Stores.Contracts.Models.Persistence;
 using MIN.Core.Stores.Contracts.Models.SubRooms;
 
 namespace MIN.Core.Stores.Contracts.Interfaces;
@@ -70,4 +71,14 @@ public interface ISubRoomManager
     /// Очистить все подкомнаты для комнаты
     /// </summary>
     void ClearRoomSubRooms();
+
+    /// <summary>
+    /// Создать снимок состояния
+    /// </summary>
+    SubRoomsSnapshot CreateSnapshot();
+
+    /// <summary>
+    /// Востановить состояние со снимка
+    /// </summary>
+    void RestoreState(SubRoomsSnapshot subRoomsSnapshot);
 }

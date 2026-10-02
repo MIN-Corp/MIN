@@ -8,7 +8,7 @@ public sealed class SubRoomState
     /// <summary>
     /// Словарь подкомнат
     /// </summary>
-    public readonly Dictionary<int, SubRoomInfo> SubRooms = [];
+    public Dictionary<int, SubRoomInfo> SubRooms = [];
 
     /// <summary>
     /// Идентификатор следующей добавленной подкомнаты

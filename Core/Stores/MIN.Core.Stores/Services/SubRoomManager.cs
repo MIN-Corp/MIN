@@ -1,6 +1,7 @@
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Enums;
 using MIN.Core.Stores.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Models.Persistence;
 using MIN.Core.Stores.Contracts.Models.SubRooms;
 
 namespace MIN.Core.Stores.Services;
@@ -8,7 +9,7 @@ namespace MIN.Core.Stores.Services;
 /// <inheritdoc cref="ISubRoomManager"/>
 public class SubRoomManager : ISubRoomManager
 {
-    private readonly SubRoomState state = new();
+    private SubRoomState state = new();
 
     SubRoomInfo ISubRoomManager.HostSubRoom(ParticipantInfo creator, SubRoomPurpose purpose, int? maximum)
     {
@@ -187,6 +188,29 @@ public class SubRoomManager : ISubRoomManager
         lock (state)
         {
             state.SubRooms.Clear();
+        }
+    }
+
+    SubRoomsSnapshot ISubRoomManager.CreateSnapshot()
+    {
+        lock (state)
+        {
+            return new SubRoomsSnapshot
+            {
+                SubRooms = state.SubRooms.Values
+                    .Select(sr => sr with { Participants = sr.Participants.ToList() })
+                    .ToList(),
+                NextId = state.NextId,
+            };
+        }
+    }
+
+    void ISubRoomManager.RestoreState(SubRoomsSnapshot subRoomsSnapshot)
+    {
+        lock (state)
+        {
+            state.SubRooms = subRoomsSnapshot.SubRooms.ToDictionary(x => x.Id);
+            state.NextId = subRoomsSnapshot.NextId;
         }
     }
 }

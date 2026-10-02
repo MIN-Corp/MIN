@@ -70,7 +70,7 @@ public sealed class MessageStore : IMessageStore
                 resultMessages = messages.Skip(page.Value * pageSize.Value).Take((int)pageSize);
             }
 
-            return resultMessages;
+            return resultMessages.ToList();
         }
     }
 
