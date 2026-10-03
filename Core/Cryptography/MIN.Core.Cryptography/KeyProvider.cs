@@ -2,6 +2,7 @@
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using MIN.Core.Cryptography.Contracts.Models;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
 namespace MIN.Core.Cryptography;
@@ -24,10 +25,10 @@ public sealed class KeyProvider : IDisposable
     /// Инициализирует новый экземпляр <see cref="KeyProvider"/>
     /// </summary>
     public KeyProvider(IDataProtectionProvider dataProtection,
-       IAppDataProvider appDataProvider,
+       IIdentityDataPathProvider identityDataPathProvider,
        ILoggerProvider logger)
     {
-        storage = new FileSystemKeyStorage(appDataProvider, logger);
+        storage = new FileSystemKeyStorage(identityDataPathProvider, logger);
         protector = dataProtection.CreateProtector(ProtectorKey);
         this.logger = logger;
     }

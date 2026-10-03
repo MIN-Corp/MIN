@@ -63,7 +63,7 @@ public class VoiceCallMonitor : IHostedService
         return Task.CompletedTask;
     }
 
-    private Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
+    private async Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
     {
         var voiceContext = voiceCallStateService.GetRoomVoiceCallContext();
 
@@ -73,9 +73,13 @@ public class VoiceCallMonitor : IHostedService
             audioCaptureService.Stop();
             voiceDataTransmitter.End();
             voicePlaybackService.Clear();
-        }
 
-        return Task.CompletedTask;
+            await eventBus.PublishAsync(new VoiceCallEndedEvent()
+            {
+                RoomId = e.RoomId,
+                SubRoomId = voiceContext.Value.SubRoomId,
+            }, cancellationToken);
+        }
     }
 
     private async Task OnVoiceCallEstablished(VoiceCallEstablishedEvent e, CancellationToken cancellationToken)

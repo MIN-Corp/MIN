@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using MIN.Core.Cryptography.Contracts.Constants;
 using MIN.Core.Cryptography.Contracts.Interfaces;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 
@@ -25,10 +26,9 @@ public class RoomFileEncryptor : IRoomFileEncryptor, IDisposable
     /// </summary>
     public RoomFileEncryptor(ILoggerProvider logger,
         IDataProtectionProvider dataProtection,
-        IAppDataProvider appDataProvider)
+        IIdentityDataPathProvider identityDataPath)
     {
-        var directory = Directory.CreateDirectory(
-           Path.Combine(appDataProvider.SharedDirectory, "cryptography")).FullName;
+        var directory = Directory.CreateDirectory(identityDataPath.CryptographyDirectory).FullName;
         masterKeyPath = Path.Combine(directory, "rooms-master.key");
         protector = dataProtection.CreateProtector(FileProtectorKey);
         this.logger = logger;

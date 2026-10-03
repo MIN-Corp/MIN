@@ -40,6 +40,7 @@ public class CoreModule : Module
     {
         // Global
         services.RegisterAsImplementedInterfaces<IdentityService>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<IdentityDataPathProvider>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<JsonMessageSerializer>(ServiceLifetime.Singleton);
 

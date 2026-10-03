@@ -200,7 +200,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         await UpdateChatFlow();
 
-        if (!IsHost)
+        if (!IsHost && room.IsOnline)
         {
             await RequestVoiceCallStateAsync();
         }

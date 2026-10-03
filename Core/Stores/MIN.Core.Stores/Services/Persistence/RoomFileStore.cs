@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using MIN.Core.Cryptography.Contracts.Interfaces;
 using MIN.Core.Entities;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Serialization.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Interfaces.Persistence;
@@ -33,14 +34,14 @@ public sealed class RoomFileStore : IRoomFileStore
     /// </summary>
     public RoomFileStore(IRoomFileEncryptor encryptor,
         IMessageSerializer serializer,
-        IAppDataProvider appDataProvider,
+        IIdentityDataPathProvider identityDataPath,
         ILoggerProvider logger)
     {
         this.encryptor = encryptor;
         this.serializer = serializer;
         this.logger = logger;
         serializerOptions = serializer.SerializerOptions;
-        roomsDirectory = Path.Combine(appDataProvider.SharedDirectory, "rooms");
+        roomsDirectory = identityDataPath.RoomsDirectory;
     }
 
     async Task IRoomFileStore.SaveAsync(Guid roomId, RoomSnapshot snapshot)

@@ -166,6 +166,7 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         this.localParticipant = localParticipant;
         Room = room;
         roomId = room.Id;
+        NotificationsEnabled = room.LocalRoomSettings.NotificationsEnabled;
 
         UpdateStats(room);
         UpdateParticipantFlow(room.CurrentParticipants);

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using MIN.Core.Cryptography.Contracts.Constants;
 using MIN.Core.Cryptography.Contracts.Interfaces;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 
@@ -21,10 +22,10 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
     /// </summary>
     public MessageEncryptor(ILoggerProvider logger,
         IDataProtectionProvider dataProtection,
-        IAppDataProvider appDataProvider)
+        IIdentityDataPathProvider identityDataPathProvider)
     {
         this.logger = logger;
-        keyProvider = new KeyProvider(dataProtection, appDataProvider, logger);
+        keyProvider = new KeyProvider(dataProtection, identityDataPathProvider, logger);
     }
 
     bool IMessageEncryptor.IsSessionInitialized(Guid partnerId)
