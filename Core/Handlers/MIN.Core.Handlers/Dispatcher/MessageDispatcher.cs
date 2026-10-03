@@ -8,6 +8,7 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Services.Contracts.Interfaces.Moderation;
+using MIN.Core.Services.Contracts.Interfaces.Persistence;
 using MIN.Core.Stores.Contracts.Registries.Models;
 using MIN.Core.SubRooms.Contracts.Interfaces.Messages;
 using MIN.Helpers.Contracts.Constants;
@@ -22,6 +23,7 @@ public sealed class MessageDispatcher : IMessageDispatcher
     private readonly IEnumerable<IMessageHandler> handlers;
     private readonly IMessageSender messageSender;
     private readonly IEventBus eventBus;
+    private readonly IRoomPersistenceService roomPersistenceService;
     private readonly INetworkErrorHandler errorHandler;
     private readonly ILoggerProvider logger;
 
@@ -31,12 +33,14 @@ public sealed class MessageDispatcher : IMessageDispatcher
     public MessageDispatcher(IEnumerable<IMessageHandler> handlers,
         IMessageSender messageSender,
         IEventBus eventBus,
+        IRoomPersistenceService roomPersistenceService,
         INetworkErrorHandler errorHandler,
         ILoggerProvider logger)
     {
         this.handlers = handlers;
         this.messageSender = messageSender;
         this.eventBus = eventBus;
+        this.roomPersistenceService = roomPersistenceService;
         this.errorHandler = errorHandler;
         this.logger = logger;
     }
@@ -53,6 +57,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
         {
             throw new NotImplementedException($"Не зарегистрирован обработчик для {message.TypeTag}");
         }
+
+        roomPersistenceService.MarkDirty(context.RoomContext.RoomId);
 
         foreach (var handler in applicableHandlers)
         {

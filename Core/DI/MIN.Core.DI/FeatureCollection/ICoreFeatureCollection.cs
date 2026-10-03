@@ -1,6 +1,7 @@
 ﻿using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Lifecycle;
+using MIN.Core.Services.Contracts.Interfaces.Persistence;
 using MIN.Core.Stores.Contracts.Interfaces;
 
 namespace MIN.Core.DI.FeatureCollection;
@@ -18,6 +19,9 @@ public interface ICoreFeatureCollection
 
     /// <inheritdoc cref="IRoomStore"/>
     IRoomStore RoomStore { get; }
+
+    /// <inheritdoc cref="IRoomPersistenceService"/>
+    IRoomPersistenceService RoomPersistence { get; }
 
     /// <inheritdoc cref="IEventBus"/>
     IEventBus EventBus { get; }

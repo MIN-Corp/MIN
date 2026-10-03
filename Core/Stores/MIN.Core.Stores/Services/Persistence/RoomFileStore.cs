@@ -16,7 +16,7 @@ namespace MIN.Core.Stores.Services.Persistence;
 public sealed class RoomFileStore : IRoomFileStore
 {
     private const string FileExtension = ".mr";
-    private const string BackupExtension = ".mr.bak";
+    private const string BackupExtension = ".bak";
     private const string Magic = "MINR";
     private const byte FormatVersion = 1;
     private const int CurrentSchemaVersion = 1;
@@ -54,7 +54,12 @@ public sealed class RoomFileStore : IRoomFileStore
         };
 
         var json = JsonSerializer.SerializeToUtf8Bytes(envelope, serializerOptions);
-        var payload = encryptor.Protect(Compress(json));
+        var encrypted = encryptor.Protect(Compress(json));
+
+        var payload = new byte[HeaderSize + encrypted.Length];
+        Encoding.ASCII.GetBytes(Magic).CopyTo(payload, 0);
+        payload[Magic.Length] = FormatVersion;
+        encrypted.CopyTo(payload, HeaderSize);
 
         await WriteAtomicAsync(GetFilePath(roomId), payload);
     }

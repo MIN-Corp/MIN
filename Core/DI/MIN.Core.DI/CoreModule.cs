@@ -94,7 +94,7 @@ public class CoreModule : Module
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessage, ICoreMessagingAnchor>(ServiceLifetime.Singleton);
 
         services.RegisterMultipleInterfacesAssignableTo<IHostedService, InboundMessagePipeline>(ServiceLifetime.Singleton);
-        services.RegisterMultipleInterfacesAssignableTo<IHostedService, RoomPersistenceService>(ServiceLifetime.Singleton);
+        services.RegisterMultipleInterfacesAssignableTo<IHostedService, RoomPersistenceHostedServiceAdapter>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<CoreFeatureCollection>(ServiceLifetime.Singleton);
     }

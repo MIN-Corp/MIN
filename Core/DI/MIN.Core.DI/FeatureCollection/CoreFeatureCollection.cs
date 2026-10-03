@@ -1,6 +1,7 @@
 ﻿using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Lifecycle;
+using MIN.Core.Services.Contracts.Interfaces.Persistence;
 using MIN.Core.Stores.Contracts.Interfaces;
 
 namespace MIN.Core.DI.FeatureCollection;
@@ -17,6 +18,9 @@ public class CoreFeatureCollection : ICoreFeatureCollection
     /// <inheritdoc cref="IRoomStore"/>
     public IRoomStore RoomStore { get; }
 
+    /// <inheritdoc cref="IRoomPersistenceService"/>
+    public IRoomPersistenceService RoomPersistence { get; }
+
     /// <inheritdoc cref="IEventBus"/>
     public IEventBus EventBus { get; }
 
@@ -29,12 +33,14 @@ public class CoreFeatureCollection : ICoreFeatureCollection
     public CoreFeatureCollection(IRoomLifecycleManager lifecycle,
         IRoomFactory roomFactory,
         IRoomStore roomStore,
+        IRoomPersistenceService roomPersistence,
         IEventBus eventBus,
         IIdentityService identityService)
     {
         Lifecycle = lifecycle;
         RoomFactory = roomFactory;
         RoomStore = roomStore;
+        RoomPersistence = roomPersistence;
         EventBus = eventBus;
         IdentityService = identityService;
     }

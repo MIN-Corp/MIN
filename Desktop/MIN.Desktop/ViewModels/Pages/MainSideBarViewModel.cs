@@ -31,6 +31,7 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
 {
     private readonly IMinFeatureCollection featureCollection;
     private readonly IChatViewsRegistry chatViewsRegistry;
+    private readonly IChatViewModelFactory chatViewModelFactory;
     private readonly SettingsSideBarViewModel settingsSideBarViewModel;
     private readonly DiscoveryViewModel discoveryViewModel;
     private readonly TrayService trayService;
@@ -74,12 +75,14 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     /// </summary>
     public MainSideBarViewModel(IMinFeatureCollection featureCollection,
         IChatViewsRegistry chatViewsRegistry,
+        IChatViewModelFactory chatViewModelFactory,
         SettingsSideBarViewModel settingsSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
         TrayService trayService)
     {
         this.featureCollection = featureCollection;
         this.chatViewsRegistry = chatViewsRegistry;
+        this.chatViewModelFactory = chatViewModelFactory;
         this.settingsSideBarViewModel = settingsSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
         this.trayService = trayService;
@@ -98,6 +101,7 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
 
             SubscribeToEvents();
             InitializeLayoutStyles();
+            _ = LoadRestoredRoomsAsync();
         }
     }
 
@@ -115,8 +119,61 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
         });
     }
 
+    private async Task LoadRestoredRoomsAsync()
+    {
+        var rooms = await featureCollection.Core.RoomPersistence.GetLoadedRoomsAsync();
+        Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var room in rooms)
+            {
+                RegisterLoadedRoom(new RoomInfo(room));
+            }
+        });
+    }
+
+    private void RegisterLoadedRoom(RoomInfo roomInfo)
+    {
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomInfo.Id);
+        var card = new RecentRoomCardViewModel(featureCollection.Core.EventBus, context, roomInfo, AsCreator: false);
+        card.Clicked += () => OpenLoadedRoom(roomInfo.Id);
+        savedRooms.Add(roomInfo);
+        Dispatcher.UIThread.Post(() => trayService.UpdateRooms(savedRooms));
+        allRooms.Add(card);
+        RecentRooms.Add(card);
+    }
+
+    private async void OpenLoadedRoom(Guid roomId)
+    {
+        if (IsNavigationMode)
+        {
+            GoBack();
+        }
+
+        if (allRooms.FirstOrDefault(x => x.RoomId == roomId) is { } card)
+        {
+            SelectChatCard(card);
+        }
+
+        if (chatViewsRegistry.TryGet(roomId, out var existing))
+        {
+            ChangeView(existing!);
+            return;
+        }
+
+        if (!featureCollection.Core.RoomStore.TryGetRoom(roomId, out var room))
+        {
+            return;
+        }
+
+        var chatViewModel = chatViewModelFactory.Create();
+        await chatViewModel.LoadRoomDataAndRefresh(room, Guid.Empty);
+        ChangeView(chatViewModel);
+
+        WeakReferenceMessenger.Default.Send(new RegisterRoomReferenceCommand(new RoomInfo(room), chatViewModel));
+    }
+
     /// <summary>
-    /// Открыть настройки
+    /// Открыть окно поиска комнат
     /// </summary>
     [RelayCommand]
     public void OpenDiscoveryViewAsync()
@@ -158,6 +215,7 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
         var existing = allRooms.FirstOrDefault(x => x.RoomId == roomId);
         if (existing != null)
         {
+            chatViewsRegistry.Register(roomId, viewModel);
             SelectChatCard(existing);
             return;
         }

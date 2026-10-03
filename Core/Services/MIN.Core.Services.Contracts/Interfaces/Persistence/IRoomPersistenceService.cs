@@ -8,6 +8,11 @@ namespace MIN.Core.Services.Contracts.Interfaces.Persistence;
 public interface IRoomPersistenceService
 {
     /// <summary>
+    /// Запустить сервис
+    /// </summary>
+    Task StartAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Пометить комнату изменённой
     /// </summary>
     void MarkDirty(Guid roomId);
@@ -15,5 +20,10 @@ public interface IRoomPersistenceService
     /// <summary>
     /// Комнаты, восстановленные из файлов при старте
     /// </summary>
-    IReadOnlyList<Room> GetLoadedRooms();
+    Task<IReadOnlyList<Room>> GetLoadedRoomsAsync();
+
+    /// <summary>
+    /// Остановить сервис
+    /// </summary>
+    Task StopAsync(CancellationToken cancellationToken = default);
 }
