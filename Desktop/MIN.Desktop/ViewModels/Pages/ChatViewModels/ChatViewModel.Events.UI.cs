@@ -364,6 +364,13 @@ public partial class ChatViewModel : RoutableViewModelBase
         typingTimer?.Dispose();
         typingTimer = null;
 
+        VoiceChatParticipants.Clear();
+        IsMuted = false;
+        callTimer.Stop();
+        activeVoiceChatSubroomId = null;
+        IsInVoiceChat = false;
+        IsVoiceChatActive = false;
+
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
 

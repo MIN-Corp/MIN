@@ -27,7 +27,7 @@ public interface IRoomConnectionRegistry
     /// <summary>
     /// Зарегистрировать серверное соединение
     /// </summary>
-    void RegisterServerConnection(Guid roomId, Guid serverConnectionId);
+    void RegisterServerConnection(Guid roomId, Guid? serverConnectionId);
 
     /// <summary>
     /// Отрегистрировать (забыть) серверное соединение

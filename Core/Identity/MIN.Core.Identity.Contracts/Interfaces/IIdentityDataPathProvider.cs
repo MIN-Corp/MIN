@@ -6,12 +6,17 @@
 public interface IIdentityDataPathProvider
 {
     /// <summary>
-    /// Папка на текущую версию приложения
+    /// Папка cо всеми сохранёнными комнатами
     /// </summary>
     string RoomsDirectory { get; }
 
     /// <summary>
-    /// Общая папка
+    /// Общая папка для ключей
     /// </summary>
     string CryptographyDirectory { get; }
+
+    /// <summary>
+    /// Общая папка для хранения файлов
+    /// </summary>
+    string FilesDirectory { get; }
 }

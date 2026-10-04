@@ -152,6 +152,7 @@
                             Background="{DynamicResource Secondary}">
                             <Button
                                 Classes="file"
+                                IsEnabled="{Binding !CantDownload}"
                                 Command="{Binding InteractionClickCommand}">
                                 <Panel
                                     HorizontalAlignment="Center"

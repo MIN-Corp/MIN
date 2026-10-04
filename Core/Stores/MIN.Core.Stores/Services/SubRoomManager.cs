@@ -191,6 +191,14 @@ public class SubRoomManager : ISubRoomManager
         }
     }
 
+    void ISubRoomManager.RemoveSubRoom(int subRoomId)
+    {
+        lock (state)
+        {
+            state.SubRooms.Remove(subRoomId, out _);
+        }
+    }
+
     SubRoomsSnapshot ISubRoomManager.CreateSnapshot()
     {
         lock (state)
@@ -211,6 +219,21 @@ public class SubRoomManager : ISubRoomManager
         {
             state.SubRooms = subRoomsSnapshot.SubRooms.ToDictionary(x => x.Id);
             state.NextId = subRoomsSnapshot.NextId;
+
+            var activities = state.SubRooms.Values.Where(x => x.Purpose == SubRoomPurpose.Activity);
+
+            foreach (var subRoom in activities)
+            {
+                subRoom.Participants.Clear();
+                subRoom.IsActive = false;
+            }
+
+            var leftOverVoices = state.SubRooms.Values.Where(x => x.Purpose == SubRoomPurpose.Voice).ToList();
+
+            foreach (var subRoom in leftOverVoices)
+            {
+                state.SubRooms.Remove(subRoom.Id);
+            }
         }
     }
 }

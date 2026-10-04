@@ -12,6 +12,9 @@ public sealed class IdentityDataPathProvider : IIdentityDataPathProvider
     public string RoomsDirectory { get; }
 
     /// <inheritdoc />
+    public string FilesDirectory { get; }
+
+    /// <inheritdoc />
     public string CryptographyDirectory { get; }
 
     /// <summary>
@@ -22,5 +25,6 @@ public sealed class IdentityDataPathProvider : IIdentityDataPathProvider
         identityPath = Path.Combine(appDataProvider.SharedDirectory, "identities", $"{identityService.SelfParticipant.Id}");
         RoomsDirectory = Path.Combine(identityPath, "rooms");
         CryptographyDirectory = Path.Combine(identityPath, "cryptography");
+        FilesDirectory = Path.Combine(identityPath, "files");
     }
 }

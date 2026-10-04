@@ -21,10 +21,13 @@ public class RoomConnectionRegistry : IRoomConnectionRegistry
     bool IRoomConnectionRegistry.IsHosting(Guid roomId) => hostedRooms.ContainsKey(roomId);
     bool IRoomConnectionRegistry.IsConnected(Guid roomId) => connectedRooms.ContainsKey(roomId);
 
-    void IRoomConnectionRegistry.RegisterServerConnection(Guid roomId, Guid serverConnectionId)
+    void IRoomConnectionRegistry.RegisterServerConnection(Guid roomId, Guid? serverConnectionId)
     {
         hostedRooms[roomId] = serverConnectionId;
-        roomsByServerConnection[serverConnectionId] = roomId;
+        if (serverConnectionId != null)
+        {
+            roomsByServerConnection[serverConnectionId.Value] = roomId;
+        }
     }
 
     void IRoomConnectionRegistry.UnregisterServerConnection(Guid roomId)

@@ -151,6 +151,7 @@
                             <!-- Layer 1: overlay (not downloaded / downloading) -->
 
                             <Border
+                                IsEnabled="{Binding !CantDownload}"
                                 IsVisible="{Binding FileDownloadState,
                                 Converter={converters:EqualityConverter},
                                 ConverterParameter={x:Static modelsEnums:FileDownloadState.NotDownloaded}}"

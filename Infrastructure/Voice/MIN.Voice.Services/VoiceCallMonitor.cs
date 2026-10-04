@@ -1,4 +1,5 @@
 ﻿using MIN.Common.Core.Contracts.Interfaces;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
@@ -74,11 +75,10 @@ public class VoiceCallMonitor : IHostedService
             voiceDataTransmitter.End();
             voicePlaybackService.Clear();
 
-            await eventBus.PublishAsync(new VoiceCallEndedEvent()
+            await messageRouter.PublishLocally(new VoiceCallEndedMessage()
             {
-                RoomId = e.RoomId,
                 SubRoomId = voiceContext.Value.SubRoomId,
-            }, cancellationToken);
+            }, voiceContext.Value.RoomId, Role.Host, null, cancellationToken);
         }
     }
 
@@ -128,11 +128,35 @@ public class VoiceCallMonitor : IHostedService
         }
     }
 
-    Task IHostedService.StopAsync(CancellationToken cancellationToken)
+    private async Task EndAllCalls(CancellationToken cancellationToken)
     {
+        var contexts = roomFactory.GetAllContexts();
+        foreach (var context in contexts)
+        {
+            var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive).ToList();
+            foreach (var subRoom in activeSubRooms)
+            {
+                var existingVoiceCallStartedMessageId = context.Messages.GetHistory()
+                    .OfType<VoiceCallStartedMessage>().FirstOrDefault(x => x.SubRoomId == subRoom.Id)?.Id;
+
+                if (existingVoiceCallStartedMessageId != null)
+                {
+                    var existing = context.Messages.GetMessageById(existingVoiceCallStartedMessageId.Value) as VoiceCallStartedMessage;
+                    existing!.EndedAt = DateTime.Now;
+                    context.Messages.UpdateMessage(existing.Id, existing);
+                }
+
+                context.SubRooms.RemoveSubRoom(subRoom.Id);
+            }
+        }
+    }
+
+    async Task IHostedService.StopAsync(CancellationToken cancellationToken)
+    {
+        await EndAllCalls(cancellationToken);
+
         audioCaptureService.Stop();
         voiceDataTransmitter.End();
         voicePlaybackService.Dispose();
-        return Task.CompletedTask;
     }
 }

@@ -79,6 +79,11 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     public Func<Task>? OnDeleteRequested;
 
     /// <summary>
+    /// Состояние сети поменялось
+    /// </summary>
+    protected Action? IsAvaibleForNetworkChanged;
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="BaseChatMessageViewModel"/>
     /// </summary>
     public BaseChatMessageViewModel()
@@ -118,6 +123,9 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
         IsPrivate = !message.IsPublic;
         IsAvaibleForNetwork = isAvaibleForNetwork;
     }
+
+    partial void OnIsAvaibleForNetworkChanged(bool value)
+        => IsAvaibleForNetworkChanged?.Invoke();
 
     /// <summary>
     /// Удалить сообщение

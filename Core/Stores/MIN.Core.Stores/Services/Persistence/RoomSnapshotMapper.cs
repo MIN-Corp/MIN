@@ -1,6 +1,8 @@
-﻿using MIN.Core.Stores.Contracts.Interfaces;
+﻿using MIN.Core.Identity.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Interfaces.Persistence;
 using MIN.Core.Stores.Contracts.Models.Persistence;
+using MIN.Core.Stores.Contracts.Registries.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
 namespace MIN.Core.Stores.Services.Persistence;
@@ -9,6 +11,8 @@ namespace MIN.Core.Stores.Services.Persistence;
 public sealed class RoomSnapshotMapper : IRoomSnapshotMapper
 {
     private readonly IRoomStore roomStore;
+    private readonly IRoomConnectionRegistry roomConnectionRegistry;
+    private readonly IIdentityService identityService;
     private readonly IRoomFactory roomFactory;
     private readonly ILoggerProvider logger;
 
@@ -16,10 +20,14 @@ public sealed class RoomSnapshotMapper : IRoomSnapshotMapper
     /// Инициализирует новый экземпляр <see cref="RoomSnapshotMapper"/>
     /// </summary>
     public RoomSnapshotMapper(IRoomStore roomStore,
+        IRoomConnectionRegistry roomConnectionRegistry,
+        IIdentityService identityService,
         IRoomFactory roomFactory,
         ILoggerProvider logger)
     {
         this.roomStore = roomStore;
+        this.roomConnectionRegistry = roomConnectionRegistry;
+        this.identityService = identityService;
         this.roomFactory = roomFactory;
         this.logger = logger;
     }
@@ -46,6 +54,10 @@ public sealed class RoomSnapshotMapper : IRoomSnapshotMapper
         var room = snapshot.Room;
         room.IsOnline = false;
 
+        if (room.HostParticipant.Id == identityService.SelfParticipant.Id)
+        {
+            roomConnectionRegistry.RegisterServerConnection(room.Id, null);
+        }
         roomStore.Register(room);
 
         var context = roomFactory.GetOrCreateContext(room.Id);

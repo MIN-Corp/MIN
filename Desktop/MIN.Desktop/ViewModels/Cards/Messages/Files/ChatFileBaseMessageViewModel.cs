@@ -66,6 +66,9 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     public partial bool Downloaded { get; set; }
 
     [ObservableProperty]
+    public partial bool CantDownload { get; set; }
+
+    [ObservableProperty]
     public partial FileDownloadState FileDownloadState { get; set; } = FileDownloadState.None;
 
     /// <summary>
@@ -112,6 +115,11 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             .GetFileType(fileMetadataMessage.FileName);
 
         Downloaded = !string.IsNullOrEmpty(fileMetadataMessage.FilePath) || fileMetadataMessage.AsDownloaded;
+
+        CantDownload = !isAvaibleForNetwork && !Downloaded;
+
+        IsAvaibleForNetworkChanged += ()
+            => CantDownload = !IsAvaibleForNetwork && !Downloaded;
 
         FillLabels();
 

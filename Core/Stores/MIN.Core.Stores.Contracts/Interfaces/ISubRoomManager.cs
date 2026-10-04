@@ -68,6 +68,11 @@ public interface ISubRoomManager
     IReadOnlyList<SubRoomInfo> GetRoomSubRooms();
 
     /// <summary>
+    /// Удалить подкомнату
+    /// </summary>
+    void RemoveSubRoom(int subRoomId);
+
+    /// <summary>
     /// Очистить все подкомнаты для комнаты
     /// </summary>
     void ClearRoomSubRooms();

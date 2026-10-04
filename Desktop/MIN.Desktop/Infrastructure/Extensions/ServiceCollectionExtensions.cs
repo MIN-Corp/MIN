@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Avalonia.Controls;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Common.Mvc.Extensions;
+using MIN.Core.Services.Persistence;
 using MIN.Desktop.Contracts.Attributes;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Models;
@@ -40,7 +42,7 @@ public static partial class ServiceCollectionExtensions
             .AddSingleton<Func<IMultiRoutingWindow>>(provider => provider.GetRequiredService<MainWindowViewModel>)
             .AddSingleton<Func<Window>>(provider => () =>
             {
-                var hostedServices = provider.GetServices<IHostedService>();
+                var hostedServices = provider.GetServices<IHostedService>().Where(x => x is not RoomPersistenceHostedServiceAdapter);
                 var cts = provider.GetRequiredService<ICtsProvider>().AppCts;
 
                 var window = provider.GetRequiredService<Window>();
@@ -84,6 +86,12 @@ public static partial class ServiceCollectionExtensions
                             continue;
                         }
                     }
+
+                    var saveSvc = provider.GetServices<IHostedService>().Where(x => x is RoomPersistenceHostedServiceAdapter).First();
+
+                    using var stopSaveCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                    stopSaveCts.CancelAfter(TimeSpan.FromSeconds(15));
+                    await saveSvc.StopAsync(stopSaveCts.Token);
 
                     window.Close();
                 }

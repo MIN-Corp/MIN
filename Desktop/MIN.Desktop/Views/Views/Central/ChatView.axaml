@@ -111,13 +111,20 @@
                                             </MultiBinding>
                                         </MenuItem.IsVisible>
                                     </MenuItem>
-                                    <MenuItem IsVisible="{Binding IsHost}"
-                                            Classes="danger"
-                                             Header="Приостановить хостинг комнаты"
+
+                                    <MenuItem Classes="danger"
+                                            Header="Приостановить хостинг комнаты"
                                             Command="{Binding LeaveRoomCommand}">
                                         <MenuItem.Icon>
                                             <Svg Path="/Assets/Icons/leave.svg" />
                                         </MenuItem.Icon>
+
+                                        <MenuItem.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="IsOnline" />
+                                                <Binding Path="IsHost" />
+                                            </MultiBinding>
+                                        </MenuItem.IsVisible>
                                     </MenuItem>
 
                                     <MenuItem IsVisible="{Binding !IsHost}"
@@ -338,15 +345,26 @@
                                     <Button Command="{Binding JoinVoiceCallCommand}"
                                         ToolTip.Tip="Присоединиться к звонку"
                                         Classes="icon"
-                                        IsVisible="{Binding !IsInVoiceChat}"
                                         Background="{DynamicResource VoiceAccept}">
+                                        <Button.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="!IsInVoiceChat" />
+                                                <Binding Path="IsAvaibleForNetwork" />
+                                            </MultiBinding>
+                                        </Button.IsVisible>
                                         <Svg Path="/Assets/Icons/phone.svg" />
                                     </Button>
+
                                     <Button Command="{Binding LeaveVoiceCallCommand}"
                                         ToolTip.Tip="Покинуть"
-                                        IsVisible="{Binding IsInVoiceChat}"
                                         Classes="icon"
                                         Background="{DynamicResource VoiceReject}">
+                                        <Button.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="IsInVoiceChat" />
+                                                <Binding Path="IsAvaibleForNetwork" />
+                                            </MultiBinding>
+                                        </Button.IsVisible>
                                         <Svg Path="/Assets/Icons/phone-disconnect.svg" />
                                     </Button>
                                 </StackPanel>
