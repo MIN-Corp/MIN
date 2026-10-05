@@ -21,6 +21,8 @@ public sealed class FileMonitorService : IHostedService
     private readonly IFileTransferService fileTransferService;
     private readonly ILoggerProvider logger;
 
+    int IHostedService.Priority => 0;
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="FileMonitorService"/>
     /// </summary>
@@ -40,7 +42,7 @@ public sealed class FileMonitorService : IHostedService
     Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
         eventBus.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
-        eventBus.Subscribe<RoomClosedEvent>(OnRoomClosed);
+        eventBus.Subscribe<RoomWentOfflineEvent>(WentOffline);
         eventBus.Subscribe<MessageDeletedEvent>(OnMessageDeleted);
 
         return Task.CompletedTask;
@@ -66,7 +68,7 @@ public sealed class FileMonitorService : IHostedService
         }
     }
 
-    private async Task OnRoomClosed(RoomClosedEvent eventMessage, CancellationToken cancellationToken)
+    private async Task WentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
         var activeTransfers = fileTransferService.GetActiveTransfers();
         foreach (var transfer in activeTransfers.Where(x => x.RoomId == eventMessage.RoomId))

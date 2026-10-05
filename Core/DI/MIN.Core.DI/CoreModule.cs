@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Common.Mvc;
 using MIN.Common.Mvc.Extensions;
@@ -14,17 +15,18 @@ using MIN.Core.Messaging;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Protocol.Services;
 using MIN.Core.Serialization.Json;
-using MIN.Core.Serialization.Json.Services;
 using MIN.Core.Services.Lifecycle;
 using MIN.Core.Services.Messaging;
 using MIN.Core.Services.Moderation;
+using MIN.Core.Services.Persistence;
 using MIN.Core.Services.Pipeline;
 using MIN.Core.Stores.Factories;
 using MIN.Core.Stores.Registries;
 using MIN.Core.Stores.Services;
+using MIN.Core.Stores.Services.Persistence;
 using MIN.Core.Streaming;
-using MIN.Core.SubRooms.Services;
 using MIN.Core.Transport;
+using MIN.Helpers.Contracts.Helpers;
 
 namespace MIN.Core.DI;
 
@@ -38,14 +40,18 @@ public class CoreModule : Module
     {
         // Global
         services.RegisterAsImplementedInterfaces<IdentityService>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<IdentityDataPathProvider>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<JsonMessageSerializer>(ServiceLifetime.Singleton);
 
-        services.AddDataProtection();
+        services.AddDataProtection()
+            .SetApplicationName("MIN")
+            .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(SharedDirectoryProvider.GetSharedDirectory(), "keys")));
 
         services.RegisterAsImplementedInterfaces<KeyProvider>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<FileSystemKeyStorage>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<MessageEncryptor>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<RoomFileEncryptor>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<ChannelTransport>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ClientHandshakeService>(ServiceLifetime.Singleton);
@@ -59,15 +65,18 @@ public class CoreModule : Module
 
         services.RegisterAsImplementedInterfaces<RoomStore>(ServiceLifetime.Singleton);
 
-        // Room-scoped
+        services.RegisterAsImplementedInterfaces<RoomFileStore>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<RoomSnapshotMapper>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<RoomPersistenceService>(ServiceLifetime.Singleton);
+
         services.RegisterAsImplementedInterfaces<NetworkErrorHandler>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<RoomConnectionRegistry>(ServiceLifetime.Singleton);
 
+        // Room-scoped
         services.RegisterAsImplementedInterfaces<ParticipantConnectionRegistry>(ServiceLifetime.Transient);
         services.RegisterAsImplementedInterfaces<MessageStore>(ServiceLifetime.Transient);
         services.RegisterAsImplementedInterfaces<ParticipantStore>(ServiceLifetime.Transient);
-
-        services.RegisterAsImplementedInterfaces<SubRoomManager>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<SubRoomManager>(ServiceLifetime.Transient);
 
         services.RegisterAsImplementedInterfaces<MessageSender>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<MessageRouter>(ServiceLifetime.Singleton);
@@ -85,8 +94,8 @@ public class CoreModule : Module
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, ICoreHandlerAnchor>(ServiceLifetime.Singleton);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessage, ICoreMessagingAnchor>(ServiceLifetime.Singleton);
 
-        services.RegisterMultipleInterfacesAssignableTo<IHostedService, JsonOptionsInitializer>(ServiceLifetime.Singleton);
         services.RegisterMultipleInterfacesAssignableTo<IHostedService, InboundMessagePipeline>(ServiceLifetime.Singleton);
+        services.RegisterMultipleInterfacesAssignableTo<IHostedService, RoomPersistenceHostedServiceAdapter>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<CoreFeatureCollection>(ServiceLifetime.Singleton);
     }

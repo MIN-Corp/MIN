@@ -8,7 +8,7 @@ using MIN.Desktop.Contracts.Interfaces;
 namespace MIN.Desktop.ViewModels.Cards.Messages.Base;
 
 /// <summary>
-/// Базовая view модель любого сообщения
+/// Базовая view модель любого сообщения, которое и на которое может ответить
 /// </summary>
 public abstract partial class BaseReplyableChatMessageViewModel : BaseChatMessageViewModel
 {
@@ -43,19 +43,21 @@ public abstract partial class BaseReplyableChatMessageViewModel : BaseChatMessag
     /// </summary>
     public BaseReplyableChatMessageViewModel(IMessage message,
        IReplyable? replyable,
-       IDialogService dialogService,
+       IDialogService? dialogService,
        string name,
        Thickness timePadding,
        bool isLocal,
        bool isHost,
-       bool removeHeaders)
+       bool removeHeaders,
+       bool isAvaibleForNetwork)
         : base(message,
             dialogService,
             name,
             timePadding,
             isLocal,
             isHost,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         ReplyToDescription = replyable?.ReplyToMessageDescription;
         ReplyToMessageId = replyable?.ReplyToMessageId;

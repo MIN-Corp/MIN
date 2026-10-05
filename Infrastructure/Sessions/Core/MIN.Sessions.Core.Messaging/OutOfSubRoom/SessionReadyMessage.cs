@@ -1,6 +1,7 @@
 ﻿using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
+using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Messages;
 using MIN.Sessions.Core.Services.Contracts.Models;
 
@@ -9,7 +10,7 @@ namespace MIN.Sessions.Core.Messaging.OutOfSubRoom;
 /// <summary>
 /// Сообщение готовности хостинга сессии
 /// </summary>
-public sealed class SessionReadyMessage : BaseMessage, IDescribable
+public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.SessionReady;
@@ -46,4 +47,14 @@ public sealed class SessionReadyMessage : BaseMessage, IDescribable
     public ParticipantInfo Sender { get; set; } = null!;
 
     string IDescribable.GetDescription() => $"{Sender.Name} запустил \"{Session.Name}\"";
+
+    /// <inheritdoc />
+    public override void Update(IMessage newer)
+    {
+        base.Update(newer);
+        if (newer is SessionReadyMessage sessionReadyMessage)
+        {
+            CurrentParticipantAmount = sessionReadyMessage.CurrentParticipantAmount;
+        }
+    }
 }

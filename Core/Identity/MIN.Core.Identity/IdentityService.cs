@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-using MIN.Core.Entities.Contracts.Interfaces;
+﻿using MIN.Core.Entities.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
@@ -8,11 +6,9 @@ using MIN.Helpers.Contracts.Interfaces;
 namespace MIN.Core.Identity;
 
 /// <inheritdoc cref="IIdentityService"/>
-public sealed class IdentityService : IIdentityService
+public sealed class IdentityService : IIdentityService, IDisposable
 {
-    private readonly string participantIdPath;
-    private readonly JsonSerializerOptions jsonOptions;
-    private readonly SemaphoreSlim localKeyLock = new(1, 1);
+    private readonly IdentityFileStore identityFileStore;
     private readonly SemaphoreSlim cacheLock = new(1, 1);
 
     private ParticipantInfo? currentParticipant;
@@ -20,34 +16,18 @@ public sealed class IdentityService : IIdentityService
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="IdentityService"/>
     /// </summary>
-    public IdentityService(IAppDataProvider appDataProvider)
+    public IdentityService(IAppDataProvider appDataProvider, ILoggerProvider logger)
     {
-        participantIdPath = Path.Combine(appDataProvider.BaseDirectory, "uuid.json");
-
-        jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            PropertyNameCaseInsensitive = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
+        identityFileStore = new(appDataProvider, logger);
     }
 
     IParticipantData IIdentityService.SelfParticipant => ResolveParticipant();
 
     /// <inheritdoc />
-    void IIdentityService.SetParticipant(IParticipantData participantData)
+    async Task IIdentityService.SaveParticipant(IParticipantData participantData)
     {
-        if (currentParticipant != null)
-        {
-            currentParticipant.Name = participantData.Name;
-        }
-    }
-
-    /// <inheritdoc />
-    void IIdentityService.ResetParticipant()
-    {
-        currentParticipant = null;
+        currentParticipant?.Name = participantData.Name;
+        await identityFileStore.SaveParticipantAsync(participantData);
     }
 
     private IParticipantData ResolveParticipant()
@@ -65,20 +45,17 @@ public sealed class IdentityService : IIdentityService
                 return currentParticipant;
             }
 
-            currentParticipant = new ParticipantInfo
+            currentParticipant = identityFileStore.LoadParticipant();
+
+            if (currentParticipant == null)
             {
-                Id = Guid.NewGuid(),
-                Name = "Ты"
-            };
+                currentParticipant = new ParticipantInfo
+                {
+                    Id = Guid.NewGuid()
+                };
 
-            // TODO: Когда нибудь заменить на LoadParticipantId()
-            // и разделить логику получения и сохранения на 2 класса
-
-            //if (participantId == Guid.Empty)
-            //{
-            //    currentParticipant.Id = Guid.NewGuid();
-            //    SaveBroadcastAddressesAsync(currentParticipant.Id);
-            //}
+                identityFileStore.SaveParticipant(currentParticipant);
+            }
 
             return currentParticipant;
         }
@@ -88,40 +65,5 @@ public sealed class IdentityService : IIdentityService
         }
     }
 
-    private Guid LoadParticipantId()
-    {
-        localKeyLock.Wait();
-        try
-        {
-            if (!File.Exists(participantIdPath))
-            {
-                return Guid.Empty;
-            }
-
-            var json = File.ReadAllText(participantIdPath);
-            return JsonSerializer.Deserialize<Guid>(json, jsonOptions);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidDataException("Local key file is corrupted", ex);
-        }
-        finally
-        {
-            localKeyLock.Release();
-        }
-    }
-
-    private void SaveBroadcastAddressesAsync(Guid participantId)
-    {
-        localKeyLock.Wait();
-        try
-        {
-            var json = JsonSerializer.Serialize(participantId, jsonOptions);
-            File.WriteAllText(participantIdPath, json);
-        }
-        finally
-        {
-            localKeyLock.Release();
-        }
-    }
+    void IDisposable.Dispose() => identityFileStore.Dispose();
 }

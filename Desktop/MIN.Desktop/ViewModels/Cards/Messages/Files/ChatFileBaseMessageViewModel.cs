@@ -66,6 +66,9 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     public partial bool Downloaded { get; set; }
 
     [ObservableProperty]
+    public partial bool CantDownload { get; set; }
+
+    [ObservableProperty]
     public partial FileDownloadState FileDownloadState { get; set; } = FileDownloadState.None;
 
     /// <summary>
@@ -89,7 +92,8 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         ParticipantInfo localParticipant,
         bool isHostMessage,
         bool removeHeaders,
-        IClipboard? clipboard)
+        IClipboard? clipboard,
+        bool isAvaibleForNetwork)
         : base(fileMetadataMessage,
             fileMetadataMessage,
             fileMetadataMessage,
@@ -98,7 +102,8 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             timePadding,
             localParticipant.Id == fileMetadataMessage.Sender.Id,
             isHostMessage,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
         this.fileTransferFeatureCollection = fileTransferFeatureCollection;
         this.localParticipant = localParticipant;
@@ -110,6 +115,11 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             .GetFileType(fileMetadataMessage.FileName);
 
         Downloaded = !string.IsNullOrEmpty(fileMetadataMessage.FilePath) || fileMetadataMessage.AsDownloaded;
+
+        CantDownload = !isAvaibleForNetwork && !Downloaded;
+
+        IsAvaibleForNetworkChanged += ()
+            => CantDownload = !IsAvaibleForNetwork && !Downloaded;
 
         FillLabels();
 
@@ -157,9 +167,9 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
 
     private void SubscribeToEvents(IEventScope roomScope)
     {
-        roomScope.Subscribe<FileTransferStartedEvent>(OnFileTransferStarted);
-        roomScope.Subscribe<FileTransferFailedEvent>(OnFileTransferFailed);
-        roomScope.Subscribe<FileTransferCompletedEvent>(OnFileTransferCompleted);
+        Subscriptions.Add(roomScope.Subscribe<FileTransferStartedEvent>(OnFileTransferStarted));
+        Subscriptions.Add(roomScope.Subscribe<FileTransferFailedEvent>(OnFileTransferFailed));
+        Subscriptions.Add(roomScope.Subscribe<FileTransferCompletedEvent>(OnFileTransferCompleted));
     }
 
     private Task OnFileTransferStarted(FileTransferStartedEvent eventMessage, CancellationToken cancellationToken)

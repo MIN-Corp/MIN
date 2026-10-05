@@ -10,11 +10,17 @@ namespace MIN.Helpers.Services;
 public class LoggerProvider : ILoggerProvider
 {
     private readonly List<LogItem> messages = [];
+    private readonly SortedDictionary<double, LogLevel> durationLevels = new()
+    {
+        { 0f,    LogLevel.Information },
+        { 100f,  LogLevel.Warning },
+        { 1000f, LogLevel.Error },
+    };
 
     ///<inheritdoc cref="ILoggerProvider.OnLogReceived"/>
     public event EventHandler<LogItem>? OnLogReceived;
 
-    void ILoggerProvider.Log(string message, LogLevel level, Type? callerType)
+    void ILoggerProvider.Log(string message, LogLevel level, Type? callerType, double? durationMs)
     {
         string? callerClass;
         if (callerType == null)
@@ -26,6 +32,11 @@ public class LoggerProvider : ILoggerProvider
         else
         {
             callerClass = callerType.FullName ?? "Unknown";
+        }
+
+        if (durationMs != null)
+        {
+            level = GetLevelOutOfDuration(durationMs.Value);
         }
 
         var formatted = new StringBuilder();
@@ -42,6 +53,25 @@ public class LoggerProvider : ILoggerProvider
 
         messages.Add(item);
         OnLogReceived?.Invoke(this, item);
+    }
+
+    private LogLevel GetLevelOutOfDuration(double duration)
+    {
+        LogLevel result = LogLevel.Information;
+
+        foreach (var kvp in durationLevels)
+        {
+            if (duration >= kvp.Key)
+            {
+                result = kvp.Value;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return result;
     }
 
     IEnumerable<LogItem> ILoggerProvider.GetRecentLogHistory(int? page, int? pageSize)

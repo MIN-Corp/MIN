@@ -37,6 +37,7 @@
                 </MenuItem>
 
                 <MenuItem Header="Редактировать"
+                    IsEnabled="{Binding IsAvaibleForNetwork}" 
                     Command="{Binding ToggleEditingMessageCommand}">
                     <MenuItem.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
@@ -151,6 +152,7 @@
                             Background="{DynamicResource Secondary}">
                             <Button
                                 Classes="file"
+                                IsEnabled="{Binding !CantDownload}"
                                 Command="{Binding InteractionClickCommand}">
                                 <Panel
                                     HorizontalAlignment="Center"
@@ -218,7 +220,7 @@
                         Classes="info"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
-                        IsVisible="{Binding IsEdited}"
+                        IsVisible="{Binding IsUpdated}"
                         Text="(изменено)" />
 
                     <SelectableTextBlock

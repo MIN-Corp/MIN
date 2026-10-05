@@ -6,6 +6,11 @@
 public interface IHostedService
 {
     /// <summary>
+    /// Приоритет запуска/остановки
+    /// </summary>
+    int Priority { get; }
+
+    /// <summary>
     /// Запустить сервис
     /// </summary>
     Task StartAsync(CancellationToken cancellationToken = default);

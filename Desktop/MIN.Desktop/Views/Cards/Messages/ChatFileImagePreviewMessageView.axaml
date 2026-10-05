@@ -39,6 +39,7 @@
                 </MenuItem>
 
                 <MenuItem Header="Редактировать"
+                    IsEnabled="{Binding IsAvaibleForNetwork}" 
                     Command="{Binding ToggleEditingMessageCommand}">
                     <MenuItem.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
@@ -150,6 +151,7 @@
                             <!-- Layer 1: overlay (not downloaded / downloading) -->
 
                             <Border
+                                IsEnabled="{Binding !CantDownload}"
                                 IsVisible="{Binding FileDownloadState,
                                 Converter={converters:EqualityConverter},
                                 ConverterParameter={x:Static modelsEnums:FileDownloadState.NotDownloaded}}"
@@ -201,7 +203,7 @@
                         Classes="info"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
-                        IsVisible="{Binding IsEdited}"
+                        IsVisible="{Binding IsUpdated}"
                         Text="(изменено)" />
 
                     <SelectableTextBlock

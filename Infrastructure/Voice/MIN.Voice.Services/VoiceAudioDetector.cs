@@ -1,5 +1,6 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces.SettingsServices;
 using MIN.Helpers.Contracts.Models;
 using MIN.Helpers.Contracts.Models.Enums;
@@ -29,7 +30,7 @@ public class VoiceAudioDetector : IVoiceAudioDetector, IDisposable
 
     private int sensitivityDb;
 
-    private readonly InferenceSession session;
+    private readonly Task<InferenceSession?> sessionTask;
     private readonly float[] context = new float[ContextSamples];
     private bool propertyChangedSubscribed;
     private bool onnxEnabled;
@@ -40,7 +41,7 @@ public class VoiceAudioDetector : IVoiceAudioDetector, IDisposable
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="VoiceAudioDetector"/>
     /// </summary>
-    public VoiceAudioDetector(ISettingsProvider settingsProvider)
+    public VoiceAudioDetector(ISettingsProvider settingsProvider, ILoggerProvider logger)
     {
         this.settingsProvider = settingsProvider;
         this.settingsProvider.OnSettingsSaved += OnSettingsChanged;
@@ -50,22 +51,31 @@ public class VoiceAudioDetector : IVoiceAudioDetector, IDisposable
             InterOpNumThreads = 1,
             IntraOpNumThreads = 1, // Silero is tiny; single-threaded avoids overhead/contention
         };
-        session = LoadEmbeddedSession(options);
+        sessionTask = Task.Run(() => LoadEmbeddedSession(options, logger));
 
         LoadSettings();
     }
 
-    private static InferenceSession LoadEmbeddedSession(SessionOptions options)
+    private static InferenceSession? LoadEmbeddedSession(SessionOptions options, ILoggerProvider logger)
     {
-        var assembly = typeof(VoiceAudioDetector).Assembly;
-        var resourceName = assembly.GetManifestResourceNames()
-            .Single(n => n.EndsWith("silero_vad.onnx"));
+        try
+        {
+            var assembly = typeof(VoiceAudioDetector).Assembly;
+            var resourceName = assembly.GetManifestResourceNames()
+                .Single(n => n.EndsWith("silero_vad.onnx"));
 
-        using var stream = assembly.GetManifestResourceStream(resourceName)!;
-        using var ms = new MemoryStream();
-        stream.CopyTo(ms);
+            using var stream = assembly.GetManifestResourceStream(resourceName)!;
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
 
-        return new InferenceSession(ms.ToArray(), options);
+            return new InferenceSession(ms.ToArray(), options);
+        }
+        catch (Exception ex)
+        {
+            logger.Log($"Не удалось загрузить библиотеку шумоподавления Onnx: {ex.Message}", LogLevel.Error);
+        }
+
+        return null;
     }
 
     private void LoadSettings()
@@ -122,7 +132,7 @@ public class VoiceAudioDetector : IVoiceAudioDetector, IDisposable
 
         var isSpeech = rmsDb > GetCurrentThreshold();
 
-        if (onnxEnabled)
+        if (onnxEnabled && sessionTask.IsCompletedSuccessfully)
         {
             var maxProb = 0f;
             foreach (var prob in ProcessFrame(shortSamples))
@@ -205,7 +215,7 @@ public class VoiceAudioDetector : IVoiceAudioDetector, IDisposable
             NamedOnnxValue.CreateFromTensor("sr", srTensor),
         };
 
-        using var results = session.Run(inputs);
+        using var results = sessionTask.Result!.Run(inputs);
 
         var prob = results.First(r => r.Name == "output").AsTensor<float>().First();
         var newState = results.First(r => r.Name == "stateN").AsTensor<float>().ToArray();
@@ -250,7 +260,10 @@ public class VoiceAudioDetector : IVoiceAudioDetector, IDisposable
     /// <inheritdoc cref="IDisposable.Dispose"/>
     public void Dispose()
     {
-        session.Dispose();
+        if (sessionTask is { IsCompletedSuccessfully: true })
+        {
+            sessionTask.Result?.Dispose();
+        }
         settingsProvider.OnSettingsSaved -= OnSettingsChanged;
         Reset();
     }

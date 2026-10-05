@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Avalonia;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Enums;
@@ -20,7 +21,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// <summary>
     /// Сообщение
     /// </summary>
-    public IMessage? Message { get; }
+    public IMessage? Message { get; set; }
 
     /// <summary>
     /// Имя отправителя сообщения
@@ -51,6 +52,13 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     public bool RemoveHeaders { get; }
 
     /// <summary>
+    /// Может ли пользователь интерактировать с сообщением
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteMessageCommand))]
+    public partial bool IsAvaibleForNetwork { get; set; }
+
+    /// <summary>
     /// Приватное ли сообщение
     /// </summary>
     public bool IsPrivate { get; init; }
@@ -69,6 +77,11 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// Пользователь захотел удалить сообщение
     /// </summary>
     public Func<Task>? OnDeleteRequested;
+
+    /// <summary>
+    /// Состояние сети поменялось
+    /// </summary>
+    protected Action? IsAvaibleForNetworkChanged;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="BaseChatMessageViewModel"/>
@@ -96,7 +109,8 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
        Thickness timePadding,
        bool isLocal,
        bool isHost,
-       bool removeHeaders)
+       bool removeHeaders,
+       bool isAvaibleForNetwork)
     {
         this.dialogService = dialogService;
         Message = message;
@@ -107,12 +121,16 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
         IsHost = isHost;
         RemoveHeaders = removeHeaders;
         IsPrivate = !message.IsPublic;
+        IsAvaibleForNetwork = isAvaibleForNetwork;
     }
+
+    partial void OnIsAvaibleForNetworkChanged(bool value)
+        => IsAvaibleForNetworkChanged?.Invoke();
 
     /// <summary>
     /// Удалить сообщение
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsAvaibleForNetwork))]
     protected virtual async Task DeleteMessage()
     {
         if (dialogService == null)

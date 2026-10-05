@@ -39,15 +39,33 @@
 
                 <TextBlock
                     HorizontalAlignment="Center"
+                    Text="--:--:--">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                            <Binding Path="!AsEnded" />
+                            <Binding Path="!IsAvaibleForNetwork" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
+
+                <TextBlock
+                    HorizontalAlignment="Center"
                     Classes.callTimer-in="{Binding AsJoined}"
-                    Text="{Binding CallDuration, StringFormat='hh\\:mm\\:ss'}"
-                    IsVisible="{Binding !AsEnded}" />
+                    Text="{Binding CallDuration, StringFormat='hh\\:mm\\:ss'}">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                            <Binding Path="!AsEnded" />
+                            <Binding Path="IsAvaibleForNetwork" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
 
                 <StackPanel HorizontalAlignment="Center"
                             IsVisible="{Binding !AsEnded}"
                             Spacing="8"
                             Orientation="Horizontal">
                     <Button Command="{Binding JoinVoiceCallCommand}"
+                        IsEnabled="{Binding IsAvaibleForNetwork}" 
                         ToolTip.Tip="Присоединиться к звонку"
                         Classes="icon"
                         IsVisible="{Binding !AsJoined}"
@@ -55,6 +73,7 @@
                         <Svg Path="/Assets/Icons/phone.svg" />
                     </Button>
                     <Button Command="{Binding LeaveOrRejectVoiceCallCommand}"
+                        IsEnabled="{Binding IsAvaibleForNetwork}" 
                         ToolTip.Tip="Отклонить звонок"
                         IsVisible="{Binding !AsRejected}"
                         Classes="icon"

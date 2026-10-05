@@ -1,6 +1,5 @@
 ﻿using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Extensions;
-using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
@@ -8,7 +7,6 @@ using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
@@ -20,23 +18,17 @@ namespace MIN.Sessions.Core.Handlers;
 internal sealed class SessionJoinHandler : BaseHandler
 {
     private readonly ISessionProcessManager sessionProcessManager;
-    private readonly ISubRoomManager subRoomManager;
-    private readonly IEventBus eventBus;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
     private readonly IIdentityService identityService;
 
     public SessionJoinHandler(ISessionProcessManager sessionProcessManager,
-        ISubRoomManager subRoomManager,
-        IEventBus eventBus,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
         IIdentityService identityService,
         ILoggerProvider logger) : base(logger)
     {
         this.sessionProcessManager = sessionProcessManager;
-        this.subRoomManager = subRoomManager;
-        this.eventBus = eventBus;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
         this.identityService = identityService;
@@ -63,7 +55,7 @@ internal sealed class SessionJoinHandler : BaseHandler
                     return HandlerResult.Failure("Получил сообщение от неизвестного отправителя", stopPropagation: false, critical: true);
                 }
 
-                var subRoomInfo = subRoomManager.GetSubRoom(roomId, sessionJoinRequestMessage.SubRoomId);
+                var subRoomInfo = context.RoomContext.SubRooms.GetSubRoom(sessionJoinRequestMessage.SubRoomId);
 
                 if (subRoomInfo == null)
                 {
@@ -102,7 +94,7 @@ internal sealed class SessionJoinHandler : BaseHandler
                         SubRoomId = subRoomInfo.Id,
                         SessionId = sessionJoinRequestMessage.SessionId,
                         SessionVersion = sessionJoinRequestMessage.SessionVersion,
-                    }, context.RoomContext.RoomId, message.SenderId, context.CancellationToken);
+                    }, context.RoomContext.RoomId, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 
                     return HandlerResult.Success();
                 }
@@ -124,7 +116,7 @@ internal sealed class SessionJoinHandler : BaseHandler
 
                 var clientResult = await sessionProcessManager.StartAsync(responseSession,
                     new ProcessContext(roomId, sessionJoinResponseMessage.SubRoomId, SessionProcessRole.Client),
-                    context.CancellationToken);
+                    context.CancellationToken).ConfigureAwait(false);
 
                 if (clientResult == false)
                 {
@@ -144,12 +136,14 @@ internal sealed class SessionJoinHandler : BaseHandler
                     Participant = selfParticipant,
                 };
 
-                await messageRouter.RouteAsync(sessionParticipantJoinedMessage, roomId, selfParticipant.Id, context.CancellationToken);
+                await messageRouter.RouteAsync(sessionParticipantJoinedMessage, roomId, selfParticipant.Id, context.CancellationToken)
+                    .ConfigureAwait(false);
 
                 return HandlerResult.Success();
 
             case SessionJoinFailedMessage sessionJoinFailedMessage:
-                await sessionProcessManager.StopAsync(new ProcessContext(roomId, sessionJoinFailedMessage.SubRoomId, SessionProcessRole.Client));
+                await sessionProcessManager.StopAsync(new ProcessContext(roomId, sessionJoinFailedMessage.SubRoomId, SessionProcessRole.Client))
+                    .ConfigureAwait(false);
 
                 return HandlerResult.Failure($"Не удалось запустить сессию: {sessionJoinFailedMessage.Message}");
 

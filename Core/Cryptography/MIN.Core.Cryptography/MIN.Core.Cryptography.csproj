@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Helpers\MIN.Helpers.Contracts\MIN.Helpers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\MIN.Core.Identity.Contracts\MIN.Core.Identity.Contracts.csproj" />
     <ProjectReference Include="..\MIN.Core.Cryptography.Contracts\MIN.Core.Cryptography.Contracts.csproj" />
   </ItemGroup>
 

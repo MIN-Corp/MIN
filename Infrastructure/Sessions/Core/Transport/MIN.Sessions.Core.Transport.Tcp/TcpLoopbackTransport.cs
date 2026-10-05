@@ -43,7 +43,7 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
         timeoutCts.CancelAfter(timeOutMs);
         try
         {
-            var client = await listener!.AcceptTcpClientAsync(timeoutCts.Token);
+            var client = await listener!.AcceptTcpClientAsync(timeoutCts.Token).ConfigureAwait(false);
             connections[context] = client;
             writeLocks[context] = new(1, 1);
             readLocks[context] = new(1, 1);
@@ -62,16 +62,16 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
             var lengthBuf = new byte[4];
             while (!cancellationToken.IsCancellationRequested && readLocks.TryGetValue(context, out var readlock))
             {
-                await readlock.WaitAsync(cancellationToken);
+                await readlock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 byte[] body;
 
                 try
                 {
-                    await stream.ReadExactlyAsync(lengthBuf, cancellationToken);
+                    await stream.ReadExactlyAsync(lengthBuf, cancellationToken).ConfigureAwait(false);
                     var length = BitConverter.ToInt32(lengthBuf);
                     body = new byte[length];
-                    await stream.ReadExactlyAsync(body, cancellationToken);
+                    await stream.ReadExactlyAsync(body, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -97,16 +97,16 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
     {
         if (connections.TryGetValue(context, out var client) && writeLocks.TryGetValue(context, out var writeLock))
         {
-            await writeLock.WaitAsync(cancellationToken);
+            await writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             var stream = client.GetStream();
 
             try
             {
                 var lengthBuf = BitConverter.GetBytes(data.Length);
-                await stream.WriteAsync(lengthBuf, cancellationToken);
-                await stream.WriteAsync(data, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
+                await stream.WriteAsync(lengthBuf, cancellationToken).ConfigureAwait(false);
+                await stream.WriteAsync(data, cancellationToken).ConfigureAwait(false);
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -127,7 +127,7 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
     /// <inheritdoc />
     public async Task StopAsync()
     {
-        await cts.CancelAsync();
+        await cts.CancelAsync().ConfigureAwait(false);
 
         foreach (var server in connections.Values)
         {
@@ -136,5 +136,5 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
     }
 
     /// <inheritdoc cref="IAsyncDisposable.DisposeAsync"/>
-    async ValueTask IAsyncDisposable.DisposeAsync() => await StopAsync();
+    async ValueTask IAsyncDisposable.DisposeAsync() => await StopAsync().ConfigureAwait(false);
 }

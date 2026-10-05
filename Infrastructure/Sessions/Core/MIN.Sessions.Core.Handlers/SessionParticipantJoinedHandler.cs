@@ -4,8 +4,7 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Messaging.Ipc;
@@ -16,19 +15,16 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionParticipantJoinedHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly ISessionProcessBridge sessionProcessBridge;
     private readonly IMessageRouter messageRouter;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="SessionParticipantJoinedHandler"/>
     /// </summary>
-    public SessionParticipantJoinedHandler(ISubRoomManager subRoomManager,
-        ISessionProcessBridge sessionProcessBridge,
+    public SessionParticipantJoinedHandler(ISessionProcessBridge sessionProcessBridge,
         IMessageRouter messageRouter,
         ILoggerProvider logger) : base(logger)
     {
-        this.subRoomManager = subRoomManager;
         this.messageRouter = messageRouter;
         this.sessionProcessBridge = sessionProcessBridge;
     }
@@ -45,7 +41,7 @@ internal sealed class SessionParticipantJoinedHandler : BaseHandler
 
         if (context.Role == Role.Host)
         {
-            var joinResult = subRoomManager.TryJoinSubRoom(roomId, sessionParticipantJoinedMessage.SubRoomId, participant);
+            var joinResult = context.RoomContext.SubRooms.TryJoinSubRoom(sessionParticipantJoinedMessage.SubRoomId, participant);
 
             if (joinResult != SubRoomJoinOutcome.Success)
             {

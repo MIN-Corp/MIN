@@ -27,6 +27,11 @@ public sealed class ParticipantLeftMessage : BaseMessage, IDescribable
     /// </summary>
     public DisconnectReason Reason { get; set; }
 
+    /// <summary>
+    /// Покинул ли участник комнату, да так что из списка больше не числиться
+    /// </summary>
+    public bool IsLeftRoom => Reason == DisconnectReason.Kick || Reason == DisconnectReason.LeftRoom;
+
     string IDescribable.GetDescription() => Reason == DisconnectReason.Kick
         ? $"Хост кикнул {Participant.Name}"
         : Reason == DisconnectReason.Timeout

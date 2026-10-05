@@ -14,7 +14,6 @@ using MIN.Core.Services.Contracts.Models;
 using MIN.Core.Services.Services;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Events;
 using MIN.Core.Transport.Contracts.Interfaces;
@@ -47,7 +46,6 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
         IMessageEncryptor encryptor,
         IRoomConnectionRegistry registry,
         IVersionProvider versionProvider,
-        ISubRoomManager subRoomManager,
         IEventBus eventBus,
         ILoggerProvider logger)
     {
@@ -61,16 +59,29 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
             messageSender, identityService, encryptor, registry, versionProvider, eventBus, logger, pingService);
 
         hostService = new HostRoomService(roomFactory, hostHandshake, transport, roomStore, eventBus,
-            subRoomManager, registry, identityService, messageRouter, logger, pingService);
+            registry, identityService, messageRouter, logger, pingService);
 
         SubscribeToEvents();
     }
 
-    async Task<ConnectionResult> IRoomLifecycleManager.ConnectAsync(IEndpoint endpoint, CancellationToken cancellationToken)
-        => await clientService.ConnectAsync(endpoint, cancellationToken);
+    // CLIENT
 
-    async Task IRoomLifecycleManager.DisconnectAsync(Guid roomId, Guid connectionId, DisconnectReason reason)
-        => await clientService.DisconnectAsync(roomId, connectionId, reason);
+    async Task<ConnectionResult> IRoomLifecycleManager.ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, CancellationToken cancellationToken)
+        => await clientService.ConnectAsync(endpoint, expectedRoomId, cancellationToken);
+
+    void IRoomLifecycleManager.MarkRoomForDeletion(Guid roomId)
+        => clientService.MarkRoomForDeletion(roomId);
+
+    async Task IRoomLifecycleManager.DisconnectAsync(Guid roomId, Guid connectionId)
+        => await clientService.DisconnectAsync(roomId, connectionId);
+
+    async Task IRoomLifecycleManager.ForgetRoomAsync(Guid roomId, Guid connectionId)
+        => await clientService.ForgetRoomAsync(roomId, connectionId);
+
+    void IRoomLifecycleManager.CompleteRoomLeaveAck(Guid roomId)
+        => clientService.CompleteRoomLeaveAck(roomId);
+
+    // HOST
 
     async Task<Room> IRoomLifecycleManager.StartHostingAsync(RoomInfo roomInfo, NetworkOptions networkOptions, CancellationToken cancellationToken)
         => await hostService.StartHostingAsync(roomInfo, networkOptions, cancellationToken);
@@ -78,14 +89,20 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
     async Task<IEnumerable<IEndpoint>> IRoomLifecycleManager.UpdateNetworkOptions(Guid roomId, NetworkOptions newNetworkOptions, CancellationToken cancellationToken)
         => await hostService.UpdateNetworkOptions(roomId, newNetworkOptions, cancellationToken);
 
-    async Task IRoomLifecycleManager.StopHostingAsync(Guid roomId)
-        => await hostService.StopHostingAsync(roomId);
+    void IRoomLifecycleManager.MarkParticipantAsLeftRoom(Guid roomId, Guid participantId)
+        => hostService.MarkParticipantAsLeftRoom(roomId, participantId);
 
-    async Task IRoomLifecycleManager.KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason)
-        => await hostService.KickClientAsync(roomId, participantId, reason);
+    async Task IRoomLifecycleManager.KickClientAsync(Guid roomId, Guid participantId, DisconnectReason reason, string message)
+        => await hostService.KickClientAsync(roomId, participantId, reason, message);
 
     async Task IRoomLifecycleManager.KickConnectionAsync(Guid roomId, Guid connectionId, DisconnectReason reason)
         => await hostService.KickConnectionAsync(roomId, connectionId, reason);
+
+    async Task IRoomLifecycleManager.StopHostingAsync(Guid roomId)
+       => await hostService.StopHostingAsync(roomId);
+
+    async Task IRoomLifecycleManager.ForgetHostingAsync(Guid roomId)
+       => await hostService.ForgetRoom(roomId);
 
     private void SubscribeToEvents()
     {

@@ -1,5 +1,4 @@
-﻿using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace MIN.Helpers.Services;
 
@@ -34,23 +33,5 @@ public static class CollegePCNameParser
         }
 
         return true;
-    }
-
-    /// <summary>
-    /// Получить имя компьютера исходя из класса и номера компьютера
-    /// </summary>
-    public static string CreateComputerName(int roomNumber, int computerNumber)
-    {
-        var baseName = new StringBuilder();
-        var desiredLetter = roomNumber / 10 % 10 > 1 ? "B" : "C";
-        baseName.Append(desiredLetter + roomNumber);
-
-        if (computerNumber > 0 && computerNumber < 10)
-        {
-            baseName.Append('0');
-        }
-
-        baseName.Append(computerNumber);
-        return baseName.ToString();
     }
 }

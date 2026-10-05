@@ -31,7 +31,18 @@ public sealed class HandshakeMessage : BaseMessage
     public Version Version { get; set; } = null!;
 
     /// <summary>
+    /// Хеш публичного ключ (в случае его несовпадения)
+    /// </summary>
+    /// <remarks>
+    /// null - если уверены, что это первая встреча
+    /// </remarks>
+    public byte[]? PublicKeyFingerprint { get; set; } = null!;
+
+    /// <summary>
     /// Публичный ключ
     /// </summary>
-    public byte[] PublicKey { get; set; } = null!;
+    /// <remarks>
+    /// null - если уже была встреча и нужно проверить сохранившееся
+    /// </remarks>
+    public byte[]? PublicKey { get; set; } = null!;
 }

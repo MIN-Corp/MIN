@@ -29,6 +29,16 @@ public record Participant : IParticipantData
     public DateTime LastSeenOnline { get; set; }
 
     /// <summary>
+    /// Когда присоединился к комнате
+    /// </summary>
+    public DateTime JoinedAt { get; set; }
+
+    /// <summary>
+    /// Когда участник последний раз менял описание
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="Participant"/>
     /// </summary>
     public Participant(IParticipantData participantData)
@@ -37,6 +47,7 @@ public record Participant : IParticipantData
         Name = participantData.Name;
         CurrentStatus = OnlineStatus.Online;
         LastSeenOnline = DateTime.Now;
+        JoinedAt = DateTime.Now;
     }
 
     /// <summary>

@@ -44,9 +44,11 @@ internal sealed class FileMetadataHandler : BaseHandler
 
         LogInfo($"Получены метаданные файла: {metadata.FileName} ({metadata.FileSize} байт) от {metadata.SenderId}");
 
+        var copy = new FileMetadataMessage(metadata);
+
         if (!metadata.AsDownloaded && context.Role == Role.Client)
         {
-            SaveMetadata(context, metadata);
+            context.RoomContext.Messages.AddMessage(copy);
         }
 
         var roomId = context.RoomContext.RoomId;
@@ -58,7 +60,6 @@ internal sealed class FileMetadataHandler : BaseHandler
             || metadata.AsDownloaded
             || (isHosting && isSelf);
 
-        var copy = new FileMetadataMessage(metadata);
 
         if (hasAccess && isHostDownload)
         {
@@ -80,7 +81,7 @@ internal sealed class FileMetadataHandler : BaseHandler
 
         if (isHosting && isSelf)
         {
-            SaveMetadata(context, metadata);
+            context.RoomContext.Messages.AddMessage(copy);
             return HandlerResult.Success();
         }
 
@@ -104,11 +105,7 @@ internal sealed class FileMetadataHandler : BaseHandler
             metadata.FilePath = e.FilePath;
             fileTransferService.RegisterFileMetadata(message.Id, roomId, metadata.FileName);
 
-            context.RoomContext.Messages.AddMessage(new FileMetadataMessage(metadata)
-            {
-                FilePath = null
-            });
-
+            context.RoomContext.Messages.AddMessage(new FileMetadataMessage(metadata));
             await messageRouter.RouteAsync(metadata, roomId, metadata.SenderId, context.CancellationToken);
         });
 
@@ -141,14 +138,5 @@ internal sealed class FileMetadataHandler : BaseHandler
             FileMetadataId = message.Id,
             Direction = FileTransferDirection.Upload,
         }, stopPropagation: true);
-    }
-
-    private static void SaveMetadata(MessageContext context, FileMetadataMessage metadata)
-    {
-        var storageCopy = new FileMetadataMessage(metadata)
-        {
-            FilePath = null
-        };
-        context.RoomContext.Messages.AddMessage(storageCopy);
     }
 }

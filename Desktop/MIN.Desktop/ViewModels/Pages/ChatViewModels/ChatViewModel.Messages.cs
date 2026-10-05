@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -53,7 +54,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var isCurrentPrivate = message.RecipientId == localParticipant.Id
             || (message.SenderId == localParticipant.Id && message.RecipientId != null);
 
-        BaseChatMessageViewModel? messageCard = null;
+        BaseChatMessageViewModel? messageCard;
         switch (message)
         {
             case ChatTextMessage m:
@@ -81,6 +82,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             case IDescribable d:
                 messageCard = CreateDescribableLabel(d, message);
                 break;
+
             default:
                 return;
         }
@@ -108,6 +110,50 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             MissedMessagesCount++;
         }
+        else if (IsAtBottom)
+        {
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task UpdateChatFlow()
+    {
+        DisposeMessageCards();
+        Messages.Clear();
+        RemoveLoadMoreLabel();
+        hasScrolledHistory = false;
+        renderedMessageCount = 0;
+        maxRenderedMessages = StoreConstants.MessagesPageSize;
+        oldestLoadedTimestamp = null;
+        oldestLoadedMessageId = null;
+
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var messages = context.Messages.GetRecentHistory().ToList();
+
+        await RenderMessages(messages);
+
+        if (room.TotalMessageCount > StoreConstants.MessagesPageSize)
+        {
+            ShowLoadMoreLabel();
+        }
+        oldestLoadedTimestamp = messages[0].Timestamp;
+        oldestLoadedMessageId = messages[0].Id;
+    }
+
+    private void DisposeMessageCards()
+    {
+        foreach (var card in Messages)
+        {
+            card.Dispose();
+        }
+    }
+
+    private async Task RenderMessages(List<IMessage> messages, bool appendOnTop = false)
+    {
+        foreach (var message in messages)
+        {
+            await AddMessageToChatFlow(message, appendOnTop);
+        }
     }
 
     private void RemoveMessage(Guid id)
@@ -131,16 +177,16 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
     }
 
-    private void EditMessage(Guid id, string newContent)
+    private void UpdateMessage(Guid id, IMessage newMessage)
     {
         var existingCard = Messages.FirstOrDefault(x => x.Message?.Id == id);
         if (existingCard == null)
         {
             return;
         }
-        if (existingCard is BaseTextContentChatMessageViewModel baseTextContentChatMessageViewModel)
+        if (existingCard is BaseUpdateableReplyableChatMessageViewModel baseUpdateable)
         {
-            baseTextContentChatMessageViewModel.MessageEdited(newContent);
+            baseUpdateable.Update(newMessage);
         }
         var replyables = Messages.OfType<BaseReplyableChatMessageViewModel>();
         foreach (var replyable in replyables)
@@ -192,11 +238,14 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         maxRenderedMessages += StoreConstants.MessagesPageSize;
 
-        if (olderInMemory.Count < StoreConstants.MessagesPageSize
-            && context.Messages.GetMessageCount() < room.TotalMessageCount)
+        var messagesCount = context.Messages.GetMessageCount();
+
+        if (!IsHost
+            && olderInMemory.Count < StoreConstants.MessagesPageSize
+            && messagesCount < room.TotalMessageCount)
         {
             await featureCollection.Chat.ChatRoomService.SendChatHistoryRequest(
-                roomId, oldestLoadedTimestamp, oldestLoadedMessageId, appCts.Token);
+                roomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
             return;
         }
 
@@ -215,7 +264,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
             .Any();
 
-        if (stillMoreExists || context.Messages.GetMessageCount() < room.TotalMessageCount)
+        if (stillMoreExists || messagesCount < room.TotalMessageCount)
         {
             ShowLoadMoreLabel();
         }
@@ -227,16 +276,30 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         for (var i = 0; i < Messages.Count; i++)
         {
-            if (Messages[i] != loadMoreLabel)
+            if (Messages[i] == loadMoreLabel || Messages[i].Message == null)
             {
-                oldestLoadedTimestamp = Messages[i + 1].Message?.Timestamp;
-                oldestLoadedMessageId = Messages[i + 1].Message?.Id;
-                Messages.RemoveAt(i);
-                renderedMessageCount--;
-                break;
+                continue;
             }
-        }
 
+            var trimmedMessage = Messages[i].Message!;
+            Messages.RemoveAt(i);
+            renderedMessageCount--;
+
+            oldestLoadedTimestamp = trimmedMessage.Timestamp;
+            oldestLoadedMessageId = trimmedMessage.Id;
+
+            for (var j = i; j < Messages.Count; j++)
+            {
+                if (Messages[j].Message != null)
+                {
+                    oldestLoadedTimestamp = Messages[j].Message!.Timestamp;
+                    oldestLoadedMessageId = Messages[j].Message!.Id;
+                    break;
+                }
+            }
+
+            break;
+        }
         ShowLoadMoreLabel();
     }
 
@@ -272,7 +335,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var removeHeaders = isSelf || lastChatMessage?.SenderId == msg.SenderId;
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
-        var card = new ChatTextMessageViewModel(msg, dialogService, timePadding, isSelf, isHost, removeHeaders, parentWindow.Clipboard);
+        var card = new ChatTextMessageViewModel(msg, dialogService, timePadding, isSelf, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
         card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
         card.OnEditRequested += (newContent) => OnMessageEditRequested(msg.Id, newContent);
         card.OnReplyRequested += () => SetReplyTo(msg);
@@ -294,7 +357,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatFileMessageViewModel(featureCollection.FileTransfer,
             dialogService, roomScope, msg, timePadding,
-            localParticipant, isHost, removeHeaders, parentWindow.Clipboard);
+            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
 
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
@@ -319,7 +382,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatFileImagePreviewMessageViewModel(featureCollection.FileTransfer,
             dialogService, roomScope, msg, timePadding,
-            localParticipant, isHost, removeHeaders, parentWindow.Clipboard);
+            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
 
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
@@ -344,7 +407,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
             roomScope, featureCollection.Core.EventBus, dialogService,
-            msg, localParticipant, timePadding, isHost, removeHeaders);
+            msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
         card.OnReplyRequested += () => SetReplyTo(msg);
 
@@ -363,7 +426,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var removeHeaders = isSelf || lastChatMessage?.SenderId == msg.SenderId;
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
-        var card = new ChatVoiceCallMessageViewModel(roomScope, msg, localParticipant, timePadding, isHost, removeHeaders);
+        var card = new ChatVoiceCallMessageViewModel(roomScope, msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
 
         card.OnJoinRequested += () => OnVoiceCallJoinRequested(msg.SubRoomId);
         card.OnLeaveRequested += () => OnVoiceCallLeaveRequested(msg.SubRoomId);
@@ -419,7 +482,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         if (needsToNotify)
         {
-            await PublishNewDescribable(systemMessage.Id, systemMessage, appCts.Token);
+            await PublishNewDescribable(systemMessage.Id, systemMessage, roomCts.Token);
             NotifyIfNeeded(systemMessage);
         }
     }

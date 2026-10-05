@@ -20,6 +20,8 @@ namespace MIN.Desktop.Infrastructure.Behaviors.ScrollViewers;
 /// </summary>
 public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
 {
+    private double lastAnimatedOffset;
+
     /// <summary>
     /// Изменение размера
     /// </summary>
@@ -222,7 +224,7 @@ public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
 
             // Update _targetOffset with new delta
             targetOffset += delta;
-            targetOffset = double.Clamp(targetOffset, 0, double.Max(0, AssociatedObject!.Extent.Height));
+            targetOffset = double.Clamp(targetOffset, 0, double.Max(0, AssociatedObject!.Extent.Height - AssociatedObject!.Viewport.Height));
 
             animationStartTime = currentTime;
         }
@@ -232,8 +234,9 @@ public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
             startOffset = AssociatedObject!.Offset.Y;
             targetOffset = startOffset + delta;
 
-            targetOffset = double.Clamp(targetOffset, 0, double.Max(0, AssociatedObject!.Extent.Height));
+            targetOffset = double.Clamp(targetOffset, 0, double.Max(0, AssociatedObject!.Extent.Height - AssociatedObject!.Viewport.Height));
 
+            lastAnimatedOffset = startOffset;
             animationStartTime = currentTime;
             _ = Animate();
         }
@@ -241,30 +244,39 @@ public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
 
     private async Task Animate()
     {
+        const double externalScrollEpsilon = 0.5;
+
         while (isAnimating)
         {
+            // Another source moved the scroll (ScrollToEnd, scrollbar drag) — stop fighting it
+            if (Math.Abs(AssociatedObject!.Offset.Y - lastAnimatedOffset) > externalScrollEpsilon)
+            {
+                isAnimating = false;
+                break;
+            }
+
+            // Extent may shift mid-animation (virtualization realizes items) — retarget to live max
+            var maxOffset = double.Max(0, AssociatedObject!.Extent.Height - AssociatedObject!.Viewport.Height);
+            targetOffset = double.Clamp(targetOffset, 0, maxOffset);
+
             var elapsedTime = (DateTime.Now - animationStartTime).TotalMilliseconds;
 
             if (elapsedTime >= ANIMATION_DURATION)
             {
-                // End the animation
                 AssociatedObject!.Offset = new Vector(AssociatedObject!.Offset.X, targetOffset);
                 isAnimating = false;
                 break;
             }
 
-            // Animation progress from 0 to 1
             var progress = elapsedTime / ANIMATION_DURATION;
             SineEaseOut? easing = new();
             var easedProgress = easing.Ease(progress);
-
-            // Calculate new offset
             var currentOffset = startOffset + easedProgress * (targetOffset - startOffset);
 
-            // Apply offset
             AssociatedObject!.Offset = new Vector(AssociatedObject!.Offset.X, currentOffset);
+            lastAnimatedOffset = currentOffset;
 
-            await Task.Delay(10); // Update every 10ms
+            await Task.Delay(10);
         }
     }
 

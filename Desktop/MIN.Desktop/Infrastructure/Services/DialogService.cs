@@ -18,14 +18,14 @@ namespace MIN.Desktop.Infrastructure.Services;
 public sealed class DialogService : IDialogService
 {
     private readonly ILoggerProvider logger;
-    private readonly Func<Window> dialogOwnerProvider;
+    private readonly Window dialogOwnerProvider;
     private readonly Dictionary<Type, ModalMapping> viewModelToWindowMap;
     private readonly object viewModelToWindowMapLocker = new();
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="DialogService"/>
     /// </summary>
-    public DialogService(Func<Window> dialogOwnerProvider,
+    public DialogService(Window dialogOwnerProvider,
         IEnumerable<ModalMapping> viewModelToWindowMap,
         ILoggerProvider logger)
     {
@@ -53,7 +53,7 @@ public sealed class DialogService : IDialogService
                 Window dialog = mapping.WindowFactory(typeof(TViewModel));
                 var viewModel = (TViewModel)dialog.DataContext!;
                 viewModelSetup?.Invoke(viewModel);
-                dialog.Show(dialogOwnerProvider());
+                dialog.Show(dialogOwnerProvider);
                 return viewModel;
             });
         }
@@ -83,7 +83,7 @@ public sealed class DialogService : IDialogService
             {
                 Window dialog = mapping.WindowFactory(typeof(TViewModel));
                 viewModelSetup?.Invoke((TViewModel)dialog.DataContext!);
-                return dialog.ShowDialog<TViewModel>(dialogOwnerProvider());
+                return dialog.ShowDialog<TViewModel>(dialogOwnerProvider);
             });
         }
         catch (Exception ex)

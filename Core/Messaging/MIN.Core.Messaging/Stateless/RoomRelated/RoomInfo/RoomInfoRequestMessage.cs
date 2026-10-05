@@ -13,4 +13,9 @@ public sealed class RoomInfoRequestMessage : BaseMessage
 
     /// <inheritdoc />
     public override bool IsPublic => false;
+
+    /// <summary>
+    /// Перезаходит ли участник
+    /// </summary>
+    public bool IsRejoin { get; set; }
 }

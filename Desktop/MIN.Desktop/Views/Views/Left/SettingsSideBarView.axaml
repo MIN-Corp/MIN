@@ -9,8 +9,6 @@
              x:DataType="vm:SettingsSideBarViewModel"
              Padding="{DynamicResource PaddingPage}"
              DockPanel.Dock="Left"
-             MinWidth="320"
-             MaxWidth="600"
              x:Class="MIN.Desktop.Views.Left.SettingsSideBarView">
 
     <Design.DataContext>
@@ -51,7 +49,7 @@
                             Имя по умолчанию
                         </TextBlock>
 
-                        <TextBox Text="{Binding DefaultParticipantName}"
+                        <TextBox Text="{Binding ParticipantName}"
                             PlaceholderText="Введите имя..." />
                     </DockPanel>
 
@@ -63,7 +61,6 @@
 
                         <TextBox Text="{Binding DiscoveryTimeout,
                             Converter={converters:IntToStringConverter}}"
-                            MaxWidth="120"
                             Grid.Column="1"/>
                     </Grid>
 
@@ -71,7 +68,6 @@
                     <Grid ColumnDefinitions="*, Auto">
                         <TextBlock Grid.Column="0"
                                HorizontalAlignment="Left"
-                               MaxWidth="170"
                                VerticalAlignment="Center">
                             UDP Порт комнат (Лучше не менять, по умолчанию 42069)
                         </TextBlock>
@@ -97,11 +93,9 @@
 
                     <DockPanel HorizontalSpacing="12">
                         <TextBlock VerticalAlignment="Center">Микрофон</TextBlock>
-                        <ComboBox MaxWidth="160"
-                                  MinWidth="160"
-                                  ItemsSource="{Binding InputDevices}"
+                        <ComboBox ItemsSource="{Binding InputDevices}"
                                   SelectedIndex="{Binding Settings.InputDeviceNumber}"
-                                  HorizontalAlignment="Right"/>
+                                  HorizontalAlignment="Stretch"/>
                     </DockPanel>
 
                     <TextBlock Text="{Binding #inputVolumeSlider.Value, StringFormat='Громкость микрофона: {0:F0}%'}" />
@@ -112,20 +106,16 @@
 
                     <DockPanel HorizontalSpacing="12">
                         <TextBlock VerticalAlignment="Center">Шумоподавление</TextBlock>
-                        <ComboBox MaxWidth="120"
-                                  MinWidth="120"
-                                  ItemsSource="{Binding NoiseReductions}"
+                        <ComboBox ItemsSource="{Binding NoiseReductions}"
                                   SelectedIndex="{Binding ChoosenNoiseReduction}"
-                                  HorizontalAlignment="Right"/>
+                                  HorizontalAlignment="Stretch"/>
                     </DockPanel>
 
                     <DockPanel HorizontalSpacing="12">
                         <TextBlock VerticalAlignment="Center">Динамики</TextBlock>
-                        <ComboBox MaxWidth="170"
-                                  MinWidth="170"
-                                  ItemsSource="{Binding OutputDevices}"
+                        <ComboBox ItemsSource="{Binding OutputDevices}"
                                   SelectedIndex="{Binding Settings.OutputDeviceNumber}"
-                                  HorizontalAlignment="Right"/>
+                                  HorizontalAlignment="Stretch"/>
                     </DockPanel>
 
                     <TextBlock Text="{Binding #outputVolumeSlider.Value, StringFormat='Громкость динамиков: {0:F0}%'}" />
@@ -140,7 +130,6 @@
                     </Button>
 
                     <TextBlock Classes="info"
-                               MaxWidth="220"
                                HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         Для разраба, при ошибке сообщите в https://github.com/MIN-Corp/MIN/issues
@@ -155,7 +144,6 @@
                     </Button>
 
                     <TextBlock Classes="info"
-                               MaxWidth="170"
                                HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         Обычно нужен при неправильных настройках в кэше

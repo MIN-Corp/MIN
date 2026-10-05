@@ -1,7 +1,7 @@
 ﻿namespace MIN.Core.Cryptography.Contracts.Interfaces;
 
 /// <summary>
-/// Помощник в шифровании
+/// Помощник в шифровании сообщений
 /// </summary>
 public interface IMessageEncryptor
 {
@@ -21,6 +21,22 @@ public interface IMessageEncryptor
     /// Получить свой публичный ключ
     /// </summary>
     Task<byte[]> GetLocalPublicKey();
+
+    /// <summary>
+    /// Инициализировать сессию из сохранённого ключа партнёра (без перезаписи хранилища)
+    /// </summary>
+    /// <returns>false, если сохранённого ключа нет или он повреждён</returns>
+    Task<bool> TryInitializeSessionFromStoredAsync(Guid partnerId);
+
+    /// <summary>
+    /// Получить отпечаток сохранённого публичного ключа партнёра (null, если ключ не сохранён)
+    /// </summary>
+    Task<byte[]?> TryGetPartnerKeyFingerprintAsync(Guid partnerId);
+
+    /// <summary>
+    /// Вычислить отпечаток произвольного (входящего) публичного ключа
+    /// </summary>
+    byte[] ComputeKeyFingerprint(byte[] publicKey);
 
     /// <summary>
     /// Закодировать сообщение
