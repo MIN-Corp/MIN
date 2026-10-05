@@ -130,7 +130,7 @@ public class VoiceCallMonitor : IHostedService
         }
     }
 
-    private async Task EndAllCalls(CancellationToken cancellationToken)
+    private async Task EndAllCalls()
     {
         var contexts = roomFactory.GetAllContexts();
         foreach (var context in contexts)
@@ -155,7 +155,7 @@ public class VoiceCallMonitor : IHostedService
 
     async Task IHostedService.StopAsync(CancellationToken cancellationToken)
     {
-        await EndAllCalls(cancellationToken);
+        await EndAllCalls();
 
         audioCaptureService.Stop();
         voiceDataTransmitter.End();

@@ -151,6 +151,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (hasScrolledHistory)
         {
+            DisposeMessageCards();
             Messages.Clear();
             renderedMessageCount = 0;
             RemoveLoadMoreLabel();

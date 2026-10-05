@@ -94,8 +94,33 @@ public class SessionMonitor : IHostedService
         }
     }
 
+    private async Task EndAllSessions()
+    {
+        var contexts = roomFactory.GetAllContexts();
+        foreach (var context in contexts)
+        {
+            var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Activity && x.IsActive).ToList();
+            foreach (var subRoom in activeSubRooms)
+            {
+                var existingSessionReadyMessageId = context.Messages.GetHistory()
+                    .OfType<SessionReadyMessage>().FirstOrDefault(x => x.SubRoomId == subRoom.Id)?.Id;
+
+                if (existingSessionReadyMessageId != null)
+                {
+                    var existing = context.Messages.GetMessageById(existingSessionReadyMessageId.Value) as SessionReadyMessage;
+                    existing!.CurrentParticipantAmount = 0;
+                    context.Messages.UpdateMessage(existing.Id, existing);
+                }
+
+                context.SubRooms.TryStopSubRoom(subRoom.Id, identityService.SelfParticipant.Id);
+            }
+        }
+    }
+
     async Task IHostedService.StopAsync(CancellationToken cancellationToken)
     {
+        await EndAllSessions();
+
         await sessionProcessBridge.StopListeningAsync(cancellationToken);
         await sessionProcessManager.StopAllAsync();
     }

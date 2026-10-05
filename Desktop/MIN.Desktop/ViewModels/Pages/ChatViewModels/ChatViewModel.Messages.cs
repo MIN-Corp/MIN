@@ -118,6 +118,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private async Task UpdateChatFlow()
     {
+        DisposeMessageCards();
         Messages.Clear();
         RemoveLoadMoreLabel();
         hasScrolledHistory = false;
@@ -137,6 +138,14 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
         oldestLoadedTimestamp = messages[0].Timestamp;
         oldestLoadedMessageId = messages[0].Id;
+    }
+
+    private void DisposeMessageCards()
+    {
+        foreach (var card in Messages)
+        {
+            card.Dispose();
+        }
     }
 
     private async Task RenderMessages(List<IMessage> messages, bool appendOnTop = false)

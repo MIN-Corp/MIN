@@ -99,8 +99,8 @@ public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageVi
 
     private void SubscribeToEvents(IEventScope roomScope)
     {
-        roomScope.Subscribe<VoiceCallEndedEvent>(OnVoiceCallEnded);
-        roomScope.Subscribe<VoiceCallEstablishedEvent>(OnVoiceCallEstablished);
+        Subscriptions.Add(roomScope.Subscribe<VoiceCallEndedEvent>(OnVoiceCallEnded));
+        Subscriptions.Add(roomScope.Subscribe<VoiceCallEstablishedEvent>(OnVoiceCallEstablished));
     }
 
     private void OnCallTimerTick(object? sender, EventArgs e)

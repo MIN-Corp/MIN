@@ -27,6 +27,11 @@ public class RoomJoinArgs
     public required CancellationTokenSource Cts { get; init; }
 
     /// <summary>
+    /// Показать окно загрузки или просто событие
+    /// </summary>
+    public bool ShowLoadingDialog { get; init; }
+
+    /// <summary>
     /// Событие по готовности комнаты
     /// </summary>
     public required Func<Room?, Guid, Task> OnRoomReady { get; init; }

@@ -23,8 +23,6 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 {
     private readonly RoomInfo room;
     private readonly bool asHost;
-
-    private IDisposable errorToken = null!;
     private bool joined;
 
     /// <summary>
@@ -121,7 +119,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         roomScope.Subscribe<RoomWentOfflineEvent>(RoomWentOffline);
         roomScope.Subscribe<RoomDestroyedEvent>(OnRoomDestroyed);
         roomScope.Subscribe<RoomJoinedEvent>(OnRoomJoined);
-        errorToken = eventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured);
+        Subscriptions.Add(eventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured));
     }
 
     private Task OnErrorOccured(ErrorOccurredEvent eventMessage, CancellationToken cancellationToken)
@@ -217,12 +215,5 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         {
             ConnectionStatus = "Присоединиться";
         }
-    }
-
-    /// <inheritdoc cref="IDisposable.Dispose"/>
-    public override void Dispose()
-    {
-        errorToken.Dispose();
-        base.Dispose();
     }
 }

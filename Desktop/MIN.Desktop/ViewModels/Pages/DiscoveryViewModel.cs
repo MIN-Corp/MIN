@@ -298,6 +298,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             Cts = connectCts,
             Endpoint = endpoint,
             ExpectedRoomId = expectedRoomId,
+            ShowLoadingDialog = true,
             OnRoomReady = async (room, connectionId) =>
             {
                 if (room == null)

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
+using MIN.Core.Entities;
+using MIN.Core.Events.Events;
 using MIN.Core.Services.Contracts.Exceptions;
 using MIN.Core.Services.Contracts.Models;
 using MIN.Desktop.Contracts.Constants;
@@ -71,21 +74,61 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
         try
         {
             ConnectionResult connectionResult = new();
+            IDisposable? errorToken = null;
+            IDisposable? roomStateToken = null;
 
-            _ = dialogService.ShowDialogAsync<LoadingViewModel>(async vm =>
+            async void OnRoomReady(Room? room)
             {
-                await vm.LoadRoomDataAndRefresh(async room =>
+                if (room == null)
                 {
-                    if (room == null)
+                    return;
+                }
+
+                errorToken?.Dispose();
+                roomStateToken?.Dispose();
+                await args.OnRoomReady(room, connectionResult.ConnectionId);
+            }
+
+            if (args.ShowLoadingDialog)
+            {
+                _ = dialogService.ShowDialogAsync<LoadingViewModel>(async vm =>
+                {
+                    await vm.LoadRoomDataAndRefresh(OnRoomReady, args.Cts, DesktopConstants.RoomConnectionTimeoutMs);
+                    loadingVm = vm;
+                });
+            }
+            else
+            {
+                roomStateToken = featureCollection.Core.EventBus.Subscribe<RoomStateChangedEvent>(OnRoomStateChangedEventReceived);
+                errorToken = featureCollection.Core.EventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured);
+
+                Task OnErrorOccured(ErrorOccurredEvent eventMessage, CancellationToken cancellationToken)
+                {
+                    if (eventMessage.RoomId != connectionResult.RoomId)
                     {
-                        return;
+                        return Task.CompletedTask;
                     }
 
-                    await args.OnRoomReady(room, connectionResult.ConnectionId);
-                }, args.Cts, DesktopConstants.RoomConnectionTimeoutMs);
+                    OnRoomReady(null);
+                    return Task.CompletedTask;
+                }
 
-                loadingVm = vm;
-            });
+                Task OnRoomStateChangedEventReceived(RoomStateChangedEvent eventMessage, CancellationToken cancellationToken)
+                {
+                    if (eventMessage.Room.Id != connectionResult.RoomId)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        InAppNotifier.Success($"Подключение к комнате {eventMessage.Room.Name} прошло успешно!");
+                    });
+                    OnRoomReady(eventMessage.Room);
+                    return Task.CompletedTask;
+                }
+            }
+
 
             connectionResult = await featureCollection.Core.Lifecycle.ConnectAsync(args.Endpoint, args.ExpectedRoomId, args.Cts.Token);
 

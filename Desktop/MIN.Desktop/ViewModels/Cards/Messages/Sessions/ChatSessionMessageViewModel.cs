@@ -23,11 +23,10 @@ namespace MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 /// <summary>
 /// Сообщение сессии участника
 /// </summary>
-public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMessageViewModel, IDisposable
+public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMessageViewModel
 {
     private readonly IDialogService dialogService = null!;
     private readonly int? maximumParticipants;
-    private IDisposable rescanToken = null!;
     private bool asDownloaded;
     private int currentAmount;
 
@@ -114,11 +113,11 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 
     private void SubscribeToEvents(IEventScope roomScope, IEventBus eventBus)
     {
-        rescanToken = eventBus.Subscribe<SessionRescanCompletedEvent>(OnSessionRescanCompletedEvent);
-        roomScope.Subscribe<SessionProcessStartedEvent>(OnSessionProcessStarted);
-        roomScope.Subscribe<SessionProcessEndedEvent>(OnSessionProcessEnded);
-        roomScope.Subscribe<SessionParticipantJoinedEvent>(OnSessionParticipantJoined);
-        roomScope.Subscribe<SessionParticipantLeftEvent>(OnSessionParticipantLeft);
+        Subscriptions.Add(eventBus.Subscribe<SessionRescanCompletedEvent>(OnSessionRescanCompletedEvent));
+        Subscriptions.Add(roomScope.Subscribe<SessionProcessStartedEvent>(OnSessionProcessStarted));
+        Subscriptions.Add(roomScope.Subscribe<SessionProcessEndedEvent>(OnSessionProcessEnded));
+        Subscriptions.Add(roomScope.Subscribe<SessionParticipantJoinedEvent>(OnSessionParticipantJoined));
+        Subscriptions.Add(roomScope.Subscribe<SessionParticipantLeftEvent>(OnSessionParticipantLeft));
     }
 
     private Task OnSessionRescanCompletedEvent(SessionRescanCompletedEvent eventMessage, CancellationToken cancellationToken)
@@ -235,11 +234,5 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
                 UseShellExecute = true
             });
         }
-    }
-
-    /// <inheritdoc cref="IDisposable.Dispose"/>
-    void IDisposable.Dispose()
-    {
-        rescanToken.Dispose();
     }
 }

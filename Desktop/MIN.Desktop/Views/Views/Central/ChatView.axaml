@@ -532,8 +532,22 @@
                     Classes="appear-from-bottom"
                     Command="{Binding ReconnectCommand}"
                     Opacity="{Binding !IsOnline,
-                        Converter={converters:BoolToOpacityConverter}}"
-                    Content="Подключиться">
+                        Converter={converters:BoolToOpacityConverter}}">
+
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8">
+                        <TextBlock IsVisible="{Binding !IsConnecting}"
+                                VerticalAlignment="Center"
+                                Text="Подключиться" />
+                        <TextBlock IsVisible="{Binding IsConnecting}"
+                                VerticalAlignment="Center"
+                                Text="Отмена" />
+                         <Svg IsVisible="{Binding IsConnecting}"
+                            Path="/Assets/Icons/loading.svg"
+                            Height="21"
+                            Classes="rotating" />
+                    </StackPanel>
+
                     <Button.Transitions>
                         <Transitions>
                             <DoubleTransition Duration="0:0:.2" Property="Opacity" />

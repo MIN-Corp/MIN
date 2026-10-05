@@ -30,10 +30,16 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 public partial class ChatViewModel : RoutableViewModelBase
 {
     private readonly Window parentWindow = MainWindowViewModel.GetWindow()!;
-    private bool isConnecting;
     private bool isTryingToHost;
     private CancellationTokenSource? createRoomCts;
+    private CancellationTokenSource? reconnectRoomCts;
     private Guid? replyToPreviewId;
+
+    /// <summary>
+    /// Идёт подключение
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsConnecting { get; set; }
 
     /// <summary>
     /// Превью ответа на вопрос (просто показать в строчке описание сообщения)
@@ -280,34 +286,44 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
     }
 
-    private bool IsClientOfflineAndNotConnecting() => !isConnecting;
+    private bool IsClientOfflineAndNotConnecting() => !IsConnecting;
 
     [RelayCommand(CanExecute = nameof(IsClientOfflineAndNotConnecting))]
     private async Task Reconnect()
     {
-        isConnecting = true;
+        if (IsConnecting)
+        {
+            reconnectRoomCts?.Cancel();
+            reconnectRoomCts?.Dispose();
+            reconnectRoomCts = null;
+            IsConnecting = false;
+            return;
+        }
 
-        var connectCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
+        IsConnecting = true;
+
+        reconnectRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
 
         // TODO: make endpoint choosable
         var chosenEndpoint = room.ConnectionAddresses.First();
 
         var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
         {
-            Cts = connectCts,
+            Cts = reconnectRoomCts,
             ExpectedRoomId = roomId,
             Endpoint = chosenEndpoint,
+            ShowLoadingDialog = false,
             OnRoomReady = async (room, connectionId) =>
             {
                 if (room == null)
                 {
-                    isConnecting = false;
+                    IsConnecting = false;
                     return;
                 }
 
                 await RefreshAfterReconnect(room, connectionId);
             }
-        }, connectCts.Token);
+        }, reconnectRoomCts.Token);
 
         if (reconnectResult.Failure != null && reconnectResult.RoomIdentityMismatchException != null)
         {
@@ -326,7 +342,8 @@ public partial class ChatViewModel : RoutableViewModelBase
             }
         }
 
-        isConnecting = false;
+        IsConnecting = false;
+        reconnectRoomCts = null;
     }
 
     private async Task RefreshAfterReconnect(Room updatedRoom, Guid connectionId)
@@ -354,7 +371,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         IsOnline = true;
         chatSideBarViewModel.IsOnline = true;
-        isConnecting = false;
+        IsConnecting = false;
         isTryingToHost = false;
 
         InitializeConnectionActions();

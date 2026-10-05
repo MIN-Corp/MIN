@@ -293,6 +293,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task OnChatHistoryCleared(ChatHistoryClearedEvent eventMessage, CancellationToken cancellationToken)
     {
         RemoveLoadMoreLabel();
+        DisposeMessageCards();
         Messages.Clear();
         renderedMessageCount = 0;
         MissedMessagesCount = 0;

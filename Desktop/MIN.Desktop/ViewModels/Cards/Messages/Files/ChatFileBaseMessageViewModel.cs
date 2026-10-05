@@ -167,9 +167,9 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
 
     private void SubscribeToEvents(IEventScope roomScope)
     {
-        roomScope.Subscribe<FileTransferStartedEvent>(OnFileTransferStarted);
-        roomScope.Subscribe<FileTransferFailedEvent>(OnFileTransferFailed);
-        roomScope.Subscribe<FileTransferCompletedEvent>(OnFileTransferCompleted);
+        Subscriptions.Add(roomScope.Subscribe<FileTransferStartedEvent>(OnFileTransferStarted));
+        Subscriptions.Add(roomScope.Subscribe<FileTransferFailedEvent>(OnFileTransferFailed));
+        Subscriptions.Add(roomScope.Subscribe<FileTransferCompletedEvent>(OnFileTransferCompleted));
     }
 
     private Task OnFileTransferStarted(FileTransferStartedEvent eventMessage, CancellationToken cancellationToken)
