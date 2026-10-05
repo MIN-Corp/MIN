@@ -30,7 +30,6 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 public partial class ChatViewModel : RoutableViewModelBase
 {
     private readonly Window parentWindow = MainWindowViewModel.GetWindow()!;
-    private bool isTryingToHost;
     private CancellationTokenSource? createRoomCts;
     private CancellationTokenSource? reconnectRoomCts;
     private Guid? replyToPreviewId;
@@ -40,6 +39,12 @@ public partial class ChatViewModel : RoutableViewModelBase
     /// </summary>
     [ObservableProperty]
     public partial bool IsConnecting { get; set; }
+
+    /// <summary>
+    /// Идёт рехостинг
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsRehosting { get; set; }
 
     /// <summary>
     /// Превью ответа на вопрос (просто показать в строчке описание сообщения)
@@ -286,9 +291,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
     }
 
-    private bool IsClientOfflineAndNotConnecting() => !IsConnecting;
-
-    [RelayCommand(CanExecute = nameof(IsClientOfflineAndNotConnecting))]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task Reconnect()
     {
         if (IsConnecting)
@@ -372,21 +375,21 @@ public partial class ChatViewModel : RoutableViewModelBase
         IsOnline = true;
         chatSideBarViewModel.IsOnline = true;
         IsConnecting = false;
-        isTryingToHost = false;
+        IsRehosting = false;
 
         InitializeConnectionActions();
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task Rehost()
     {
-        if (isTryingToHost)
+        if (IsRehosting)
         {
             createRoomCts?.Cancel();
             return;
         }
 
-        isTryingToHost = true;
+        IsRehosting = true;
         createRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
 
         var hostResult = await roomConnectionUiService.HostAsync(new RoomHostArgs()
@@ -403,9 +406,10 @@ public partial class ChatViewModel : RoutableViewModelBase
         if (hostResult.Failure != null)
         {
             await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomId);
-            InAppNotifier.Info(hostResult.ErrorMessage ?? "Не удалось создать комнату");
+            InAppNotifier.Info(hostResult.ErrorMessage ?? "Не удалось захостить комнату");
         }
 
         createRoomCts = null;
+        IsRehosting = false;
     }
 }

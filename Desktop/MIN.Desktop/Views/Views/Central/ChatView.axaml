@@ -566,8 +566,22 @@
                     Classes="appear-from-bottom"
                     Command="{Binding RehostCommand}"
                     Opacity="{Binding !IsOnline,
-                        Converter={converters:BoolToOpacityConverter}}"
-                    Content="Продолжить хостинг">
+                        Converter={converters:BoolToOpacityConverter}}">
+
+                     <StackPanel Orientation="Horizontal"
+                                Spacing="8">
+                        <TextBlock IsVisible="{Binding !IsRehosting}"
+                                VerticalAlignment="Center"
+                                Text="Продолжить хостинг" />
+                        <TextBlock IsVisible="{Binding IsRehosting}"
+                                VerticalAlignment="Center"
+                                Text="Отмена" />
+                         <Svg IsVisible="{Binding IsRehosting}"
+                            Path="/Assets/Icons/loading.svg"
+                            Height="21"
+                            Classes="rotating" />
+                    </StackPanel>
+
                     <Button.Transitions>
                         <Transitions>
                             <DoubleTransition Duration="0:0:.2" Property="Opacity" />
