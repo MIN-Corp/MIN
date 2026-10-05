@@ -8,6 +8,8 @@ public class RoomPersistenceHostedServiceAdapter : IHostedService
 {
     private readonly IRoomPersistenceService persistence;
 
+    int IHostedService.Priority => 1;
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="RoomPersistenceHostedServiceAdapter"/>
     /// </summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -66,7 +67,7 @@ public partial class App : Application
                 logger.Log($"[PROFILE] UI thread id = {Environment.CurrentManagedThreadId}");
             }
 
-            var hostedServices = serviceProvider.GetServices<IHostedService>();
+            var hostedServices = serviceProvider.GetServices<IHostedService>().OrderBy(x => x.Priority);
             var trayService = serviceProvider.GetRequiredService<TrayService>();
 
             trayService.Initialize("avares://MIN.Desktop/Assets/Images/logoImage.png");

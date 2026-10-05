@@ -21,6 +21,8 @@ public sealed class FileMonitorService : IHostedService
     private readonly IFileTransferService fileTransferService;
     private readonly ILoggerProvider logger;
 
+    int IHostedService.Priority => 0;
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="FileMonitorService"/>
     /// </summary>

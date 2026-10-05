@@ -28,6 +28,8 @@ public class SessionMonitor : IHostedService
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
+    int IHostedService.Priority => 0;
+
     /// <summary>
     /// Инициализирует новый экзепмляр <see cref="SessionMonitor"/>
     /// </summary>

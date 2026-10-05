@@ -6,6 +6,7 @@ using MIN.Core.Entities;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Serialization.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Interfaces.Persistence;
 using MIN.Core.Stores.Contracts.Models.Persistence;
 using MIN.Helpers.Contracts.Interfaces;
@@ -21,11 +22,13 @@ public sealed class RoomFileStore : IRoomFileStore
     private const string Magic = "MINR";
     private const byte FormatVersion = 1;
     private const int CurrentSchemaVersion = 1;
+    private const int MaxNameLength = 40;
     private static int HeaderSize => Magic.Length + sizeof(byte);
 
     private readonly IRoomFileEncryptor encryptor;
     private readonly IMessageSerializer serializer;
     private readonly ILoggerProvider logger;
+    private readonly IRoomStore roomStore;
     private readonly JsonSerializerOptions serializerOptions;
     private readonly string roomsDirectory;
 
@@ -35,10 +38,12 @@ public sealed class RoomFileStore : IRoomFileStore
     public RoomFileStore(IRoomFileEncryptor encryptor,
         IMessageSerializer serializer,
         IIdentityDataPathProvider identityDataPath,
+        IRoomStore roomStore,
         ILoggerProvider logger)
     {
         this.encryptor = encryptor;
         this.serializer = serializer;
+        this.roomStore = roomStore;
         this.logger = logger;
         serializerOptions = serializer.SerializerOptions;
         roomsDirectory = identityDataPath.RoomsDirectory;
@@ -48,6 +53,7 @@ public sealed class RoomFileStore : IRoomFileStore
     {
         var envelope = new RoomFileEnvelope
         {
+            SavedAt = DateTime.UtcNow,
             SchemaVersion = CurrentSchemaVersion,
             Room = CloneRoomWithoutChatHistory(snapshot.Room),
             Messages = snapshot.Messages.Select(SerializeMessage).ToList(),
@@ -62,38 +68,66 @@ public sealed class RoomFileStore : IRoomFileStore
         payload[Magic.Length] = FormatVersion;
         encrypted.CopyTo(payload, HeaderSize);
 
-        await WriteAtomicAsync(GetFilePath(roomId), payload);
+        var path = GetFilePath(roomId);
+        await WriteAtomicAsync(path, payload);
+        DeleteDuplicates(roomId, keepPath: path);
     }
 
     IReadOnlyList<RoomSnapshot> IRoomFileStore.LoadAll()
     {
         Directory.CreateDirectory(roomsDirectory);
 
-        var snapshots = new List<RoomSnapshot>();
+        var byId = new Dictionary<Guid, (string Path, RoomSnapshot Snapshot, DateTime SavedAt)>();
 
         foreach (var path in Directory.EnumerateFiles(roomsDirectory, $"*{FileExtension}"))
         {
-            var snapshot = TryLoad(path);
-
-            if (snapshot != null)
+            var loaded = TryLoad(path);
+            if (loaded == null)
             {
-                snapshots.Add(snapshot);
+                continue;
+            }
+
+            var id = loaded.Value.Snapshot.Room.Id;
+
+            if (!byId.TryGetValue(id, out var existing))
+            {
+                byId[id] = loaded.Value;
+                continue;
+            }
+
+            if (loaded.Value.SavedAt > existing.SavedAt)
+            {
+                DeleteIfExists(existing.Path);
+                byId[id] = loaded.Value;
+                logger.Log($"Найдены дубли файла комнаты {id}: оставлен '{loaded.Value.Path}', удалён '{existing.Path}'", LogLevel.Warning);
+            }
+            else
+            {
+                DeleteIfExists(loaded.Value.Path);
+                logger.Log($"Найдены дубли файла комнаты {id}: оставлен '{existing.Path}', удалён '{loaded.Value.Path}'", LogLevel.Warning);
             }
         }
 
-        return snapshots;
+        return byId.Values.Select(v => v.Snapshot).ToList();
     }
 
     void IRoomFileStore.Delete(Guid roomId)
     {
-        DeleteIfExists(GetFilePath(roomId));
-        DeleteIfExists(GetBackupPath(roomId));
+        var candidates = Directory.EnumerateFiles(roomsDirectory, $"*{roomId}*")
+            .Where(p => p.EndsWith(FileExtension, StringComparison.OrdinalIgnoreCase)
+                     || p.EndsWith(FileExtension + BackupExtension, StringComparison.OrdinalIgnoreCase)
+                     || p.EndsWith(FileExtension + ".tmp", StringComparison.OrdinalIgnoreCase));
+
+        foreach (var path in candidates)
+        {
+            DeleteIfExists(path);
+        }
     }
 
     bool IRoomFileStore.Exists(Guid roomId)
         => File.Exists(GetFilePath(roomId));
 
-    private RoomSnapshot? TryLoad(string path)
+    private (string Path, RoomSnapshot Snapshot, DateTime SavedAt)? TryLoad(string path)
     {
         byte[] payload;
         RoomFileEnvelope envelope;
@@ -137,12 +171,31 @@ public sealed class RoomFileStore : IRoomFileStore
             return null;
         }
 
-        return new RoomSnapshot
+        return new(path, new RoomSnapshot
         {
             Room = envelope.Room,
             Messages = messages,
             SubRooms = envelope.SubRooms,
-        };
+        }, envelope.SavedAt);
+    }
+
+    private void DeleteDuplicates(Guid roomId, string keepPath)
+    {
+        // все наши файлы комнаты: канонические "*_{id}.mr" и легаси "{id}.mr"
+        var candidates = Directory.EnumerateFiles(roomsDirectory, $"*_{roomId}{FileExtension}")
+            .Concat(Directory.EnumerateFiles(roomsDirectory, $"{roomId}{FileExtension}"));
+
+        foreach (var path in candidates)
+        {
+            if (path == keepPath)
+            {
+                continue;
+            }
+
+            DeleteIfExists(path);
+            DeleteIfExists(path + BackupExtension);
+            logger.Log($"Удалён дублей-файл комнаты {roomId}: '{path}'", LogLevel.Information);
+        }
     }
 
     private static void ValidateHeader(byte[] payload)
@@ -234,15 +287,41 @@ public sealed class RoomFileStore : IRoomFileStore
 
     private static Room CloneRoomWithoutChatHistory(Room room)
     {
-        // ChatHistory - витрина для wire, в файл не сохраняем (источник истины - Messages)
         var clone = room.Clone();
         clone.ChatHistory = [];
         return clone;
     }
 
     private string GetFilePath(Guid roomId)
-        => Path.Combine(roomsDirectory, $"{roomId}{FileExtension}");
+    {
+        var name = GetRoomName(roomId);
+        name = name != null ? $"{name}_" : string.Empty;
+        return Path.Combine(roomsDirectory, $"{SanitizeRoomName(name)}{roomId}{FileExtension}");
+    }
 
     private string GetBackupPath(Guid roomId)
-        => Path.Combine(roomsDirectory, $"{roomId}{BackupExtension}");
+    {
+        var name = GetRoomName(roomId);
+        name = name != null ? $"{name}_" : string.Empty;
+        return Path.Combine(roomsDirectory, $"{SanitizeRoomName(name)}{roomId}{BackupExtension}");
+    }
+
+    private string? GetRoomName(Guid roomId)
+        => roomStore.TryGetRoom(roomId, out var room) ? room.Name : null;
+
+    private static string SanitizeRoomName(string name)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            builder.Append(invalidChars.Contains(c) ? '_' : c);
+        }
+        var result = builder.ToString().Trim().TrimEnd('.', ' ');
+        if (result.Length > MaxNameLength)
+        {
+            result = result[..MaxNameLength].TrimEnd('.', ' ');
+        }
+        return result.Length == 0 ? "room" : result;
+    }
 }

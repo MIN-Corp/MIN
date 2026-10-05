@@ -17,6 +17,11 @@ public sealed class RoomFileEnvelope
     public int SchemaVersion { get; set; }
 
     /// <summary>
+    /// Момент сохранения (UTC) — критерий выбора самой свежей копии при дублях
+    /// </summary>
+    public DateTime SavedAt { get; set; }
+
+    /// <summary>
     /// Комната
     /// </summary>
     public Room? Room { get; set; }
