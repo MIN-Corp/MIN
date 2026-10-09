@@ -22,6 +22,7 @@ namespace MIN.Desktop.ViewModels.Cards;
 public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 {
     private readonly RoomInfo room;
+    private readonly IClipboard? clipboard;
     private readonly bool asHost;
     private bool joined;
 
@@ -83,14 +84,12 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
     {
         this.asHost = asHost;
         this.room = room;
+        this.clipboard = clipboard;
 
         Room = room;
         joined = asJoined;
 
-        foreach (var endpoint in endpoints)
-        {
-            ConnectionAddresses.Add(new ConnectionAddressViewModel(endpoint, clipboard));
-        }
+        RenderConnectionAddreses(endpoints);
 
         Cabinet = string.IsNullOrEmpty(room.Cabinet)
             ? DesktopConstants.UndefinedPcName
@@ -108,6 +107,16 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
     {
         IsConnecting = true;
         Clicked?.Invoke(AddressOrigin.LAN);
+    }
+
+    private void RenderConnectionAddreses(IEnumerable<IEndpoint> endpoints)
+    {
+        ConnectionAddresses.Clear();
+
+        foreach (var endpoint in endpoints)
+        {
+            ConnectionAddresses.Add(new ConnectionAddressViewModel(endpoint, clipboard));
+        }
     }
 
     private void SubscribeToEvents(IEventBus eventBus)
@@ -194,6 +203,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         room.MaximumParticipants = eventMessage.RoomInfo.MaximumParticipants;
         room.ParticipantCount = eventMessage.RoomInfo.ParticipantCount;
 
+        RenderConnectionAddreses(eventMessage.Endpoints);
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
     }

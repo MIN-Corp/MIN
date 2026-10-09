@@ -181,7 +181,6 @@ public sealed class RoomFileStore : IRoomFileStore
 
     private void DeleteDuplicates(Guid roomId, string keepPath)
     {
-        // все наши файлы комнаты: канонические "*_{id}.mr" и легаси "{id}.mr"
         var candidates = Directory.EnumerateFiles(roomsDirectory, $"*_{roomId}{FileExtension}")
             .Concat(Directory.EnumerateFiles(roomsDirectory, $"{roomId}{FileExtension}"));
 
@@ -297,13 +296,6 @@ public sealed class RoomFileStore : IRoomFileStore
         var name = GetRoomName(roomId);
         name = name != null ? $"{name}_" : string.Empty;
         return Path.Combine(roomsDirectory, $"{SanitizeRoomName(name)}{roomId}{FileExtension}");
-    }
-
-    private string GetBackupPath(Guid roomId)
-    {
-        var name = GetRoomName(roomId);
-        name = name != null ? $"{name}_" : string.Empty;
-        return Path.Combine(roomsDirectory, $"{SanitizeRoomName(name)}{roomId}{BackupExtension}");
     }
 
     private string? GetRoomName(Guid roomId)

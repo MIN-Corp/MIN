@@ -17,7 +17,7 @@ public interface IChatRoomService
     /// <summary>
     /// Отправить обновлённые данные о комнате
     /// </summary>
-    Task SendUpdatedRoomInfoAsync(RoomInfo updatedRoomInfo, CancellationToken cancellationToken = default);
+    Task SendUpdatedRoomInfoAsync(RoomInfo updatedRoomInfo, IEnumerable<IEndpoint> endpoints, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Отправить запрос на обновление чата

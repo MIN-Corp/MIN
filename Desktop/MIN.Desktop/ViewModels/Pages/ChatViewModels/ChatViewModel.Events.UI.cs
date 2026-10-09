@@ -281,12 +281,16 @@ public partial class ChatViewModel : RoutableViewModelBase
 
             try
             {
+                var oldNetworkOptions = room.LocalRoomSettings.NetworkOptions;
+
                 await featureCollection.Chat.ChatRoomService.UpdateNetworkOutOfSettings(editFormResult.Room,
                     room.ConnectionAddresses, editFormResult.NetworkOptions, room.LocalRoomSettings.NetworkOptions, updatingRoomCts.Token);
 
-                if (editFormResult.Room.Name != room.Name || editFormResult.Room.MaximumParticipants != room.MaximumParticipants)
+                if (editFormResult.Room.Name != room.Name
+                    || editFormResult.Room.MaximumParticipants != room.MaximumParticipants
+                    || room.LocalRoomSettings.NetworkOptions != oldNetworkOptions)
                 {
-                    await featureCollection.Chat.ChatRoomService.SendUpdatedRoomInfoAsync(editFormResult.Room, updatingRoomCts.Token);
+                    await featureCollection.Chat.ChatRoomService.SendUpdatedRoomInfoAsync(editFormResult.Room, room.ConnectionAddresses, updatingRoomCts.Token);
                 }
 
                 chatSideBarViewModel.UpdateStats(room);

@@ -134,7 +134,7 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     private void RegisterLoadedRoom(RoomInfo roomInfo)
     {
         var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomInfo.Id);
-        var card = new RecentRoomCardViewModel(featureCollection.Core.EventBus, context, roomInfo, AsCreator: false);
+        var card = new RecentRoomCardViewModel(featureCollection.Core.EventBus, context, roomInfo);
         card.Clicked += () => OpenLoadedRoom(roomInfo.Id);
         savedRooms.Add(roomInfo);
         Dispatcher.UIThread.Post(() => trayService.UpdateRooms(savedRooms));
@@ -224,8 +224,7 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
 
         chatViewsRegistry.Register(roomId, viewModel);
 
-        var card = new RecentRoomCardViewModel(featureCollection.Core.EventBus,
-            context, roomInfo, localParticipant.Id == roomInfo.HostParticipant.Id);
+        var card = new RecentRoomCardViewModel(featureCollection.Core.EventBus, context, roomInfo);
 
         card.Clicked += () =>
         {

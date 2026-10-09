@@ -67,8 +67,12 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private void OnNotificationClick()
     {
-        parentWindow.WindowState = WindowState.Normal;
+        if (parentWindow.WindowState == WindowState.Minimized)
+        {
+            parentWindow.WindowState = WindowState.Normal;
+        }
         parentWindow.Focus();
+        parentWindow.Activate();
     }
 
     private void NotificationTurnOffClicked()

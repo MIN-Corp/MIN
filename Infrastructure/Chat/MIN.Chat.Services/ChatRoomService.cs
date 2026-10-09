@@ -73,7 +73,7 @@ public sealed class ChatRoomService : IChatRoomService
             PageSize = StoreConstants.MessagesPageSize,
         }, roomId, identityService.SelfParticipant.Id, cancellationToken);
 
-    async Task IChatRoomService.SendUpdatedRoomInfoAsync(RoomInfo updatedRoomInfo, CancellationToken cancellationToken)
+    async Task IChatRoomService.SendUpdatedRoomInfoAsync(RoomInfo updatedRoomInfo, IEnumerable<IEndpoint> endpoints, CancellationToken cancellationToken)
     {
         var roomId = updatedRoomInfo.Id;
 
@@ -84,7 +84,8 @@ public sealed class ChatRoomService : IChatRoomService
 
         await messageRouter.RouteAsync(new RoomInfoUpdatedMessage
         {
-            Room = updatedRoomInfo
+            Room = updatedRoomInfo,
+            Endpoints = endpoints
         }, roomId, identityService.SelfParticipant.Id, cancellationToken);
     }
 

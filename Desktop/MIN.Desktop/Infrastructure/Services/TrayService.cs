@@ -25,8 +25,9 @@ public sealed class TrayService : IDisposable
         {
             Icon = new WindowIcon(AssetLoader.Open(new Uri(iconUri))),
             ToolTipText = "MIN",
-            Menu = menu
+            Menu = menu,
         };
+
         trayIcon.Clicked += (_, _) => Dispatcher.UIThread.Post(() => ShowRequested?.Invoke());
 
         var separator = new NativeMenuItemSeparator();
@@ -76,7 +77,11 @@ public sealed class TrayService : IDisposable
         foreach (var room in rooms)
         {
             var item = new NativeMenuItem($"Комната - {room.Name}");
-            item.Click += (_, _) => NavigateToRoom?.Invoke(room.Id);
+            item.Click += (_, _) =>
+            {
+                NavigateToRoom?.Invoke(room.Id);
+                ShowRequested?.Invoke();
+            };
             roomItems.Add(item);
             menu.Items.Insert(roomItems.IndexOf(item), item);
         }

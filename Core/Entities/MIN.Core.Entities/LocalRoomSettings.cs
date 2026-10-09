@@ -10,7 +10,7 @@ public record LocalRoomSettings
     /// <summary>
     /// Включены ли уведомления
     /// </summary>
-    public bool NotificationsEnabled { get; set; }
+    public bool NotificationsEnabled { get; set; } = true;
 
     /// <summary>
     /// Настройки глобальности сети

@@ -42,7 +42,7 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
     /// Время последнего онлайн
     /// </summary>
     [ObservableProperty]
-    public partial DateTime ParticipantLastSeenAt { get; set; } = DateTime.Now;
+    public partial DateTime ParticipantLastSeenAt { get; set; }
 
     /// <summary>
     /// Выбрана ли карточка в качестве приватного собеседника
@@ -180,6 +180,7 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
         ParticipantName = participant.Name;
         ParticipantStatus = isSelf ? OnlineStatus.Online : participant.CurrentStatus;
         IsOffline = ParticipantStatus == OnlineStatus.Offline;
+        ParticipantLastSeenAt = participant.LastSeenOnline;
     }
 
     /// <inheritdoc cref="IDisposable.Dispose"/>

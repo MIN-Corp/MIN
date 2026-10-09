@@ -59,7 +59,7 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
     /// Время получения последнего сообщенния
     /// </summary>
     [ObservableProperty]
-    public partial DateTime LastMessageReceivedAt { get; set; } = DateTime.Now;
+    public partial DateTime LastMessageReceivedAt { get; set; }
 
     /// <summary>
     /// Выбрана ли карточка
@@ -77,15 +77,14 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
     /// </summary>
     public RecentRoomCardViewModel(IEventBus eventBus,
         RoomContext roomContext,
-        RoomInfo roomInfo,
-        bool AsCreator)
+        RoomInfo roomInfo)
     {
         this.roomContext = roomContext;
         this.roomInfo = roomInfo;
 
         RoomId = roomInfo.Id;
         RoomName = roomInfo.Name;
-        currentAmount = roomInfo.ParticipantCount + (AsCreator ? 1 : 0);
+        currentAmount = roomInfo.ParticipantCount;
         maximumAmount = roomInfo.MaximumParticipants;
 
         GetLastMessage();
@@ -101,6 +100,7 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
             lastMessageId = lastMessage.Id;
             LastMessageContent = describable.GetDescription();
         }
+        LastMessageReceivedAt = lastMessage?.Timestamp ?? DateTime.Now;
     }
 
     /// <summary>

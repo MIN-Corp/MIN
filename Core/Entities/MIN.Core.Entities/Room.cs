@@ -35,7 +35,7 @@ public class Room : IRoomData
     public bool IsOnline { get; set; } = true;
 
     /// <inheritdoc />
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
 
     /// <inheritdoc />
     public IEnumerable<IEndpoint> ConnectionAddresses { get; set; } = [];

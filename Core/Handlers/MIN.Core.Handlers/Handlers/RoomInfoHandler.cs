@@ -52,6 +52,7 @@ internal sealed class RoomInfoHandler : BaseHandler
                     room.Name = roomInfoResponse.Room.Name;
                     room.MaximumParticipants = roomInfoResponse.Room.MaximumParticipants;
                     room.CurrentParticipants = roomInfoResponse.Room.CurrentParticipants;
+                    room.ConnectionAddresses = roomInfoResponse.Room.ConnectionAddresses;
                     context.RoomContext.Participants.Bind(room.CurrentParticipants);
                     room.TotalMessageCount = roomInfoResponse.Room.TotalMessageCount;
 
@@ -87,10 +88,12 @@ internal sealed class RoomInfoHandler : BaseHandler
                 var existingRoom = roomStore.GetRoom(roomId);
                 existingRoom.Name = roomInfoUpdated.Room.Name;
                 existingRoom.MaximumParticipants = roomInfoUpdated.Room.MaximumParticipants;
+                existingRoom.ConnectionAddresses = roomInfoUpdated.Endpoints;
 
                 return HandlerResult.WithEvent(new RoomInfoUpdatedMessageEvent()
                 {
                     RoomInfo = roomInfoUpdated.Room,
+                    Endpoints = roomInfoUpdated.Endpoints,
                 });
 
             default:

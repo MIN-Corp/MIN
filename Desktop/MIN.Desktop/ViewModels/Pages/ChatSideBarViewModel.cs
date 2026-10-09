@@ -180,9 +180,9 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         IsHost = room.HostParticipant?.Id == localParticipant.Id;
         HostName = IsHost ? "Ты" : room.HostParticipant?.Name ?? "Неизвестно";
 
-        ConnectionAddresses.Clear();
-
         clipboard ??= MainWindowViewModel.GetWindow()?.Clipboard;
+
+        ConnectionAddresses.Clear();
 
         foreach (var address in room.ConnectionAddresses)
         {

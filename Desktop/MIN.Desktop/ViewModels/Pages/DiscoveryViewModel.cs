@@ -173,7 +173,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             OnRoomReady = async room =>
             {
                 await chatViewModel.LoadRoomDataAndRefresh(room, CoreRegistryConstants.LocalConnectionId);
-                RegisterRoom(roomInfo, chatViewModel);
+                RegisterRoom(new RoomInfo(room), chatViewModel);
 
                 InAppNotifier.Success($"Комната {room.Name} успешно создана!");
             }
