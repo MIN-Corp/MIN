@@ -215,6 +215,12 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
         var existing = allRooms.FirstOrDefault(x => x.RoomId == roomId);
         if (existing != null)
         {
+            if (chatViewsRegistry.TryGet(roomId, out var previous)
+                && !ReferenceEquals(previous, viewModel))
+            {
+                previous!.Dispose();
+            }
+
             chatViewsRegistry.Register(roomId, viewModel);
             SelectChatCard(existing);
             return;

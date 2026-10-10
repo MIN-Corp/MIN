@@ -29,6 +29,7 @@ public class RoomPersistenceService : IRoomPersistenceService
     private readonly IRoomSnapshotMapper mapper;
     private readonly IEventBus eventBus;
     private readonly IRoomStore roomStore;
+    private readonly IMessageMigrationService migrationService;
     private readonly ILoggerProvider logger;
 
     /// <summary>
@@ -38,12 +39,14 @@ public class RoomPersistenceService : IRoomPersistenceService
         IRoomSnapshotMapper mapper,
         IEventBus eventBus,
         IRoomStore roomStore,
+        IMessageMigrationService migrationService,
         ILoggerProvider logger)
     {
         this.fileStore = fileStore;
         this.mapper = mapper;
         this.eventBus = eventBus;
         this.roomStore = roomStore;
+        this.migrationService = migrationService;
         this.logger = logger;
 
         autosaveTimer.Elapsed += AutosaveTimer_Elapsed;
@@ -57,10 +60,16 @@ public class RoomPersistenceService : IRoomPersistenceService
             {
                 try
                 {
+                    var repaired = migrationService.Apply(snapshot.Messages.ToList(), snapshot.Room);
+                    if (repaired > 0)
+                    {
+                        logger.Log($"Комната {snapshot.Room.Id}: миграцией восстановлено {repaired} сообщений", LogLevel.Warning);
+                        MarkDirty(snapshot.Room.Id);
+                    }
                     mapper.RestoreSnapshot(snapshot);
                     loadedRooms.Add(snapshot.Room);
                 }
-                catch (Exception ex)    // per-room isolation: one bad file never stops the rest
+                catch (Exception ex)
                 {
                     logger.Log($"Не удалось восстановить комнату из файла: {ex.Message}", LogLevel.Error);
                 }
@@ -88,7 +97,8 @@ public class RoomPersistenceService : IRoomPersistenceService
         }
     }
 
-    void IRoomPersistenceService.MarkDirty(Guid roomId) => dirtyRoomIds.TryAdd(roomId, 0);
+    /// <inheritdoc />
+    public void MarkDirty(Guid roomId) => dirtyRoomIds.TryAdd(roomId, 0);
 
     private async void AutosaveTimer_Elapsed(object? sender, ElapsedEventArgs e)
     {

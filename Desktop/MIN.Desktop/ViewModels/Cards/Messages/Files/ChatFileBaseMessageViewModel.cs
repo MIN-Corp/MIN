@@ -264,6 +264,8 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         if (!Path.Exists(FileMetadataMessage.FilePath))
         {
             InAppNotifier.Warning("Файл не нашёлся");
+            Downloaded = false;
+            CantDownload = !IsAvaibleForNetwork && !Downloaded;
             return Task.CompletedTask;
         }
 

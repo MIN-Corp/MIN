@@ -305,13 +305,19 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
                 {
                     return;
                 }
-                var newRoomInfo = new RoomInfo(room);
+
+                if (chatViewsRegistry.TryGet(room.Id, out var existingChat))
+                {
+                    existingChat!.AdoptLiveRoom(room, connectionId);
+                    ChangeView(existingChat);
+                    return;
+                }
 
                 var chatViewModel = chatViewModelFactory.Create();
                 ChangeView(chatViewModel, connectCts.Token);
 
                 await chatViewModel.LoadRoomDataAndRefresh(room, connectionId);
-                RegisterRoom(newRoomInfo, chatViewModel);
+                RegisterRoom(new RoomInfo(room), chatViewModel);
             }
         }, connectCts.Token);
 

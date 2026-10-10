@@ -39,7 +39,7 @@ public sealed class ChatTextService : IChatTextService
 
         var message = new ChatTextMessage
         {
-            Sender = identityService.SelfParticipant.ToParticipantInfo(),
+            SenderName = identityService.SelfParticipant.ToParticipantInfo().Name,
             Content = content,
             RecipientId = recipientId,
             ReplyToMessageId = replyToId,

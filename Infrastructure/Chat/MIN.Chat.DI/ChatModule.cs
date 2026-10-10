@@ -2,11 +2,13 @@
 using MIN.Chat.DI.FeatureCollection;
 using MIN.Chat.Handlers;
 using MIN.Chat.Messaging;
+using MIN.Chat.Messaging.Migrations;
 using MIN.Chat.Services;
 using MIN.Common.Mvc;
 using MIN.Common.Mvc.Extensions;
 using MIN.Core.Handlers.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Interfaces;
 
 namespace MIN.Chat.DI;
 
@@ -27,6 +29,7 @@ public class ChatModule : Module
         services.RegisterAsImplementedInterfaces<ChatSessionService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ChatVoiceService>(ServiceLifetime.Singleton);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, IChatHandlerAnchor>(ServiceLifetime.Singleton);
+        services.RegisterMultipleInterfacesAssignableTo<IMessageMigrator, ChatTextMessageMigrator>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ChatFeatureCollection>(ServiceLifetime.Singleton);
     }
 }

@@ -91,6 +91,8 @@ public class CoreModule : Module
         services.RegisterAsImplementedInterfaces<InMemoryEventBus>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<MessageDispatcher>(ServiceLifetime.Singleton);
 
+        services.RegisterAsImplementedInterfaces<MessageMigrationService>(ServiceLifetime.Singleton);
+
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, ICoreHandlerAnchor>(ServiceLifetime.Singleton);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessage, ICoreMessagingAnchor>(ServiceLifetime.Singleton);
 

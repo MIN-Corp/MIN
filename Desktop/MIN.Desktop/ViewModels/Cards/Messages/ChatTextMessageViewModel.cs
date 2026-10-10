@@ -40,7 +40,7 @@ public partial class ChatTextMessageViewModel : BaseTextContentChatMessageViewMo
             chatMessage,
             chatMessage,
             dialogService,
-            chatMessage.Sender.Name,
+            chatMessage.SenderName,
             timePadding,
             isLocal,
             isHostMessage,

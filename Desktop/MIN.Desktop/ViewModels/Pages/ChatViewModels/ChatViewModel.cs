@@ -33,6 +33,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private TaskCompletionSource? loadingTcs = new();
     private Guid roomId;
     private Guid connectionId;
+    private bool isInitialized;
     private Room room = null!;
 
     /// <inheritdoc />
@@ -181,10 +182,29 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     /// <summary>
+    /// Использовать активное подключение для уже инициализированной комнате (восстановленной из файла или открытой ранее).
+    /// </summary>
+    public void AdoptLiveRoom(Room updatedRoom, Guid connectionId)
+    {
+        room = updatedRoom;
+        this.connectionId = connectionId;
+        IsOnline = true;
+        chatSideBarViewModel.IsOnline = true;
+        IsAvaibleForNetwork = IsOnline || IsHost;
+    }
+
+    /// <summary>
     /// Подгрузить данные о комнате и перезагрузить страницу
     /// </summary>
     public async Task LoadRoomDataAndRefresh(Room room, Guid connectionId)
     {
+        if (isInitialized)
+        {
+            return;
+        }
+
+        isInitialized = true;
+
         ToggleRightSideBar();
         chatSideBarViewModel.LoadRoomDataAndRefresh(room, localParticipant);
 

@@ -240,7 +240,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var messagesCount = context.Messages.GetMessageCount();
 
-        if (!IsHost
+        if (!IsHost && IsAvaibleForNetwork
             && olderInMemory.Count < StoreConstants.MessagesPageSize
             && messagesCount < room.TotalMessageCount)
         {

@@ -73,7 +73,7 @@
                                 <TextBlock DockPanel.Dock="Right"
                                            Text="{Binding Room.CreatedAt,
                                            Converter={converters:DateConverter},
-                                            ConverterParameter={x:Static converters:DateMode.Short}}" />
+                                            ConverterParameter={x:Static converters:DateMode.Relative}}" />
                                 <Rectangle Classes="divider" />
                             </DockPanel>
 
@@ -259,7 +259,7 @@
                                             VerticalAlignment="Center"
                                             Text="{Binding ParticipantLastSeenAt,
                                             Converter={converters:DateConverter},
-                                                ConverterParameter={x:Static converters:DateMode.Short}}"
+                                                ConverterParameter={x:Static converters:DateMode.Relative}}"
                                             IsVisible="{Binding IsOffline}" />
                                     </StackPanel>
                                 </StackPanel>

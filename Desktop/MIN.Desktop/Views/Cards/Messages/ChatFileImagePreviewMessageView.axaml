@@ -132,7 +132,7 @@
 
                         <!-- Image area -->
 
-                        <Panel MaxWidth="800">
+                        <Panel MaxWidth="400">
 
                             <!-- Layer 0: actual image (downloaded) -->
 
