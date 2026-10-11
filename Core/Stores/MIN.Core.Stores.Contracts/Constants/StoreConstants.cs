@@ -8,5 +8,5 @@ public class StoreConstants
     /// <summary>
     /// Размер страницы сообщений
     /// </summary>
-    public const int MessagesPageSize = 5;
+    public const int MessagesPageSize = 25;
 }

@@ -53,13 +53,16 @@ internal sealed class MessageDeleteHandler : BaseHandler
 
         context.RoomContext.Messages.RemoveMessage(chatDeleteMessage.MessageIdToDelete);
 
-        var replyables = context.RoomContext.Messages.GetHistory().OfType<IReplyable>();
-        foreach (var replyable in replyables)
+        var replyables = context.RoomContext.Messages.GetHistory().Where(x => x is IReplyable);
+        foreach (var replyableMessage in replyables)
         {
+            var replyable = (IReplyable)replyableMessage;
+
             if (replyable.ReplyToMessageId == chatDeleteMessage.MessageIdToDelete)
             {
                 replyable.ReplyToMessageId = null;
                 replyable.ReplyToMessageDescription = "Сообщение было удалено";
+                context.RoomContext.Messages.UpdateMessage(replyableMessage.Id, replyableMessage);
             }
         }
 

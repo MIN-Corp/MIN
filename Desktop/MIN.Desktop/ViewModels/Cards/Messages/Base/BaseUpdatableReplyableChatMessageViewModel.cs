@@ -53,6 +53,11 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
     public virtual void Update(IMessage newMessage)
     {
         Message = newMessage;
+        if (newMessage is IReplyable newReplyable)
+        {
+            ReplyToDescription = newReplyable.ReplyToMessageDescription;
+            ReplyToMessageId = newReplyable.ReplyToMessageId;
+        }
         IsUpdated = true;
     }
 }

@@ -5,7 +5,7 @@ using MIN.Core.Stores.Contracts.Models.Persistence;
 namespace MIN.Chat.Messaging.Migrations;
 
 /// <summary>
-/// <inheritdoc cref="IMessageMigrator"/> для <see cref="ChatTextMessage"/>
+/// <inheritdoc cref="IMessageMigrator"/> для <inheritdoc cref="ChatTextMessage"/>
 /// </summary>
 public sealed class ChatTextMessageMigrator : IMessageMigrator
 {

@@ -230,7 +230,7 @@
                                                     VerticalAlignment="Center"
                                                     Text="{Binding ParticipantLastSeenAt,
                                                     Converter={converters:DateConverter},
-                                                        ConverterParameter={x:Static converters:DateMode.Short}}"
+                                                        ConverterParameter={x:Static converters:DateMode.Relative}}"
                                                     IsVisible="{Binding IsOffline}" />
                                             </StackPanel>
                                         </StackPanel>

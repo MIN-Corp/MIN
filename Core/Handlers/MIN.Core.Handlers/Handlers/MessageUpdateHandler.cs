@@ -51,16 +51,24 @@ internal sealed class MessageUpdateHandler : BaseHandler
 
         if (existingMessage is IUpdateableMessage updateable)
         {
+            if (existingMessage is IReplyable updatebleReplyable && messageUpdate.NewMessage is IReplyable updatedReplyable)
+            {
+                updatebleReplyable.ReplyToMessageDescription = updatedReplyable.ReplyToMessageDescription;
+                updatebleReplyable.ReplyToMessageId = updatedReplyable.ReplyToMessageId;
+            }
             updateable.Update(messageUpdate.NewMessage);
 
             context.RoomContext.Messages.UpdateMessage(messageUpdate.MessageIdToEdit, existingMessage);
 
-            var replyables = context.RoomContext.Messages.GetHistory().OfType<IReplyable>();
-            foreach (var replyable in replyables)
+            var replyables = context.RoomContext.Messages.GetHistory().Where(x => x is IReplyable);
+            foreach (var replyableMessage in replyables)
             {
+                var replyable = (IReplyable)replyableMessage;
+
                 if (replyable.ReplyToMessageId == messageUpdate.MessageIdToEdit)
                 {
                     replyable.ReplyToMessageDescription = (updateable as IDescribable)?.GetDescription();
+                    context.RoomContext.Messages.UpdateMessage(replyableMessage.Id, replyableMessage);
                 }
             }
 
