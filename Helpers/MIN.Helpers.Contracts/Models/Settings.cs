@@ -19,11 +19,6 @@ public class Settings : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
-    /// Имя своего участника по умолчанию
-    /// </summary>
-    public string DefaultParticipantName { get; set; } = string.Empty;
-
-    /// <summary>
     /// Включена ли светлая тема
     /// </summary>
     public bool LightThemeEnabled { get; set; }

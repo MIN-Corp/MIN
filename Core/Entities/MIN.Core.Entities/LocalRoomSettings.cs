@@ -10,7 +10,7 @@ public record LocalRoomSettings
     /// <summary>
     /// Включены ли уведомления
     /// </summary>
-    public bool NotificationsEnabled { get; set; }
+    public bool NotificationsEnabled { get; set; } = true;
 
     /// <summary>
     /// Настройки глобальности сети
@@ -24,4 +24,9 @@ public record LocalRoomSettings
     /// null - если историю не очищали
     /// </remarks>
     public DateTime? HistoryWipedOutUpTo { get; set; }
+
+    /// <summary>
+    /// Участники, которых нужно кикнуть при следующей попытке входа
+    /// </summary>
+    public Dictionary<Guid, string> PendingKickParticipantIds { get; set; } = [];
 }

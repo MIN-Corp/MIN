@@ -1,13 +1,18 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.Infrastructure.Diagnostics;
 using MIN.Desktop.Infrastructure.Extensions;
+using MIN.Desktop.Infrastructure.Services;
+using MIN.Helpers.Contracts.Constants;
 using MIN.Helpers.Contracts.Interfaces;
 
 namespace MIN.Desktop;
@@ -19,6 +24,26 @@ public partial class App : Application
 {
     static internal Func<Window> StartupWindowFactory = null!;
 
+    private static Window? mainWindow;
+
+    /// <summary>
+    /// Запросить показ окна
+    /// </summary>
+    public static void RequestShowMainWindow()
+    {
+        if (mainWindow is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            mainWindow.Show();
+            mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Activate();
+        });
+    }
+
     /// <summary>
     /// Создать приложение
     /// </summary>
@@ -26,13 +51,27 @@ public partial class App : Application
     {
         StartupWindowFactory = () =>
         {
-            var serviceProvider = new ServiceCollection()
-                .AddAppServices()
-                .BuildServiceProvider();
+            var services = new ServiceCollection()
+                .AddAppServices();
+
+            var serviceProvider = services.BuildServiceProvider();
 
             var appLifeTimeCts = serviceProvider.GetRequiredService<ICtsProvider>().AppCts;
             var logger = serviceProvider.GetRequiredService<ILoggerProvider>();
-            var hostedServices = serviceProvider.GetServices<IHostedService>();
+
+            var profiling = Profiling.IsEnabled;
+
+            if (Profiling.IsEnabled)
+            {
+                StartupProfiler.Run(services, serviceProvider, logger);
+                logger.Log($"[PROFILE] UI thread id = {Environment.CurrentManagedThreadId}");
+            }
+
+            var hostedServices = serviceProvider.GetServices<IHostedService>().OrderBy(x => x.Priority);
+            var trayService = serviceProvider.GetRequiredService<TrayService>();
+
+            trayService.Initialize("avares://MIN.Desktop/Assets/Images/logoImage.png");
+            trayService.ShowRequested += RequestShowMainWindow;
 
             foreach (var hostedService in hostedServices)
             {
@@ -68,6 +107,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = StartupWindowFactory();
+            mainWindow = desktop.MainWindow;
         }
 
         base.OnFrameworkInitializationCompleted();

@@ -1,7 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.DataProtection;
 using MIN.Core.Cryptography.Contracts.Constants;
 using MIN.Core.Cryptography.Contracts.Interfaces;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 
@@ -11,17 +13,19 @@ namespace MIN.Core.Cryptography;
 public class MessageEncryptor : IMessageEncryptor, IDisposable
 {
     private readonly ILoggerProvider logger;
-    private readonly IKeyProvider keyProvider;
+    private readonly KeyProvider keyProvider;
     private readonly ConcurrentDictionary<Guid, byte[]> sharedSecrets = new();
     private bool disposed;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="MessageEncryptor"/>
     /// </summary>
-    public MessageEncryptor(ILoggerProvider logger, IKeyProvider keyProvider)
+    public MessageEncryptor(ILoggerProvider logger,
+        IDataProtectionProvider dataProtection,
+        IIdentityDataPathProvider identityDataPathProvider)
     {
         this.logger = logger;
-        this.keyProvider = keyProvider;
+        keyProvider = new KeyProvider(dataProtection, identityDataPathProvider, logger);
     }
 
     bool IMessageEncryptor.IsSessionInitialized(Guid partnerId)
@@ -34,6 +38,35 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
 
         await keyProvider.SavePartnerPublicKeyAsync(partnerId, partnerPublicKey);
     }
+
+    async Task<bool> IMessageEncryptor.TryInitializeSessionFromStoredAsync(Guid partnerId)
+    {
+        if (sharedSecrets.ContainsKey(partnerId))
+        {
+            return true;
+        }
+
+        var sharedSecret = await keyProvider.TryComputeStoredSharedSecretAsync(partnerId);
+
+        if (sharedSecret == null)
+        {
+            logger.Log($"Не удалось ", LogLevel.Error);
+            return false;
+        }
+
+        sharedSecrets[partnerId] = sharedSecret;
+        return true;
+    }
+
+    async Task<byte[]?> IMessageEncryptor.TryGetPartnerKeyFingerprintAsync(Guid partnerId)
+    {
+        var storedKey = await keyProvider.GetPartnerPublicKeyAsync(partnerId);
+
+        return storedKey == null ? null : KeyProvider.ComputeKeyFingerprint(storedKey);
+    }
+
+    byte[] IMessageEncryptor.ComputeKeyFingerprint(byte[] publicKey)
+        => KeyProvider.ComputeKeyFingerprint(publicKey);
 
     async Task<byte[]> IMessageEncryptor.GetLocalPublicKey()
     {
@@ -110,6 +143,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
             return;
         }
 
+        keyProvider.Dispose();
         disposed = true;
     }
 }

@@ -19,7 +19,9 @@ public static class ServiceCollectionExtensions
         services.TryAdd(new ServiceDescriptor(typeof(TService), typeof(TService), lifetime));
         var interfaces = typeof(TService).GetTypeInfo()
             .ImplementedInterfaces
-            .Where(i => i != typeof(IDisposable) && i != typeof(IAsyncDisposable) && i.IsPublic);
+            .Where(i => i != typeof(IDisposable)
+                 && i != typeof(IAsyncDisposable)
+                 && i.IsPublic);
 
         foreach (Type interfaceType in interfaces)
         {

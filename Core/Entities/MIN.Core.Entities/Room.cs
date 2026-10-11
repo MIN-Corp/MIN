@@ -32,10 +32,10 @@ public class Room : IRoomData
     public int TotalMessageCount { get; set; }
 
     /// <inheritdoc />
-    public bool IsActive { get; set; }
+    public bool IsOnline { get; set; } = true;
 
     /// <inheritdoc />
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
 
     /// <inheritdoc />
     public IEnumerable<IEndpoint> ConnectionAddresses { get; set; } = [];
@@ -94,7 +94,7 @@ public class Room : IRoomData
         PcNumber = roomData.PcNumber;
         HostParticipant = roomData.HostParticipant;
         MaximumParticipants = roomData.MaximumParticipants;
-        IsActive = roomData.IsActive;
+        IsOnline = roomData.IsOnline;
         CreatedAt = roomData.CreatedAt;
     }
 
@@ -108,7 +108,7 @@ public class Room : IRoomData
         Cabinet = Cabinet,
         PcNumber = PcNumber,
         MaximumParticipants = MaximumParticipants,
-        IsActive = IsActive,
+        IsOnline = IsOnline,
         CreatedAt = CreatedAt,
         HostParticipant = HostParticipant,
         CurrentParticipants = CurrentParticipants.ToList(),

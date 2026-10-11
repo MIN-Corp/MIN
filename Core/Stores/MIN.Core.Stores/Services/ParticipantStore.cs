@@ -1,4 +1,5 @@
 ﻿using MIN.Core.Entities;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Stores.Contracts.Interfaces;
 
 namespace MIN.Core.Stores.Services;
@@ -85,8 +86,27 @@ public sealed class ParticipantStore : IParticipantStore
         }
     }
 
+    void IParticipantStore.MarkAllParticipansOffline(Guid? exceptId)
+    {
+        lock (participants)
+        {
+            foreach (var participant in participants)
+            {
+                if (exceptId.HasValue && participant.Id == exceptId.Value)
+                {
+                    continue;
+                }
+
+                participant.CurrentStatus = OnlineStatus.Offline;
+            }
+        }
+    }
+
     void IParticipantStore.ClearParticipants()
     {
-        participants.Clear();
+        lock (participants)
+        {
+            participants.Clear();
+        }
     }
 }

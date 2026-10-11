@@ -1,0 +1,188 @@
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Threading;
+using MIN.Core.Entities;
+using MIN.Core.Events.Events;
+using MIN.Core.Services.Contracts.Exceptions;
+using MIN.Core.Services.Contracts.Models;
+using MIN.Desktop.Contracts.Constants;
+using MIN.Desktop.Contracts.Enums;
+using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.Contracts.Models;
+using MIN.Desktop.Contracts.Models.Enums;
+using MIN.Desktop.ViewModels.Modals;
+using MIN.DI.FeatureCollection;
+
+namespace MIN.Desktop.Infrastructure.Services;
+
+internal class RoomConnectionUiService : IRoomConnectionUiService
+{
+    private readonly IMinFeatureCollection featureCollection;
+    private readonly IChatViewsRegistry chatViewsRegistry;
+    private readonly IDialogService dialogService;
+
+    /// <summary>
+    /// Инициализирует новый экземпляр <see cref="RoomConnectionUiService"/>
+    /// </summary>
+    public RoomConnectionUiService(IMinFeatureCollection featureCollection,
+        IChatViewsRegistry chatViewsRegistry,
+        IDialogService dialogService)
+    {
+        this.featureCollection = featureCollection;
+        this.chatViewsRegistry = chatViewsRegistry;
+        this.dialogService = dialogService;
+    }
+
+    async Task<RoomHostResult> IRoomConnectionUiService.HostAsync(RoomHostArgs args, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var room = await featureCollection.Core.Lifecycle.StartHostingAsync(args.RoomInfo, args.NetworkOptions, cancellationToken);
+            await featureCollection.Chat.ChatRoomService.ManageDiscoveryOutOfSettings(args.RoomInfo,
+                room.ConnectionAddresses, args.NetworkOptions, cancellationToken: cancellationToken);
+
+            await args.OnRoomReady(room);
+
+            return new RoomHostResult()
+            {
+                Room = room,
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            return new RoomHostResult()
+            {
+                Failure = HostFailure.Cancelled,
+                ErrorMessage = "Создание комнаты было отменено"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new RoomHostResult()
+            {
+                Failure = HostFailure.Error,
+                ErrorMessage = $"Не удалось создать комнату: {ex.Message}"
+            };
+        }
+    }
+
+    async Task<RoomJoinResult> IRoomConnectionUiService.JoinAsync(RoomJoinArgs args, CancellationToken cancellationToken)
+    {
+        LoadingViewModel? loadingVm = null;
+
+        try
+        {
+            ConnectionResult connectionResult = new();
+            IDisposable? errorToken = null;
+            IDisposable? roomStateToken = null;
+
+            async void OnRoomReady(Room? room)
+            {
+                if (room == null)
+                {
+                    return;
+                }
+
+                errorToken?.Dispose();
+                roomStateToken?.Dispose();
+                await args.OnRoomReady(room, connectionResult.ConnectionId);
+            }
+
+            if (args.ShowLoadingDialog)
+            {
+                _ = dialogService.ShowDialogAsync<LoadingViewModel>(async vm =>
+                {
+                    await vm.LoadRoomDataAndRefresh(OnRoomReady, args.Cts, DesktopConstants.RoomConnectionTimeoutMs);
+                    loadingVm = vm;
+                });
+            }
+            else
+            {
+                roomStateToken = featureCollection.Core.EventBus.Subscribe<RoomStateChangedEvent>(OnRoomStateChangedEventReceived);
+                errorToken = featureCollection.Core.EventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured);
+
+                Task OnErrorOccured(ErrorOccurredEvent eventMessage, CancellationToken cancellationToken)
+                {
+                    if (eventMessage.RoomId != connectionResult.RoomId)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    OnRoomReady(null);
+                    return Task.CompletedTask;
+                }
+
+                Task OnRoomStateChangedEventReceived(RoomStateChangedEvent eventMessage, CancellationToken cancellationToken)
+                {
+                    if (eventMessage.Room.Id != connectionResult.RoomId)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        InAppNotifier.Success($"Подключение к комнате {eventMessage.Room.Name} прошло успешно!");
+                    });
+                    OnRoomReady(eventMessage.Room);
+                    return Task.CompletedTask;
+                }
+            }
+
+
+            connectionResult = await featureCollection.Core.Lifecycle.ConnectAsync(args.Endpoint, args.ExpectedRoomId, args.Cts.Token);
+
+            if (loadingVm != null)
+            {
+                loadingVm.RoomId = connectionResult.RoomId;
+            }
+
+            return new RoomJoinResult()
+            {
+                RoomId = connectionResult.RoomId,
+                ConnectionId = connectionResult.ConnectionId,
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            loadingVm?.CloseByCode();
+            return new RoomJoinResult()
+            {
+                Failure = JoinFailure.Cancelled,
+            };
+        }
+        catch (RoomIdentityMismatchException ex)
+        {
+            loadingVm?.CloseByCode();
+            var choiceDialog = await dialogService.ShowDialogAsync<RoomMismatchViewModel>(vm =>
+            {
+                vm.ActualRoom = ex.ActualRoom;
+                vm.Cabinet = string.IsNullOrEmpty(ex.ActualRoom.Cabinet)
+                    ? DesktopConstants.UndefinedPcName
+                    : ex.ActualRoom.Cabinet;
+                vm.IsReconnect = ex.ExistedBefore;
+                vm.IsActualRoomOpen = chatViewsRegistry.TryGet(ex.ActualRoom.Id, out _);
+            });
+
+            var choice = choiceDialog?.Choice ?? RoomMismatchChoice.Cancel;
+
+            return new RoomJoinResult()
+            {
+                Failure = JoinFailure.Mismatch,
+                RoomMismatchChoice = choice,
+                RoomIdentityMismatchException = ex,
+                RoomId = ex.ExpectedRoomId,
+                ConnectionId = ex.ConnectionId,
+            };
+        }
+        catch (Exception ex)
+        {
+            loadingVm?.CloseByCode();
+            InAppNotifier.Error($"Произошла ошибка при подключении: {ex.Message}");
+            return new RoomJoinResult()
+            {
+                Failure = JoinFailure.Error,
+            };
+        }
+    }
+}

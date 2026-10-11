@@ -1,6 +1,6 @@
 ﻿using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Models;
+using MIN.Core.Stores.Contracts.Models.SubRooms;
 using MIN.Voice.Messaging;
 using MIN.Voice.Services.Contacts.Interfaces;
 

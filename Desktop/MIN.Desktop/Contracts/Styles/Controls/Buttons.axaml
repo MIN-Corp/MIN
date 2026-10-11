@@ -13,6 +13,7 @@
 
                     <Button>Просто кнопка</Button>
                     <Button Classes="secondary">Вторичное действие</Button>
+                    <Button Classes="danger">Опасное действие</Button>
                     <Button Classes="icon">
                         <Svg Path="/Assets/Icons/gear.svg" />
                     </Button>
@@ -295,6 +296,34 @@
 
         <Style Selector="^.file:pointerover">
             <Setter Property="Background" Value="{DynamicResource FileMessageIconBackgroundHover}" />
+        </Style>
+
+        <Style Selector="^.danger">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TextDanger}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextDanger}" />
+            <Setter Property="BorderThickness" Value="2"/>
+
+            <Style Selector="^ > TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextDanger}" />
+            </Style>
+
+            <Style Selector="^ > Svg">
+                <Setter Property="Css" Value="{DynamicResource SvgDangerStyle}" />
+            </Style>
+
+            <Style Selector="^ > SelectableTextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextDanger}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.danger:pressed /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource TextDangerPress}" />
+        </Style>
+
+        <Style Selector="^.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextDangerHover}" />
         </Style>
 
         <!-- Secondary -->

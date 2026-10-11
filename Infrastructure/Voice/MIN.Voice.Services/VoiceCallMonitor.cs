@@ -1,10 +1,11 @@
 ﻿using MIN.Common.Core.Contracts.Interfaces;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
+using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
@@ -17,7 +18,7 @@ namespace MIN.Voice.Services;
 /// </summary>
 public class VoiceCallMonitor : IHostedService
 {
-    private readonly ISubRoomManager subRoomManager;
+    private readonly IRoomFactory roomFactory;
     private readonly IEventBus eventBus;
     private readonly IMessageRouter messageRouter;
     private readonly IMuteService muteService;
@@ -28,10 +29,12 @@ public class VoiceCallMonitor : IHostedService
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
+    int IHostedService.Priority => 0;
+
     /// <summary>
     /// Инициализирует новый экзепмляр <see cref="VoiceCallMonitor"/>
     /// </summary>
-    public VoiceCallMonitor(ISubRoomManager subRoomManager,
+    public VoiceCallMonitor(IRoomFactory roomFactory,
         IEventBus eventBus,
         IMessageRouter messageRouter,
         IMuteService muteService,
@@ -42,7 +45,7 @@ public class VoiceCallMonitor : IHostedService
         IIdentityService identityService,
         ILoggerProvider logger)
     {
-        this.subRoomManager = subRoomManager;
+        this.roomFactory = roomFactory;
         this.eventBus = eventBus;
         this.messageRouter = messageRouter;
         this.muteService = muteService;
@@ -56,14 +59,14 @@ public class VoiceCallMonitor : IHostedService
 
     Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
-        eventBus.Subscribe<RoomClosedEvent>(OnRoomClosed);
+        eventBus.Subscribe<RoomWentOfflineEvent>(OnRoomWentOffline);
         eventBus.Subscribe<VoiceCallEstablishedEvent>(OnVoiceCallEstablished);
         eventBus.Subscribe<VoiceCallLeftEvent>(OnVoiceCallLeft);
         eventBus.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
         return Task.CompletedTask;
     }
 
-    private Task OnRoomClosed(RoomClosedEvent e, CancellationToken cancellationToken)
+    private async Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
     {
         var voiceContext = voiceCallStateService.GetRoomVoiceCallContext();
 
@@ -73,9 +76,12 @@ public class VoiceCallMonitor : IHostedService
             audioCaptureService.Stop();
             voiceDataTransmitter.End();
             voicePlaybackService.Clear();
-        }
 
-        return Task.CompletedTask;
+            await messageRouter.PublishLocally(new VoiceCallEndedMessage()
+            {
+                SubRoomId = voiceContext.Value.SubRoomId,
+            }, voiceContext.Value.RoomId, Role.Host, null, cancellationToken);
+        }
     }
 
     private async Task OnVoiceCallEstablished(VoiceCallEstablishedEvent e, CancellationToken cancellationToken)
@@ -98,12 +104,14 @@ public class VoiceCallMonitor : IHostedService
         var roomId = e.RoomId;
         var participantId = e.Message.Participant.Id;
 
-        var activeSubRooms = subRoomManager.GetRoomSubRooms(roomId).Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive);
+        var context = roomFactory.GetOrCreateContext(roomId);
+
+        var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive);
         foreach (var subRoom in activeSubRooms)
         {
-            if (subRoomManager.IsInSubRoom(roomId, subRoom.Id, participantId))
+            if (context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
             {
-                var isLast = !subRoomManager.LeaveSubRoom(roomId, subRoom.Id, participantId);
+                var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
 
                 await messageRouter.RouteAsync(new VoiceParticipantLeftMessage()
                 {
@@ -122,11 +130,35 @@ public class VoiceCallMonitor : IHostedService
         }
     }
 
-    Task IHostedService.StopAsync(CancellationToken cancellationToken)
+    private async Task EndAllCalls()
     {
+        var contexts = roomFactory.GetAllContexts();
+        foreach (var context in contexts)
+        {
+            var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive).ToList();
+            foreach (var subRoom in activeSubRooms)
+            {
+                var existingVoiceCallStartedMessageId = context.Messages.GetHistory()
+                    .OfType<VoiceCallStartedMessage>().FirstOrDefault(x => x.SubRoomId == subRoom.Id)?.Id;
+
+                if (existingVoiceCallStartedMessageId != null)
+                {
+                    var existing = context.Messages.GetMessageById(existingVoiceCallStartedMessageId.Value) as VoiceCallStartedMessage;
+                    existing!.EndedAt = DateTime.Now;
+                    context.Messages.UpdateMessage(existing.Id, existing);
+                }
+
+                context.SubRooms.RemoveSubRoom(subRoom.Id);
+            }
+        }
+    }
+
+    async Task IHostedService.StopAsync(CancellationToken cancellationToken)
+    {
+        await EndAllCalls();
+
         audioCaptureService.Stop();
         voiceDataTransmitter.End();
         voicePlaybackService.Dispose();
-        return Task.CompletedTask;
     }
 }

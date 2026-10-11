@@ -22,9 +22,8 @@ namespace MIN.Desktop.ViewModels.Cards;
 public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 {
     private readonly RoomInfo room;
+    private readonly IClipboard? clipboard;
     private readonly bool asHost;
-
-    private IDisposable errorToken = null!;
     private bool joined;
 
     /// <summary>
@@ -69,6 +68,11 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
     public Action<AddressOrigin>? Clicked { get; set; }
 
     /// <summary>
+    /// Событие по удалении комнаты
+    /// </summary>
+    public Action? RoomDestroyed { get; set; }
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="DiscoveredRoomCardViewModel"/>
     /// </summary>
     public DiscoveredRoomCardViewModel(IEventBus eventBus,
@@ -80,14 +84,12 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
     {
         this.asHost = asHost;
         this.room = room;
+        this.clipboard = clipboard;
 
         Room = room;
         joined = asJoined;
 
-        foreach (var endpoint in endpoints)
-        {
-            ConnectionAddresses.Add(new ConnectionAddressViewModel(endpoint, clipboard));
-        }
+        RenderConnectionAddreses(endpoints);
 
         Cabinet = string.IsNullOrEmpty(room.Cabinet)
             ? DesktopConstants.UndefinedPcName
@@ -107,15 +109,26 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         Clicked?.Invoke(AddressOrigin.LAN);
     }
 
+    private void RenderConnectionAddreses(IEnumerable<IEndpoint> endpoints)
+    {
+        ConnectionAddresses.Clear();
+
+        foreach (var endpoint in endpoints)
+        {
+            ConnectionAddresses.Add(new ConnectionAddressViewModel(endpoint, clipboard));
+        }
+    }
+
     private void SubscribeToEvents(IEventBus eventBus)
     {
         var roomScope = eventBus.CreateScope(room.Id);
         roomScope.Subscribe<ParticipantJoinedEvent>(OnParticipantJoined);
         roomScope.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdatedMessageEvent);
-        roomScope.Subscribe<RoomClosedEvent>(OnRoomLeft);
+        roomScope.Subscribe<RoomWentOfflineEvent>(RoomWentOffline);
+        roomScope.Subscribe<RoomDestroyedEvent>(OnRoomDestroyed);
         roomScope.Subscribe<RoomJoinedEvent>(OnRoomJoined);
-        errorToken = eventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured);
+        Subscriptions.Add(eventBus.Subscribe<ErrorOccurredEvent>(OnErrorOccured));
     }
 
     private Task OnErrorOccured(ErrorOccurredEvent eventMessage, CancellationToken cancellationToken)
@@ -131,6 +144,11 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantJoined(ParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (eventMessage.IsRejoin)
+        {
+            return Task.CompletedTask;
+        }
+
         room.ParticipantCount++;
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
@@ -138,22 +156,26 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantLeft(ParticipantLeftEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (!eventMessage.Message.IsLeftRoom)
+        {
+            return Task.CompletedTask;
+        }
+
         room.ParticipantCount--;
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
     }
 
-    private Task OnRoomLeft(RoomClosedEvent eventMessage, CancellationToken cancellationToken)
+    private Task RoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (asHost)
-        {
-            Dispose();
-            return Task.CompletedTask;
-        }
-
-        joined = false;
-        room.ParticipantCount--;
+        joined = true;
         ManageConnectButtonAccessability();
+        return Task.CompletedTask;
+    }
+
+    private Task OnRoomDestroyed(RoomDestroyedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        RoomDestroyed?.Invoke();
         return Task.CompletedTask;
     }
 
@@ -181,6 +203,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         room.MaximumParticipants = eventMessage.RoomInfo.MaximumParticipants;
         room.ParticipantCount = eventMessage.RoomInfo.ParticipantCount;
 
+        RenderConnectionAddreses(eventMessage.Endpoints);
         ManageConnectButtonAccessability();
         return Task.CompletedTask;
     }
@@ -202,12 +225,5 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
         {
             ConnectionStatus = "Присоединиться";
         }
-    }
-
-    /// <inheritdoc cref="IDisposable.Dispose"/>
-    public override void Dispose()
-    {
-        errorToken.Dispose();
-        base.Dispose();
     }
 }

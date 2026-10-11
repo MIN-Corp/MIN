@@ -18,7 +18,7 @@ public sealed class DisconnectAckMessage : BaseMessage
     public override bool IsPublic => false;
 
     /// <summary>
-    /// Причина отказа
+    /// Причина отключения
     /// </summary>
     public string Reason { get; set; } = string.Empty;
 }

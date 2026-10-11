@@ -1,5 +1,4 @@
 ﻿using MIN.Common.Core.Contracts.Interfaces;
-using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Messages;
@@ -25,7 +24,7 @@ public sealed class ChatTextMessage : BaseContentMessage, IDescribable, IReplyab
     /// <summary>
     /// Отправитель сообщения
     /// </summary>
-    public ParticipantInfo Sender { get; set; } = null!;
+    public string SenderName { get; set; } = null!;
 
     /// <inheritdoc />
     public Guid? ReplyToMessageId { get; set; }
@@ -35,7 +34,7 @@ public sealed class ChatTextMessage : BaseContentMessage, IDescribable, IReplyab
 
     string IDescribable.GetDescription()
     {
-        var text = $"{Sender.Name}: {Content}";
+        var text = $"{SenderName}: {Content}";
         return text.Length <= descriptionLength ? text : text[..descriptionLength] + "...";
     }
 }

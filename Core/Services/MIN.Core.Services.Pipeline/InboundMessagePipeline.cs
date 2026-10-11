@@ -34,6 +34,8 @@ public sealed class InboundMessagePipeline : IHostedService, IAsyncDisposable
     private IDisposable localMessageToken = null!;
     private bool disposed;
 
+    int IHostedService.Priority => 0;
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="InboundMessagePipeline"/>
     /// </summary>

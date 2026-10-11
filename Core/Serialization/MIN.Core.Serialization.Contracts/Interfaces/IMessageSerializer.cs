@@ -1,4 +1,5 @@
-﻿using MIN.Core.Messaging.Contracts.Interfaces;
+﻿using System.Text.Json;
+using MIN.Core.Messaging.Contracts.Interfaces;
 
 namespace MIN.Core.Serialization.Contracts.Interfaces;
 
@@ -7,6 +8,11 @@ namespace MIN.Core.Serialization.Contracts.Interfaces;
 /// </summary>
 public interface IMessageSerializer
 {
+    /// <summary>
+    /// Настройки сериализации
+    /// </summary>
+    JsonSerializerOptions SerializerOptions { get; }
+
     /// <summary>
     /// Сериализует сообщение в массив байтов
     /// </summary>

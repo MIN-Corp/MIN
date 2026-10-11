@@ -48,9 +48,9 @@ public interface IRoomData
     int TotalMessageCount { get; }
 
     /// <summary>
-    /// Активна ли комната
+    /// Подключён ли локальный пользователь к комнате (или хостит её)
     /// </summary>
-    bool IsActive { get; }
+    bool IsOnline { get; }
 
     /// <summary>
     /// Дата создания комнаты

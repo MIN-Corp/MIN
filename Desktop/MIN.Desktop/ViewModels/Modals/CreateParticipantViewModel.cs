@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Extensions;
@@ -18,7 +19,7 @@ public partial class CreateParticipantViewModel : ModalViewModelBase
 
     [ObservableProperty]
     [Display(Name = "Имя участника")]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ProceedCommand))]
     [NotifyDataErrorInfo]
     [Required(ErrorMessage = "Введите своё имя")]
     [ParticipantName]
@@ -34,13 +35,11 @@ public partial class CreateParticipantViewModel : ModalViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanProceed))]
-    private void Connect()
+    private async Task Proceed()
     {
-        var newParticipant = identityService.SelfParticipant.ToParticipantInfo();
-        newParticipant.Name = Name;
-
-        identityService.SetParticipant(newParticipant);
-
+        var participant = identityService.SelfParticipant.ToParticipantInfo();
+        participant.Name = Name;
+        await identityService.SaveParticipant(participant);
         Close(ButtonOptions.Ok);
     }
 

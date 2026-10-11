@@ -15,7 +15,7 @@ public interface ISettingsProvider
     /// <summary>
     /// Сохранить настройки
     /// </summary>
-    void SaveSettings(Settings settings);
+    Task SaveSettings(Settings settings);
 
     /// <summary>
     /// Событие по сохранению настроек

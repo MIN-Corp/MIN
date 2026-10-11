@@ -1,7 +1,7 @@
 ﻿using System.Threading.Channels;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Models;
+using MIN.Core.Stores.Contracts.Models.SubRooms;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 using MIN.Voice.Messaging;
@@ -23,8 +23,6 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
     private Channel<VoiceDataMessage> queue = null!;
     private Channel<byte[]> captureQueue = null!;
     private CancellationTokenSource? sendCts;
-    private Task? sendTask;
-    private Task? processTask;
 
     private Guid roomId;
     private int subRoomId;
@@ -72,8 +70,8 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
         });
 
         sendCts = new CancellationTokenSource();
-        processTask = ProcessCapturedFramesAsync(sendCts.Token);
-        sendTask = SendPumpAsync(sendCts.Token);
+        _ = ProcessCapturedFramesAsync(sendCts.Token);
+        _ = SendPumpAsync(sendCts.Token);
 
         voiceAudioDetector.Reset();
         audioCaptureService.FrameCaptured += OnFrameCaptured;
@@ -95,8 +93,6 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
         sendCts = null;
         captureQueue.Writer.TryComplete();
         queue.Writer.TryComplete();
-        sendTask = null;
-        processTask = null;
 
         voiceAudioDetector.Reset();
     }

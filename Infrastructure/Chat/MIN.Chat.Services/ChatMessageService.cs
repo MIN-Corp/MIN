@@ -1,8 +1,9 @@
-﻿using MIN.Chat.Messaging;
-using MIN.Chat.Services.Contracts.Interfaces;
+﻿using MIN.Chat.Services.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Identity.Contracts.Interfaces;
+using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.History;
+using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
@@ -32,14 +33,27 @@ public sealed class ChatMessageService : IChatMessageService
     }
 
     async Task IChatMessageService.EditTextMessageAsync(Guid roomId, Guid messageId, string newContent, CancellationToken cancellationToken)
-        => await messageRouter.RouteAsync(new ChatEditMessage
+    {
+        var context = roomFactory.GetRoomContext(roomId)
+            ?? throw new InvalidOperationException("Комната не нашлась");
+
+        var existing = context.Messages.GetMessageById(messageId)
+            ?? throw new InvalidOperationException("Сообщение не найдено для редактирования");
+
+        if (existing is IContentEditable contentEditable)
+        {
+            contentEditable.Content = newContent;
+        }
+
+        await messageRouter.RouteAsync(new MessageUpdateMessage
         {
             MessageIdToEdit = messageId,
-            NewContent = newContent,
+            NewMessage = existing,
         }, roomId, identityService.SelfParticipant.Id, cancellationToken);
+    }
 
     async Task IChatMessageService.DeleteMessageAsync(Guid roomId, Guid messageId, CancellationToken cancellationToken)
-        => await messageRouter.RouteAsync(new ChatDeleteMessage
+        => await messageRouter.RouteAsync(new MessageDeleteMessage
         {
             MessageIdToDelete = messageId,
         }, roomId, identityService.SelfParticipant.Id, cancellationToken);

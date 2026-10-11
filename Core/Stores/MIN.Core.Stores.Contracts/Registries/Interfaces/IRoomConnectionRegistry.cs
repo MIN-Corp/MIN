@@ -27,12 +27,17 @@ public interface IRoomConnectionRegistry
     /// <summary>
     /// Зарегистрировать серверное соединение
     /// </summary>
-    void RegisterServerConnection(Guid roomId, Guid serverConnectionId);
+    void RegisterServerConnection(Guid roomId, Guid? serverConnectionId);
 
     /// <summary>
-    /// Отрегистрировать серверное соединение
+    /// Отрегистрировать (забыть) серверное соединение
     /// </summary>
     void UnregisterServerConnection(Guid roomId);
+
+    /// <summary>
+    /// Пометить серверное соединение как оффлайн
+    /// </summary>
+    void DetachServerConnection(Guid roomId);
 
     /// <summary>
     /// Получить идентификатор серверного соединения по идентификатору комнаты

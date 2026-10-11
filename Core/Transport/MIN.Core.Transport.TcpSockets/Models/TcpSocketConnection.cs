@@ -71,6 +71,7 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
         }
         catch (OperationCanceledException) { }
         catch (EndOfStreamException) { }
+        catch (ObjectDisposedException) { }
         catch (IOException) { }
         catch (Exception ex)
         {

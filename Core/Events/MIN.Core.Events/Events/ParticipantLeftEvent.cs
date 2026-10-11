@@ -5,7 +5,8 @@ using MIN.Core.Messaging.RoomRelated.ParticipantRelated;
 namespace MIN.Core.Events.Events;
 
 /// <summary>
-/// Событие, возникающее при выходе участника из комнаты
+/// Событие, возникающее при покидании участником комнаты
+/// (с ним нельзя будет связяться, но может считаться в списке если он вышел непреднамеренно)
 /// </summary>
 public sealed record ParticipantLeftEvent : BaseEvent, IRoomScopedEvent
 {

@@ -1,8 +1,10 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Serialization.Contracts.Interfaces;
+using MIN.Core.Serialization.Json.Converters;
 
 namespace MIN.Core.Serialization.Json;
 
@@ -13,6 +15,9 @@ public sealed class JsonMessageSerializer : IMessageSerializer
 {
     private readonly IEnumerable<IMessage> messageTypes;
     private readonly ConcurrentDictionary<MessageTypeTag, Func<byte[], IMessage>> deserializers = new();
+    private readonly JsonSerializerOptions serializerOptions;
+
+    JsonSerializerOptions IMessageSerializer.SerializerOptions => serializerOptions;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="JsonMessageSerializer"/>
@@ -20,6 +25,17 @@ public sealed class JsonMessageSerializer : IMessageSerializer
     public JsonMessageSerializer(IEnumerable<IMessage> messageTypes)
     {
         this.messageTypes = messageTypes;
+        serializerOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters =
+                {
+                    new IEndpointConverter(),
+                    new IMessageConverter(this),
+                }
+        };
         InitializeDeserializers();
     }
 
@@ -38,13 +54,8 @@ public sealed class JsonMessageSerializer : IMessageSerializer
         }
     }
 
-    /// <summary>
-    /// Настройки сериализации
-    /// </summary>
-    public JsonSerializerOptions SerializerOptions = null!;
-
     byte[] IMessageSerializer.Serialize(IMessage message)
-        => JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), SerializerOptions);
+        => JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), serializerOptions);
 
     IMessage IMessageSerializer.Deserialize(byte[] data)
     {
@@ -65,5 +76,5 @@ public sealed class JsonMessageSerializer : IMessageSerializer
     }
 
     private Func<byte[], IMessage> CreateDeserializer(Type messageType)
-        => data => (IMessage)JsonSerializer.Deserialize(data, messageType, SerializerOptions)!;
+        => data => (IMessage)JsonSerializer.Deserialize(data, messageType, serializerOptions)!;
 }

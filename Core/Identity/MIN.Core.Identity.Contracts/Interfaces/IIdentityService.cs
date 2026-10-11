@@ -13,12 +13,7 @@ public interface IIdentityService
     IParticipantData SelfParticipant { get; }
 
     /// <summary>
-    /// Установить данные пользователя
+    /// Установить и сохранить данные пользователя
     /// </summary>
-    void SetParticipant(IParticipantData participantData);
-
-    /// <summary>
-    /// Сбросить данные пользователя
-    /// </summary>
-    void ResetParticipant();
+    Task SaveParticipant(IParticipantData participantData);
 }

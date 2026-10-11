@@ -59,7 +59,7 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
     /// Время получения последнего сообщенния
     /// </summary>
     [ObservableProperty]
-    public partial DateTime LastMessageReceivedAt { get; set; } = DateTime.Now;
+    public partial DateTime LastMessageReceivedAt { get; set; }
 
     /// <summary>
     /// Выбрана ли карточка
@@ -77,15 +77,14 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
     /// </summary>
     public RecentRoomCardViewModel(IEventBus eventBus,
         RoomContext roomContext,
-        RoomInfo roomInfo,
-        bool AsCreator)
+        RoomInfo roomInfo)
     {
         this.roomContext = roomContext;
         this.roomInfo = roomInfo;
 
         RoomId = roomInfo.Id;
         RoomName = roomInfo.Name;
-        currentAmount = roomInfo.ParticipantCount + (AsCreator ? 1 : 0);
+        currentAmount = roomInfo.ParticipantCount;
         maximumAmount = roomInfo.MaximumParticipants;
 
         GetLastMessage();
@@ -101,6 +100,7 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
             lastMessageId = lastMessage.Id;
             LastMessageContent = describable.GetDescription();
         }
+        LastMessageReceivedAt = lastMessage?.Timestamp ?? DateTime.Now;
     }
 
     /// <summary>
@@ -129,12 +129,17 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdatedMessageEvent);
         roomScope.Subscribe<DescribableMessageReceivedEvent>(OnDescribableMessageReceivedEvent);
         roomScope.Subscribe<MessageDeletedEvent>(OnChatMessageDeleted);
-        roomScope.Subscribe<MessageEditedEvent>(OnChatMessageEdited);
-        roomScope.Subscribe<RoomClosedEvent>(OnRoomLeft);
+        roomScope.Subscribe<MessageUpdatedEvent>(OnChatMessageEdited);
+        roomScope.Subscribe<RoomDestroyedEvent>(OnRoomDestroyed);
     }
 
     private Task OnParticipantJoined(ParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (eventMessage.IsRejoin)
+        {
+            return Task.CompletedTask;
+        }
+
         currentAmount++;
         UpdateParticipantsInfo();
         return Task.CompletedTask;
@@ -142,12 +147,17 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
 
     private Task OnParticipantLeft(ParticipantLeftEvent eventMessage, CancellationToken cancellationToken)
     {
+        if (!eventMessage.Message.IsLeftRoom)
+        {
+            return Task.CompletedTask;
+        }
+
         currentAmount--;
         UpdateParticipantsInfo();
         return Task.CompletedTask;
     }
 
-    private Task OnRoomLeft(RoomClosedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnRoomDestroyed(RoomDestroyedEvent eventMessage, CancellationToken cancellationToken)
     {
         Dispose();
         return Task.CompletedTask;
@@ -162,7 +172,7 @@ public partial class RecentRoomCardViewModel : CardViewModelBase
         return Task.CompletedTask;
     }
 
-    private Task OnChatMessageEdited(MessageEditedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnChatMessageEdited(MessageUpdatedEvent eventMessage, CancellationToken cancellationToken)
     {
         if (lastMessageId == eventMessage.MessageId)
         {

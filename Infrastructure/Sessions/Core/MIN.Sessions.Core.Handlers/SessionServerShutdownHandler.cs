@@ -4,7 +4,6 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
@@ -15,19 +14,16 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionServerShutdownHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly ISessionProcessManager sessionProcessManager;
     private readonly IMessageSender messageSender;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="SessionServerShutdownHandler"/>
     /// </summary>
-    public SessionServerShutdownHandler(ISubRoomManager subRoomManager,
-        ISessionProcessManager sessionProcessManager,
+    public SessionServerShutdownHandler(ISessionProcessManager sessionProcessManager,
         IMessageSender messageSender,
         ILoggerProvider logger) : base(logger)
     {
-        this.subRoomManager = subRoomManager;
         this.sessionProcessManager = sessionProcessManager;
         this.messageSender = messageSender;
     }
@@ -46,9 +42,9 @@ internal sealed class SessionServerShutdownHandler : BaseHandler
         if (context.Role == Role.Host)
         {
             var outOfSubRoomParticipants = context.RoomContext.Participants.GetParticipants()
-                .Select(x => x.Id).Except(subRoomManager.GetParticipantIds(roomId, subRoomId)).ToList();
+                .Select(x => x.Id).Except(context.RoomContext.SubRooms.GetParticipantIds(subRoomId)).ToList();
 
-            var subRoomInfo = subRoomManager.GetSubRoom(roomId, subRoomId);
+            var subRoomInfo = context.RoomContext.SubRooms.GetSubRoom(subRoomId);
             var requesterStopped = sessionServerShutdownMessage.SenderId == subRoomInfo?.CreatorId;
             var hostStopped = sessionServerShutdownMessage.SenderId == context.SelfId;
 
@@ -58,7 +54,7 @@ internal sealed class SessionServerShutdownHandler : BaseHandler
                 return HandlerResult.Failure("Произошла попытка остановки сервера участником, не имеющего на это права, либо отправившего неккоректный id подкомнаты");
             }
 
-            subRoomManager.TryStopSubRoom(roomId, subRoomId, sessionServerShutdownMessage.SenderId);
+            context.RoomContext.SubRooms.TryStopSubRoom(subRoomId, sessionServerShutdownMessage.SenderId);
 
             var excludeConnectionIds = outOfSubRoomParticipants.Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId);
             await messageSender.BroadcastAsync(sessionServerShutdownMessage, roomId, excludeConnectionIds, context.CancellationToken);

@@ -50,15 +50,10 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
     {
         if (message is IMessageWithSecuredFields messageWithSecured)
         {
-            messageWithSecured.Sanitize();
+            message = messageWithSecured.Sanitize();
         }
 
-        Guid? serverConnectionId = null;
-
-        if (registry.IsHosting(roomId))
-        {
-            serverConnectionId = registry.GetServerConnectionIdByRoomId(roomId);
-        }
+        registry.TryGetServerConnectionIdByRoomId(roomId, out var serverConnectionId);
 
         var serialized = serializer.Serialize(message);
 
@@ -90,12 +85,7 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
             IsRawPayload = true,
         };
 
-        Guid? serverConnectionId = null;
-
-        if (registry.IsHosting(roomId))
-        {
-            serverConnectionId = registry.GetServerConnectionIdByRoomId(roomId);
-        }
+        registry.TryGetServerConnectionIdByRoomId(roomId, out var serverConnectionId);
 
         await streamManager.SendAsync(messageStream, options, roomId, recipientConnectionId, serverConnectionId, cancellationToken);
     }
@@ -115,9 +105,15 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
             .Append(CoreRegistryConstants.LocalConnectionId);
 
         var tasks = participants
-            .Select(participant => context.Connections.GetConnectionIdFromParticipantId(participant.Id))
-            .Where(connectionId => !excludeConnectionIds.Contains(connectionId))
-            .Select(connectionId => SendAsync(message, roomId, connectionId, cancellationToken));
+            .Select(participant => new
+            {
+                ParticipantId = participant.Id,
+                HasConnection = context.Connections.TryGetConnectionIdFromParticipantId(participant.Id, out var connectionId),
+                ConnectionId = connectionId,
+            })
+            .Where(x => x.HasConnection && !excludeConnectionIds.Contains(x.ConnectionId))
+            .Select(x => SendAsync(message, roomId, x.ConnectionId, cancellationToken));
+
 
         await Task.WhenAll(tasks);
     }

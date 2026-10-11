@@ -117,7 +117,7 @@ public class SessionProcessBridge : ISessionProcessBridge
 
         try
         {
-            await pendingProcesses[context].Task.WaitAsync(TimeSpan.FromMilliseconds(timeOutMs), cancellationToken);
+            await pendingProcesses[context].Task.WaitAsync(TimeSpan.FromMilliseconds(timeOutMs), cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -148,7 +148,7 @@ public class SessionProcessBridge : ISessionProcessBridge
     }
 
     async Task ISessionProcessBridge.SendCloseMessage(ProcessContext context, CancellationToken cancellationToken)
-        => await SendIpcMessage(new CloseMessage(), context, identityService.SelfParticipant.Id, cancellationToken);
+        => await SendIpcMessage(new CloseMessage(), context, identityService.SelfParticipant.Id, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public async Task SendIpcMessage(IpcMessage message, ProcessContext context, Guid senderId, CancellationToken cancellationToken)
@@ -163,7 +163,7 @@ public class SessionProcessBridge : ISessionProcessBridge
         var json = JsonSerializer.Serialize(envelope);
         var data = Encoding.UTF8.GetBytes(json);
 
-        await SendData(data, context, cancellationToken);
+        await SendData(data, context, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SendData(byte[] data, ProcessContext context, CancellationToken cancellationToken)

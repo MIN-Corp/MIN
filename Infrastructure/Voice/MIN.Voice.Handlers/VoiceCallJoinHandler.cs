@@ -8,8 +8,7 @@ using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
@@ -19,7 +18,6 @@ namespace MIN.Voice.Handlers;
 
 internal sealed class VoiceCallJoinHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly IEventBus eventBus;
     private readonly IMessageRouter messageRouter;
     private readonly IVoicePlaybackService voicePlaybackService;
@@ -28,14 +26,12 @@ internal sealed class VoiceCallJoinHandler : BaseHandler
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="VoiceCallJoinHandler"/>
     /// </summary>
-    public VoiceCallJoinHandler(ISubRoomManager subRoomManager,
-        IEventBus eventBus,
+    public VoiceCallJoinHandler(IEventBus eventBus,
         IMessageRouter messageRouter,
         IVoicePlaybackService voicePlaybackService,
         IIdentityService identityService,
         ILoggerProvider logger) : base(logger)
     {
-        this.subRoomManager = subRoomManager;
         this.eventBus = eventBus;
         this.messageRouter = messageRouter;
         this.voicePlaybackService = voicePlaybackService;
@@ -60,9 +56,7 @@ internal sealed class VoiceCallJoinHandler : BaseHandler
                     return HandlerResult.Failure($"Получил сообщение {message.GetType()} в {nameof(VoiceCallJoinHandler)} как {context.Role}, хотя не должен был", stopPropagation: false);
                 }
 
-                var roomId = context.RoomContext.RoomId;
-
-                var subRoomInfo = subRoomManager.GetSubRoom(roomId, voiceCallJoinRequestMessage.SubRoomId);
+                var subRoomInfo = context.RoomContext.SubRooms.GetSubRoom(voiceCallJoinRequestMessage.SubRoomId);
 
                 if (subRoomInfo == null)
                 {
@@ -71,7 +65,7 @@ internal sealed class VoiceCallJoinHandler : BaseHandler
 
                 var senderParicipantInfo = sender!.ToParticipantInfo();
 
-                var joinResult = subRoomManager.TryJoinSubRoom(roomId, voiceCallJoinRequestMessage.SubRoomId, senderParicipantInfo);
+                var joinResult = context.RoomContext.SubRooms.TryJoinSubRoom(voiceCallJoinRequestMessage.SubRoomId, senderParicipantInfo);
 
                 if (joinResult != SubRoomJoinOutcome.Success)
                 {

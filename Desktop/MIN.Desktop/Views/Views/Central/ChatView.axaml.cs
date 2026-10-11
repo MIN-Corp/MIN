@@ -53,19 +53,9 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
         var threshold = BottomThresholdPercent * sv.Viewport.Height;
         threshold = Math.Min(threshold, sv.Viewport.Height * 0.5);
 
-        if (e.ExtentDelta.Y > 0)
-        {
-            var wasAtBottom = sv.Offset.Y + sv.Viewport.Height
-                              >= sv.Extent.Height - e.ExtentDelta.Y - threshold;
-
-            if (wasAtBottom)
-            {
-                sv.ScrollToEnd();
-            }
-        }
-
         var atBottom = sv.Offset.Y + sv.Viewport.Height
                        >= sv.Extent.Height - threshold;
+
         vm.IsAtBottom = atBottom;
     }
 }

@@ -52,6 +52,11 @@ public interface IParticipantStore
     IEnumerable<Participant> GetParticipants();
 
     /// <summary>
+    /// Пометить всех участников как оффлайн для комнаты
+    /// </summary>
+    void MarkAllParticipansOffline(Guid? exceptId = null);
+
+    /// <summary>
     /// Очистить участников для комнаты
     /// </summary>
     void ClearParticipants();

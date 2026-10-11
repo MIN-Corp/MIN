@@ -73,7 +73,7 @@
                                 <TextBlock DockPanel.Dock="Right"
                                            Text="{Binding Room.CreatedAt,
                                            Converter={converters:DateConverter},
-                                            ConverterParameter={x:Static converters:DateMode.Short}}" />
+                                            ConverterParameter={x:Static converters:DateMode.Relative}}" />
                                 <Rectangle Classes="divider" />
                             </DockPanel>
 
@@ -105,13 +105,18 @@
                                 <TextBlock VerticalAlignment="Center" Text="Связь: "/>
 
                                 <TextBlock VerticalAlignment="Center"
+                                        IsVisible="{Binding IsOnline}"
                                         Foreground="{Binding Ping,
                                             Converter={converters:PingToBrushConverter}}"
                                         Text="{Binding Ping}" />
                                 <TextBlock VerticalAlignment="Center"
+                                        IsVisible="{Binding IsOnline}"
                                         Foreground="{Binding Ping,
                                             Converter={converters:PingToBrushConverter}}"
                                         Text=" мс" />
+                                <TextBlock VerticalAlignment="Center"
+                                        IsVisible="{Binding !IsOnline}"
+                                        Text=" оффлайн" />
                             </TextBlock>
                              
                             <ItemsControl ItemsSource="{Binding ConnectionAddresses}">
@@ -225,7 +230,7 @@
                                                     VerticalAlignment="Center"
                                                     Text="{Binding ParticipantLastSeenAt,
                                                     Converter={converters:DateConverter},
-                                                        ConverterParameter={x:Static converters:DateMode.Short}}"
+                                                        ConverterParameter={x:Static converters:DateMode.Relative}}"
                                                     IsVisible="{Binding IsOffline}" />
                                             </StackPanel>
                                         </StackPanel>
@@ -254,7 +259,7 @@
                                             VerticalAlignment="Center"
                                             Text="{Binding ParticipantLastSeenAt,
                                             Converter={converters:DateConverter},
-                                                ConverterParameter={x:Static converters:DateMode.Short}}"
+                                                ConverterParameter={x:Static converters:DateMode.Relative}}"
                                             IsVisible="{Binding IsOffline}" />
                                     </StackPanel>
                                 </StackPanel>

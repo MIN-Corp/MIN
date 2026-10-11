@@ -87,6 +87,7 @@ internal sealed class ChatHistoryHandler : BaseHandler
                 {
                     Content = (clearMessage as IDescribable).GetDescription()
                 });
+                room.TotalMessageCount = context.RoomContext.Messages.GetMessageCount();
 
                 return HandlerResult.WithEvent(new ChatHistoryClearedEvent()
                 {

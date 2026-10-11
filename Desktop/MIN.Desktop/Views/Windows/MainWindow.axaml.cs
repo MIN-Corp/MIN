@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.Desktop.Views.Base;
@@ -74,5 +75,24 @@ public partial class MainWindow : WindowEx<MainWindowViewModel>
             _ => "*"
         };
         WindowGrid.ColumnDefinitions = ColumnDefinitions.Parse(defs);
+    }
+
+    /// <summary>
+    /// При следующем закрытии сохранить в трей
+    /// </summary>
+    public bool MinimizeToTrayEnabled = DesktopConstants.MinimizeToTrayEnabled;
+
+    /// <inheritdoc cref="Window.OnClosing(WindowClosingEventArgs)"/>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (MinimizeToTrayEnabled)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+        else
+        {
+            base.OnClosing(e);
+        }
     }
 }

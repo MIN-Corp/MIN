@@ -14,7 +14,7 @@ using MIN.Desktop.ViewModels.Base;
 namespace MIN.Desktop.ViewModels.Modals;
 
 /// <summary>
-/// Модель окна создания комнаты
+/// Модель окна захода в комнаты
 /// </summary>
 public partial class LoadingViewModel : ModalViewModelBase
 {

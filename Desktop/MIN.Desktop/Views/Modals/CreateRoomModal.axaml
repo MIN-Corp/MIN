@@ -56,7 +56,24 @@
                 <Border Classes="card">
                     <Expander Classes="main" Header="Настройка сети" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0" Classes="form">
-                            <!-- LAN Udp Broadcast -->
+                            <!-- Preffered port -->
+
+                            <StackPanel>
+                                <StackPanel Classes="form">
+                                    <TextBlock Text="Порт" />
+                                    <TextBox Margin="0,0,0,8"
+                                        Text="{Binding Port, Converter={converters:IntToStringConverter}}"
+                                        PlaceholderText="Введите порт...">
+                                    </TextBox>
+                                </StackPanel>
+
+                                <TextBlock MaxWidth="300.0" Classes="info">
+                                    Порт комнаты. По умолчанию 5550. При смене порта он обновиться
+                                    только после следующего хостинга
+                                </TextBlock>
+                            </StackPanel>
+
+                            <Separator /> <!-- LAN Udp Broadcast -->
 
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">

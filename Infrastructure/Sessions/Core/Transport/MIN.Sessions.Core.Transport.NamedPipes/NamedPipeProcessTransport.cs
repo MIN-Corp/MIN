@@ -45,7 +45,7 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
         connectionCts.CancelAfter(timeOutMs);
         try
         {
-            await server.WaitForConnectionAsync(connectionCts.Token);
+            await server.WaitForConnectionAsync(connectionCts.Token).ConfigureAwait(false);
 
             connections.TryAdd(context, server);
             writeLocks.TryAdd(context, new(1, 1));
@@ -65,16 +65,16 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
             var lengthBuf = new byte[4];
             while (!cancellationToken.IsCancellationRequested && readLocks.TryGetValue(context, out var readlock))
             {
-                await readlock.WaitAsync(cancellationToken);
+                await readlock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 byte[] body;
 
                 try
                 {
-                    await stream.ReadExactlyAsync(lengthBuf, cancellationToken);
+                    await stream.ReadExactlyAsync(lengthBuf, cancellationToken).ConfigureAwait(false);
                     var length = BitConverter.ToInt32(lengthBuf);
                     body = new byte[length];
-                    await stream.ReadExactlyAsync(body, cancellationToken);
+                    await stream.ReadExactlyAsync(body, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -100,14 +100,14 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
     {
         if (connections.TryGetValue(context, out var stream) && writeLocks.TryGetValue(context, out var writeLock))
         {
-            await writeLock.WaitAsync(cancellationToken);
+            await writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
                 var lengthBuf = BitConverter.GetBytes(data.Length);
-                await stream.WriteAsync(lengthBuf, cancellationToken);
-                await stream.WriteAsync(data, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
+                await stream.WriteAsync(lengthBuf, cancellationToken).ConfigureAwait(false);
+                await stream.WriteAsync(data, cancellationToken).ConfigureAwait(false);
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }
             finally
@@ -129,7 +129,7 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
     /// <inheritdoc />
     public async Task StopAsync()
     {
-        await cts.CancelAsync();
+        await cts.CancelAsync().ConfigureAwait(false);
 
         foreach (var server in connections.Values)
         {
@@ -138,5 +138,5 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
     }
 
     /// <inheritdoc cref="IAsyncDisposable.DisposeAsync"/>
-    async ValueTask IAsyncDisposable.DisposeAsync() => await StopAsync();
+    async ValueTask IAsyncDisposable.DisposeAsync() => await StopAsync().ConfigureAwait(false);
 }

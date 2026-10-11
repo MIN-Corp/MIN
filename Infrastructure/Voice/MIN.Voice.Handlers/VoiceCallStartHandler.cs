@@ -5,8 +5,7 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
@@ -15,19 +14,16 @@ namespace MIN.Voice.Handlers;
 
 internal sealed class VoiceCallStartHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly IMessageSender messageSender;
     private readonly IMessageRouter messageRouter;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="VoiceCallStartHandler"/>
     /// </summary>
-    public VoiceCallStartHandler(ISubRoomManager subRoomManager,
-        IMessageSender messageSender,
+    public VoiceCallStartHandler(IMessageSender messageSender,
         IMessageRouter messageRouter,
         ILoggerProvider logger) : base(logger)
     {
-        this.subRoomManager = subRoomManager;
         this.messageSender = messageSender;
         this.messageRouter = messageRouter;
     }
@@ -47,7 +43,7 @@ internal sealed class VoiceCallStartHandler : BaseHandler
         }
 
         var senderParicipantInfo = sender!.ToParticipantInfo();
-        var subRoomInfo = subRoomManager.HostSubRoom(context.RoomContext.RoomId, senderParicipantInfo, SubRoomPurpose.Voice);
+        var subRoomInfo = context.RoomContext.SubRooms.HostSubRoom(senderParicipantInfo, SubRoomPurpose.Voice);
         var subRoomId = subRoomInfo.Id;
 
         var voiceCallStartedMessage = new VoiceCallStartedMessage()

@@ -1,4 +1,4 @@
-using MIN.Core.Stores.Contracts.Interfaces;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.FileTransfer.Services.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -8,20 +8,18 @@ namespace MIN.FileTransfer.Services;
 public sealed class FileStorageService : IFileStorageService
 {
     private const string RoomFilesFolderName = "Файлы комнат";
-    private readonly string baseDirectory;
-    private readonly IRoomStore roomStore;
+
     private readonly ILoggerProvider logger;
-    private string? roomName;
+    private readonly string baseDirectory;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="FileStorageService"/>
     /// </summary>
-    public FileStorageService(IRoomStore roomStore, ILoggerProvider logger)
+    public FileStorageService(IIdentityDataPathProvider identityDataPath, ILoggerProvider logger)
     {
-        this.roomStore = roomStore;
         this.logger = logger;
 
-        baseDirectory = Path.Combine(AppContext.BaseDirectory, RoomFilesFolderName);
+        baseDirectory = Path.Combine(identityDataPath.FilesDirectory, RoomFilesFolderName);
 
         if (!Directory.Exists(baseDirectory))
         {
@@ -33,8 +31,7 @@ public sealed class FileStorageService : IFileStorageService
     /// <inheritdoc />
     public string GetRoomDirectory(Guid roomId)
     {
-        roomName ??= roomStore.GetRoom(roomId).Name;
-        var roomDir = Path.Combine(baseDirectory, $"Файлы комнаты {roomName}");
+        var roomDir = Path.Combine(baseDirectory, roomId.ToString());
         return roomDir;
     }
 

@@ -186,7 +186,7 @@ flowchart TB
 - [.NET SDK 8.0](https://dotnet.microsoft.com/download/dotnet/8.0) or higher
 - Windows 10/11
 - Local network (for room discovery)
-- Virutal networks (Radmin, Hamachi) (if you want to connect outside local network without UPnP)
+- Virtual networks (Radmin, Hamachi) (if you want to connect outside local network without UPnP)
 
 ### Quick Start
 

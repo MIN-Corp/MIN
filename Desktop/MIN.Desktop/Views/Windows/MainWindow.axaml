@@ -8,6 +8,7 @@
         xmlns:pagesRight="using:MIN.Desktop.Views.Right"
         xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
         xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:enums="using:MIN.Desktop.Contracts.Enums"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:designer="using:MIN.Desktop.Contracts.Designer"
@@ -92,6 +93,11 @@
                 </Style.Animations>
             </Style>
         </Style>
+
+    <Style Selector=".sidebar Border">
+        <Setter Property="MaxWidth" Value="320"/>
+    </Style>
+
     </Window.Styles>
 
     <DockPanel>
@@ -104,6 +110,9 @@
                     x:Name="Left"
                     Content="{Binding LeftSideBarViewModel}"
                     HorizontalContentAlignment="Stretch"
+                    Classes.sidebar="{Binding LayoutMode,
+                        Converter={converters:NonEqualityConverter},
+                        ConverterParameter={x:Static enums:WindowLayout.Narrow}}"
                     Grid.Column="0">
                     <ContentControl.ContentTemplate>
                         <designer:MultiDataTemplate UseCache="False">
@@ -180,6 +189,9 @@
                     x:Name="Right"
                     Content="{Binding RightSideBarViewModel}"
                     HorizontalContentAlignment="Stretch"
+                    Classes.sidebar="{Binding LayoutMode,
+                        Converter={converters:NonEqualityConverter},
+                        ConverterParameter={x:Static enums:WindowLayout.Narrow}}"
                     Grid.Column="2">
                     <ContentControl.ContentTemplate>
                         <designer:MultiDataTemplate UseCache="False">

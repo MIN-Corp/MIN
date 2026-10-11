@@ -4,8 +4,7 @@ using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
-using MIN.Core.SubRooms.Contracts.Enums;
-using MIN.Core.SubRooms.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
@@ -14,16 +13,10 @@ namespace MIN.Voice.Handlers;
 
 internal sealed class VoiceCallStateHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
-
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="VoiceCallStateHandler"/>
     /// </summary>
-    public VoiceCallStateHandler(ISubRoomManager subRoomManager,
-        ILoggerProvider logger) : base(logger)
-    {
-        this.subRoomManager = subRoomManager;
-    }
+    public VoiceCallStateHandler(ILoggerProvider logger) : base(logger) { }
 
     public override IEnumerable<MessageTypeTag> HandledTypes
         => [MessageTypeTag.VoiceStateRequest, MessageTypeTag.VoiceStateResponse];
@@ -43,8 +36,7 @@ internal sealed class VoiceCallStateHandler : BaseHandler
                     return Task.FromResult(HandlerResult.Failure($"Получил сообщение {message.GetType()} в {nameof(VoiceCallStateHandler)} как {context.Role}, хотя не должен был", stopPropagation: false));
                 }
 
-                var roomId = context.RoomContext.RoomId;
-                var allSubrooms = subRoomManager.GetRoomSubRooms(roomId);
+                var allSubrooms = context.RoomContext.SubRooms.GetRoomSubRooms();
                 var voiceCallSubroom = allSubrooms.FirstOrDefault(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive);
 
                 var response = new VoiceCallStateResponseMessage()

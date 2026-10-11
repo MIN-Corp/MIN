@@ -20,7 +20,7 @@ public interface IRoomStore
     /// <summary>
     /// Получить всю информацию о комнате по идентификатору участника (для того, чтобы сохранить его приватные сообщения)
     /// </summary>
-    Room GetRoomFor(Guid participantId, Guid roomId);
+    Room GetRoomFor(Guid participantId, Guid roomId, bool asRejoin = false);
 
     /// <summary>
     /// Получить количество сообщений для участника (для того, чтобы сохранить его приватные сообщения)

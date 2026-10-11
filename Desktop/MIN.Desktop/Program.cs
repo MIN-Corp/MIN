@@ -1,6 +1,8 @@
 ﻿using System;
 using Avalonia;
-
+#if RELEASE
+using MIN.Desktop.Infrastructure.Services;
+#endif
 namespace MIN.Desktop
 {
     internal sealed class Program
@@ -13,7 +15,20 @@ namespace MIN.Desktop
 
         private static void LoadAvalonia(string[] args)
         {
+#if DEBUG
+            // Debug: позволяем несколько экземпляров (для теста двух участников).
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+#else
+            using var singleInstance = new SingleInstanceService();
+            if (!singleInstance.TryAcquire())
+            {
+                return; // Окно уже показано первой инстанцией, молча выходим.
+            }
+
+            singleInstance.ShowRequested += App.RequestShowMainWindow;
+
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+#endif
         }
 
         public static AppBuilder BuildAvaloniaApp() => App.Create();

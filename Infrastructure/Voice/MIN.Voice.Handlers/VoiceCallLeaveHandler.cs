@@ -5,7 +5,6 @@ using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.SubRooms.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Voice.Messaging;
 
@@ -13,17 +12,14 @@ namespace MIN.Voice.Handlers;
 
 internal sealed class VoiceCallLeaveHandler : BaseHandler
 {
-    private readonly ISubRoomManager subRoomManager;
     private readonly IMessageRouter messageRouter;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="VoiceCallLeaveHandler"/>
     /// </summary>
-    public VoiceCallLeaveHandler(ISubRoomManager subRoomManager,
-        IMessageRouter messageRouter,
+    public VoiceCallLeaveHandler(IMessageRouter messageRouter,
         ILoggerProvider logger) : base(logger)
     {
-        this.subRoomManager = subRoomManager;
         this.messageRouter = messageRouter;
     }
 
@@ -45,7 +41,7 @@ internal sealed class VoiceCallLeaveHandler : BaseHandler
 
         var roomId = context.RoomContext.RoomId;
 
-        if (subRoomManager.GetSubRoom(roomId, voiceCallLeaveMessage.SubRoomId) == null)
+        if (context.RoomContext.SubRooms.GetSubRoom(voiceCallLeaveMessage.SubRoomId) == null)
         {
             return HandlerResult.Failure("Клиент отправил запрос на выход из неизвестной сессии", stopPropagation: true);
         }
@@ -56,7 +52,7 @@ internal sealed class VoiceCallLeaveHandler : BaseHandler
             Participant = sender!.ToParticipantInfo(),
         }, roomId, context.SelfId, context.CancellationToken);
 
-        if (!subRoomManager.LeaveSubRoom(roomId, voiceCallLeaveMessage.SubRoomId, message.SenderId))
+        if (!context.RoomContext.SubRooms.LeaveSubRoom(voiceCallLeaveMessage.SubRoomId, message.SenderId))
         {
             await messageRouter.RouteAsync(new VoiceCallEndedMessage()
             {

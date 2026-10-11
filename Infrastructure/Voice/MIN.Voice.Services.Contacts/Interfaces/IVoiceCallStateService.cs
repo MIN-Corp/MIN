@@ -1,4 +1,4 @@
-﻿using MIN.Core.SubRooms.Contracts.Models;
+﻿using MIN.Core.Stores.Contracts.Models.SubRooms;
 
 namespace MIN.Voice.Services.Contacts.Interfaces;
 

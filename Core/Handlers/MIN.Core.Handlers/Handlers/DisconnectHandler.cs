@@ -1,4 +1,5 @@
-﻿using MIN.Core.Events.Events;
+﻿using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
@@ -34,6 +35,10 @@ internal sealed class DisconnectHandler : BaseHandler
             case DisconnectMessage disconnectMessage:
                 var reason = disconnectMessage.Reason;
                 LogInfo($"Сервер нарошно отключил меня: {reason}");
+
+                var isKicked = context.RoomContext.Participants.TryGetParticipantById(context.SelfId, out var self)
+                    && self?.CurrentStatus == OnlineStatus.Online;
+
                 await messageSender.SendAsync(new DisconnectAckMessage()
                 {
                     Reason = reason,
@@ -42,7 +47,7 @@ internal sealed class DisconnectHandler : BaseHandler
 
                 var roomName = roomStore.GetRoom(context.RoomContext.RoomId).Name;
                 var uiToShow = "Хост разорвал соединение" + (roomName != null ? $" для комнаты {roomName}" : string.Empty) + (reason != string.Empty ? $": {reason}" : string.Empty);
-                return HandlerResult.Failure(uiToShow, stopPropagation: true, critical: true);
+                return HandlerResult.Failure(uiToShow, stopPropagation: true, critical: true, destroy: isKicked);
 
             case DisconnectAckMessage _:
                 return HandlerResult.WithEvent(new DisconnectAckReceived()

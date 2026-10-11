@@ -23,6 +23,9 @@ public sealed class RoomContext : IDisposable
     /// <inheritdoc cref="IParticipantConnectionRegistry"/>
     public IParticipantConnectionRegistry Connections { get; }
 
+    /// <inheritdoc cref="ISubRoomManager"/>
+    public ISubRoomManager SubRooms { get; }
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="RoomContext"/>
     /// </summary>
@@ -33,6 +36,7 @@ public sealed class RoomContext : IDisposable
         Messages = serviceProvider.GetRequiredService<IMessageStore>();
         Participants = serviceProvider.GetRequiredService<IParticipantStore>();
         Connections = serviceProvider.GetRequiredService<IParticipantConnectionRegistry>();
+        SubRooms = serviceProvider.GetRequiredService<ISubRoomManager>();
     }
 
     /// <inheritdoc cref="IDisposable.Dispose"/>
@@ -40,5 +44,6 @@ public sealed class RoomContext : IDisposable
     {
         Messages.ClearMessages();
         Participants.ClearParticipants();
+        SubRooms.ClearRoomSubRooms();
     }
 }

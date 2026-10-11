@@ -23,11 +23,10 @@ namespace MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 /// <summary>
 /// Сообщение сессии участника
 /// </summary>
-public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewModel, IDisposable
+public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMessageViewModel
 {
     private readonly IDialogService dialogService = null!;
     private readonly int? maximumParticipants;
-    private IDisposable rescanToken = null!;
     private bool asDownloaded;
     private int currentAmount;
 
@@ -87,15 +86,18 @@ public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewM
         ParticipantInfo localParticipant,
         Thickness timePadding,
         bool isHostMessage,
-        bool removeHeaders)
+        bool removeHeaders,
+        bool isAvaibleForNetwork)
         : base(sessionReadyMessage,
+            sessionReadyMessage,
             null,
             dialogService,
             sessionReadyMessage.Sender.Name,
             timePadding,
             localParticipant.Id == sessionReadyMessage.SenderId,
             isHostMessage,
-            removeHeaders)
+            removeHeaders,
+            isAvaibleForNetwork)
     {
 
         this.dialogService = dialogService;
@@ -111,11 +113,11 @@ public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewM
 
     private void SubscribeToEvents(IEventScope roomScope, IEventBus eventBus)
     {
-        rescanToken = eventBus.Subscribe<SessionRescanCompletedEvent>(OnSessionRescanCompletedEvent);
-        roomScope.Subscribe<SessionProcessStartedEvent>(OnSessionProcessStarted);
-        roomScope.Subscribe<SessionProcessEndedEvent>(OnSessionProcessEnded);
-        roomScope.Subscribe<SessionParticipantJoinedEvent>(OnSessionParticipantJoined);
-        roomScope.Subscribe<SessionParticipantLeftEvent>(OnSessionParticipantLeft);
+        Subscriptions.Add(eventBus.Subscribe<SessionRescanCompletedEvent>(OnSessionRescanCompletedEvent));
+        Subscriptions.Add(roomScope.Subscribe<SessionProcessStartedEvent>(OnSessionProcessStarted));
+        Subscriptions.Add(roomScope.Subscribe<SessionProcessEndedEvent>(OnSessionProcessEnded));
+        Subscriptions.Add(roomScope.Subscribe<SessionParticipantJoinedEvent>(OnSessionParticipantJoined));
+        Subscriptions.Add(roomScope.Subscribe<SessionParticipantLeftEvent>(OnSessionParticipantLeft));
     }
 
     private Task OnSessionRescanCompletedEvent(SessionRescanCompletedEvent eventMessage, CancellationToken cancellationToken)
@@ -232,11 +234,5 @@ public partial class ChatSessionMessageViewModel : BaseReplyableChatMessageViewM
                 UseShellExecute = true
             });
         }
-    }
-
-    /// <inheritdoc cref="IDisposable.Dispose"/>
-    void IDisposable.Dispose()
-    {
-        rescanToken.Dispose();
     }
 }

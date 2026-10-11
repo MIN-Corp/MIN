@@ -49,7 +49,7 @@ internal sealed class FileTransferRequestHandler : BaseHandler
                 return HandlerResult.Failure($"Не найдена информация о transfer {request.TransferId}", stopPropagation: false);
             }
 
-            var filePath = ResolveFilePath(request.FileMetadataId, context.RoomContext.RoomId, request.FileName);
+            var filePath = ResolveFilePath(context, request.FileMetadataId, context.RoomContext.RoomId);
             if (filePath != null)
             {
                 await eventBus.PublishAsync(new FileTransferCompletedEvent
@@ -100,7 +100,7 @@ internal sealed class FileTransferRequestHandler : BaseHandler
             return HandlerResult.Failure($"Не найдена информация о transfer {request.TransferId}", stopPropagation: false);
         }
 
-        var filePath = ResolveFilePath(request.FileMetadataId, roomId, info.FileName);
+        var filePath = ResolveFilePath(context, request.FileMetadataId, roomId);
         if (filePath == null)
         {
             LogError($"Файл не найден для upload: {info.FileName} (TransferId: {request.TransferId})");
@@ -155,7 +155,7 @@ internal sealed class FileTransferRequestHandler : BaseHandler
             LogInfo($"Transfer {request.TransferId} уже зарегистрирован, начинаю download");
         }
 
-        var filePath = ResolveFilePath(request.FileMetadataId, roomId, request.FileName);
+        var filePath = ResolveFilePath(context, request.FileMetadataId, roomId);
         if (filePath == null)
         {
             LogError($"Файл не найден для download: {request.FileName} (TransferId: {request.TransferId})");
@@ -185,16 +185,31 @@ internal sealed class FileTransferRequestHandler : BaseHandler
         return HandlerResult.Success(stopPropagation: true);
     }
 
-    private string? ResolveFilePath(Guid fileMetadataId, Guid roomId, string fileName)
+    private string? ResolveFilePath(MessageContext context, Guid fileMetadataId, Guid roomId)
     {
-        if (!fileTransferService.TryGetFileMetadata(fileMetadataId, out var fileMetadataInfo))
+        if (fileTransferService.TryGetFileMetadata(fileMetadataId, out var info))
+        {
+            return ResolveFromInfo(info);
+        }
+
+        if (context.RoomContext.Messages.GetMessageById(fileMetadataId) is not FileMetadataMessage metadata)
         {
             return null;
         }
 
-        if (fileMetadataInfo.IsStoredOnServer)
+        if (metadata.AsDownloaded)
         {
-            var filePath = fileStorageService.GetFilePath(roomId, fileName);
+            return fileStorageService.GetFilePath(roomId, metadata.FileName);
+        }
+
+        return metadata.FilePath != null && File.Exists(metadata.FilePath) ? metadata.FilePath : null;
+    }
+
+    private string? ResolveFromInfo(FileMetadataInfo info)
+    {
+        if (info.IsStoredOnServer)
+        {
+            var filePath = fileStorageService.GetFilePath(info.RoomId, info.FileName);
             if (filePath != null)
             {
                 LogInfo($"Файл найден в хранилище: {filePath}");
@@ -202,7 +217,7 @@ internal sealed class FileTransferRequestHandler : BaseHandler
             }
         }
 
-        var originalPath = fileMetadataInfo.OriginalPath;
+        var originalPath = info.OriginalPath;
 
         if (originalPath != null && File.Exists(originalPath))
         {

@@ -6,9 +6,14 @@
 public interface IAppDataProvider
 {
     /// <summary>
-    /// Корневая папка
+    /// Папка на текущую версию приложения
     /// </summary>
-    string BaseDirectory { get; }
+    string VersionedDirectory { get; }
+
+    /// <summary>
+    /// Общая папка
+    /// </summary>
+    string SharedDirectory { get; }
 
     /// <summary>
     /// Очистить содежимое в папке
