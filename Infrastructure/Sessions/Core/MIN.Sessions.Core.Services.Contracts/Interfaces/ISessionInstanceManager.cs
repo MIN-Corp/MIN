@@ -11,7 +11,7 @@ public interface ISessionInstanceManager
     /// <summary>
     /// Запустить экземпляр сессии
     /// </summary>
-    Task<bool> StartAsync(Session session, SessionInstanceContext context, CancellationToken ct = default);
+    Task<ISessionInstance?> StartAsync(Session session, SessionInstanceContext context, CancellationToken ct = default);
 
     /// <summary>
     /// Остановить экземпляр сессии

@@ -88,7 +88,7 @@ internal sealed class SessionHostHandler : BaseHandler
         var hostResult = await sessionInstanceManager.StartAsync(session,
             instanceContext, context.CancellationToken).ConfigureAwait(false);
 
-        if (hostResult == false)
+        if (hostResult == null)
         {
             context.RoomContext.SubRooms.TryStopSubRoom(subRoomId.Value, message.SenderId);
             return HandlerResult.WithErrorHandled("У хоста повреждёна или утеряна программа сервера");
@@ -106,8 +106,7 @@ internal sealed class SessionHostHandler : BaseHandler
                 ThumbnailData = sessionScanner.LoadThumbnail(session.SessionId)
             };
 
-            var instance = sessionInstanceManager.GetInstances(context.RoomContext.RoomId, subRoomId.Value).FirstOrDefault(x => x.Context == instanceContext);
-            instance?.NotifyParticipantJoined(senderParicipantInfo);
+            hostResult.NotifyParticipantJoined(senderParicipantInfo);
 
             await messageRouter.RouteAsync(hostReadyMessage, roomId, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 

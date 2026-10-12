@@ -118,7 +118,7 @@ internal sealed class SessionJoinHandler : BaseHandler
                     new SessionInstanceContext(roomId, sessionJoinResponseMessage.SubRoomId, SessionInstanceRole.Client),
                     context.CancellationToken).ConfigureAwait(false);
 
-                if (clientResult == false)
+                if (clientResult == null)
                 {
                     return HandlerResult.Failure($"У вас повреждёна или утеряна программа для {responseSession.Name}");
                 }

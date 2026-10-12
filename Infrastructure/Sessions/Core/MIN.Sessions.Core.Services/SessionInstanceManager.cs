@@ -46,12 +46,12 @@ public class SessionInstanceManager : ISessionInstanceManager
         this.logger = logger;
     }
 
-    async Task<bool> ISessionInstanceManager.StartAsync(Session session, SessionInstanceContext context, CancellationToken ct)
+    async Task<ISessionInstance?> ISessionInstanceManager.StartAsync(Session session, SessionInstanceContext context, CancellationToken ct)
     {
         if (instances.ContainsKey(context))
         {
             logger.Log($"Экземпляр сессии {session.Name} для {context.RoomId}/{context.SubRoomId}/{context.Role} уже запущен", LogLevel.Warning);
-            return false;
+            return null;
         }
 
         var instance = CreateInstance(session, context);
@@ -65,7 +65,7 @@ public class SessionInstanceManager : ISessionInstanceManager
         try
         {
             await instance.StartAsync(session, ct).ConfigureAwait(false);
-            return true;
+            return instance;
         }
         catch (Exception ex)
         {
@@ -73,7 +73,7 @@ public class SessionInstanceManager : ISessionInstanceManager
             instances.Remove(context);
             await instance.StopAsync(CancellationToken.None).ConfigureAwait(false);
             await instance.DisposeAsync().ConfigureAwait(false);
-            return false;
+            return null;
         }
     }
 

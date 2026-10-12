@@ -83,7 +83,7 @@ public class SessionProcessBridge : ISessionProcessBridge
                 await messageRouter.RouteAsync(new SessionSpecificMessage()
                 {
                     SubRoomId = context.SubRoomId,
-                    SessionProcessRole = context.Role,
+                    SessionInstanceRole = context.Role,
                     Body = inSessionMessage.Body,
                     Route = envelope.Route,
                     Channel = envelope.Channel,

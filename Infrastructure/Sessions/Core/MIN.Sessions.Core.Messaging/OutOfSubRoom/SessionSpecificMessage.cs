@@ -16,12 +16,12 @@ public sealed class SessionSpecificMessage : BaseSessionMessage
     /// <summary>
     /// Содержимое сообщения
     /// </summary>
-    public required string Body { get; set; }
+    public required byte[] Body { get; set; }
 
     /// <summary>
-    /// Роль приложения отправителя сообщения
+    /// Роль экземпляра сессии отправителя сообщения
     /// </summary>
-    public SessionInstanceRole SessionProcessRole { get; set; }
+    public SessionInstanceRole SessionInstanceRole { get; set; }
 
     /// <summary>
     /// Направление сообщения сессии
