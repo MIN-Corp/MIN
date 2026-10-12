@@ -7,7 +7,6 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
-using MIN.Sessions.Core.Messaging.Ipc;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
@@ -20,21 +19,18 @@ internal sealed class SessionHostHandler : BaseHandler
     private readonly IMessageSender messageSender;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
-    private readonly ISessionProcessBridge sessionProcessBridge;
-    private readonly ISessionProcessManager sessionProcessManager;
+    private readonly ISessionInstanceManager sessionInstanceManager;
 
     public SessionHostHandler(IMessageSender messageSender,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
-        ISessionProcessBridge sessionProcessBridge,
-        ISessionProcessManager sessionProcessManager,
+        ISessionInstanceManager sessionInstanceManager,
         ILoggerProvider logger) : base(logger)
     {
         this.messageSender = messageSender;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
-        this.sessionProcessBridge = sessionProcessBridge;
-        this.sessionProcessManager = sessionProcessManager;
+        this.sessionInstanceManager = sessionInstanceManager;
     }
 
     public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.SessionHostRequest];
@@ -87,10 +83,10 @@ internal sealed class SessionHostHandler : BaseHandler
             subRoomId = subRoomInfo.Id;
         }
 
-        var processContext = new ProcessContext(roomId, subRoomId.Value, SessionProcessRole.Server);
+        var instanceContext = new SessionInstanceContext(roomId, subRoomId.Value, SessionInstanceRole.Server);
 
-        var hostResult = await sessionProcessManager.StartAsync(session,
-            processContext, context.CancellationToken).ConfigureAwait(false);
+        var hostResult = await sessionInstanceManager.StartAsync(session,
+            instanceContext, context.CancellationToken).ConfigureAwait(false);
 
         if (hostResult == false)
         {
@@ -110,8 +106,8 @@ internal sealed class SessionHostHandler : BaseHandler
                 ThumbnailData = sessionScanner.LoadThumbnail(session.SessionId)
             };
 
-            await sessionProcessBridge.SendIpcMessage(new ParticipantConnectedMessage(senderParicipantInfo.Id.ToString(), senderParicipantInfo.Name),
-                processContext, message.SenderId, context.CancellationToken).ConfigureAwait(false);
+            var instance = sessionInstanceManager.GetInstances(context.RoomContext.RoomId, subRoomId.Value).FirstOrDefault(x => x.Context == instanceContext);
+            instance?.NotifyParticipantJoined(senderParicipantInfo);
 
             await messageRouter.RouteAsync(hostReadyMessage, roomId, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 

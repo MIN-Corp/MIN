@@ -21,7 +21,7 @@ public sealed class SessionSpecificMessage : BaseSessionMessage
     /// <summary>
     /// Роль приложения отправителя сообщения
     /// </summary>
-    public SessionProcessRole SessionProcessRole { get; set; }
+    public SessionInstanceRole SessionProcessRole { get; set; }
 
     /// <summary>
     /// Направление сообщения сессии

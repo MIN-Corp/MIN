@@ -14,17 +14,17 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionServerShutdownHandler : BaseHandler
 {
-    private readonly ISessionProcessManager sessionProcessManager;
+    private readonly ISessionInstanceManager sessionInstanceManager;
     private readonly IMessageSender messageSender;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="SessionServerShutdownHandler"/>
     /// </summary>
-    public SessionServerShutdownHandler(ISessionProcessManager sessionProcessManager,
+    public SessionServerShutdownHandler(ISessionInstanceManager sessionInstanceManager,
         IMessageSender messageSender,
         ILoggerProvider logger) : base(logger)
     {
-        this.sessionProcessManager = sessionProcessManager;
+        this.sessionInstanceManager = sessionInstanceManager;
         this.messageSender = messageSender;
     }
 
@@ -37,7 +37,7 @@ internal sealed class SessionServerShutdownHandler : BaseHandler
         var roomId = context.RoomContext.RoomId;
         var subRoomId = sessionServerShutdownMessage.SubRoomId;
 
-        await sessionProcessManager.StopAsync(new ProcessContext(roomId, subRoomId, SessionProcessRole.Client));
+        await sessionInstanceManager.StopAsync(new SessionInstanceContext(roomId, subRoomId, SessionInstanceRole.Client));
 
         if (context.Role == Role.Host)
         {

@@ -4,7 +4,6 @@ using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
-using MIN.Sessions.Core.Messaging.Ipc;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 
@@ -12,15 +11,15 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionParticipantLeftHandler : BaseHandler
 {
-    private readonly ISessionProcessBridge sessionProcessBridge;
+    private readonly ISessionInstanceManager sessionInstanceManager;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="SessionParticipantLeftHandler"/>
     /// </summary>
-    public SessionParticipantLeftHandler(ISessionProcessBridge sessionProcessBridge,
+    public SessionParticipantLeftHandler(ISessionInstanceManager sessionInstanceManager,
         ILoggerProvider logger) : base(logger)
     {
-        this.sessionProcessBridge = sessionProcessBridge;
+        this.sessionInstanceManager = sessionInstanceManager;
     }
 
     public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.SessionParticipantLeft];
@@ -34,12 +33,11 @@ internal sealed class SessionParticipantLeftHandler : BaseHandler
 
         if (!sessionParticipantLeftMessage.IsLast)
         {
-            var processContexts = sessionProcessBridge.GetConnections(roomId, subRoomId);
+            var sessionInstances = sessionInstanceManager.GetInstances(roomId, subRoomId);
 
-            foreach (var processContext in processContexts)
+            foreach (var sessionInstance in sessionInstances)
             {
-                await sessionProcessBridge.SendIpcMessage(new ParticipantDisconnectedMessage(participant.Id.ToString()),
-                    processContext, message.SenderId, context.CancellationToken);
+                sessionInstance.NotifyParticipantLeft(participant.Id);
             }
         }
 

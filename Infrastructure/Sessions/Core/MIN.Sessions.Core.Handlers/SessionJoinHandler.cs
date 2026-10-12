@@ -17,18 +17,18 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionJoinHandler : BaseHandler
 {
-    private readonly ISessionProcessManager sessionProcessManager;
+    private readonly ISessionInstanceManager sessionInstanceManager;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
     private readonly IIdentityService identityService;
 
-    public SessionJoinHandler(ISessionProcessManager sessionProcessManager,
+    public SessionJoinHandler(ISessionInstanceManager sessionInstanceManager,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
         IIdentityService identityService,
         ILoggerProvider logger) : base(logger)
     {
-        this.sessionProcessManager = sessionProcessManager;
+        this.sessionInstanceManager = sessionInstanceManager;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
         this.identityService = identityService;
@@ -114,8 +114,8 @@ internal sealed class SessionJoinHandler : BaseHandler
                     return HandlerResult.Failure($"У вас не установлена сессия с id {sessionJoinResponseMessage.SessionId}");
                 }
 
-                var clientResult = await sessionProcessManager.StartAsync(responseSession,
-                    new ProcessContext(roomId, sessionJoinResponseMessage.SubRoomId, SessionProcessRole.Client),
+                var clientResult = await sessionInstanceManager.StartAsync(responseSession,
+                    new SessionInstanceContext(roomId, sessionJoinResponseMessage.SubRoomId, SessionInstanceRole.Client),
                     context.CancellationToken).ConfigureAwait(false);
 
                 if (clientResult == false)
@@ -142,7 +142,7 @@ internal sealed class SessionJoinHandler : BaseHandler
                 return HandlerResult.Success();
 
             case SessionJoinFailedMessage sessionJoinFailedMessage:
-                await sessionProcessManager.StopAsync(new ProcessContext(roomId, sessionJoinFailedMessage.SubRoomId, SessionProcessRole.Client))
+                await sessionInstanceManager.StopAsync(new SessionInstanceContext(roomId, sessionJoinFailedMessage.SubRoomId, SessionInstanceRole.Client))
                     .ConfigureAwait(false);
 
                 return HandlerResult.Failure($"Не удалось запустить сессию: {sessionJoinFailedMessage.Message}");

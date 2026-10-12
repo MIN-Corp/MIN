@@ -20,8 +20,8 @@ namespace MIN.Sessions.Core.Services;
 /// </summary>
 public class SessionProcessBridge : ISessionProcessBridge
 {
-    private readonly Dictionary<ProcessContext, TaskCompletionSource> pendingProcesses = [];
-    private readonly Dictionary<ProcessContext, ISessionProcessTransport> transports = [];
+    private readonly Dictionary<SessionInstanceContext, TaskCompletionSource> pendingProcesses = [];
+    private readonly Dictionary<SessionInstanceContext, ISessionProcessTransport> transports = [];
     private readonly IMessageRouter messageRouter;
     private readonly IIpcSerializer ipcSerializer;
     private readonly IIdentityService identityService;
@@ -43,13 +43,13 @@ public class SessionProcessBridge : ISessionProcessBridge
         this.logger = logger;
     }
 
-    void ISessionProcessBridge.RegisterTransport(ProcessContext context, ISessionProcessTransport transport)
+    void ISessionProcessBridge.RegisterTransport(SessionInstanceContext context, ISessionProcessTransport transport)
     {
         transports[context] = transport;
         transport.MessageReceived += OnTransportMessage;
     }
 
-    void ISessionProcessBridge.UnregisterTransport(ProcessContext context)
+    void ISessionProcessBridge.UnregisterTransport(SessionInstanceContext context)
     {
         if (transports.Remove(context, out var transport))
         {
@@ -75,7 +75,7 @@ public class SessionProcessBridge : ISessionProcessBridge
         await HandleIpcMessage(message, e.Context, envelope);
     }
 
-    private async Task HandleIpcMessage(IpcMessage message, ProcessContext context, IpcProcessMessageEnvelope envelope)
+    private async Task HandleIpcMessage(IpcMessage message, SessionInstanceContext context, IpcProcessMessageEnvelope envelope)
     {
         switch (message)
         {
@@ -111,7 +111,7 @@ public class SessionProcessBridge : ISessionProcessBridge
         }
     }
 
-    async Task<bool> ISessionProcessBridge.WaitForReadyMessage(ProcessContext context, int timeOutMs, CancellationToken cancellationToken)
+    async Task<bool> ISessionProcessBridge.WaitForReadyMessage(SessionInstanceContext context, int timeOutMs, CancellationToken cancellationToken)
     {
         pendingProcesses[context] = new TaskCompletionSource();
 
@@ -130,13 +130,13 @@ public class SessionProcessBridge : ISessionProcessBridge
         return true;
     }
 
-    IEnumerable<ProcessContext> ISessionProcessBridge.GetConnections(Guid roomId, int subRoomId)
+    IEnumerable<SessionInstanceContext> ISessionProcessBridge.GetConnections(Guid roomId, int subRoomId)
     {
-        var result = new List<ProcessContext>();
+        var result = new List<SessionInstanceContext>();
 
-        foreach (SessionProcessRole role in Enum.GetValues(typeof(SessionProcessRole)))
+        foreach (SessionInstanceRole role in Enum.GetValues(typeof(SessionInstanceRole)))
         {
-            var context = new ProcessContext(roomId, subRoomId, role);
+            var context = new SessionInstanceContext(roomId, subRoomId, role);
             transports.TryGetValue(context, out var processTransport);
             if (processTransport != null && processTransport.IsConnectionExists(context) && !pendingProcesses.ContainsKey(context))
             {
@@ -147,11 +147,11 @@ public class SessionProcessBridge : ISessionProcessBridge
         return result;
     }
 
-    async Task ISessionProcessBridge.SendCloseMessage(ProcessContext context, CancellationToken cancellationToken)
+    async Task ISessionProcessBridge.SendCloseMessage(SessionInstanceContext context, CancellationToken cancellationToken)
         => await SendIpcMessage(new CloseMessage(), context, identityService.SelfParticipant.Id, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
-    public async Task SendIpcMessage(IpcMessage message, ProcessContext context, Guid senderId, CancellationToken cancellationToken)
+    public async Task SendIpcMessage(IpcMessage message, SessionInstanceContext context, Guid senderId, CancellationToken cancellationToken)
     {
         var messageData = ipcSerializer.Serialize(message);
         var envelope = new IpcMinMessageEnvelope()
@@ -166,7 +166,7 @@ public class SessionProcessBridge : ISessionProcessBridge
         await SendData(data, context, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SendData(byte[] data, ProcessContext context, CancellationToken cancellationToken)
+    private async Task SendData(byte[] data, SessionInstanceContext context, CancellationToken cancellationToken)
     {
         var processTransport = transports[context];
         await processTransport.SendAsync(data, context, cancellationToken);

@@ -10,9 +10,9 @@ namespace MIN.Sessions.Core.Transport.NamedPipes;
 /// <inheritdoc cref="ISessionProcessTransport"/> на основе Named Pipes (Только для Windows)
 public sealed class NamedPipeProcessTransport : ISessionProcessTransport
 {
-    private readonly ConcurrentDictionary<ProcessContext, NamedPipeServerStream> connections = [];
-    private readonly ConcurrentDictionary<ProcessContext, SemaphoreSlim> writeLocks = [];
-    private readonly ConcurrentDictionary<ProcessContext, SemaphoreSlim> readLocks = [];
+    private readonly ConcurrentDictionary<SessionInstanceContext, NamedPipeServerStream> connections = [];
+    private readonly ConcurrentDictionary<SessionInstanceContext, SemaphoreSlim> writeLocks = [];
+    private readonly ConcurrentDictionary<SessionInstanceContext, SemaphoreSlim> readLocks = [];
     private readonly CancellationTokenSource cts = new();
     private string pipeName = string.Empty;
 
@@ -32,7 +32,7 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
             Value = pipeName,
         });
 
-    async Task ISessionProcessTransport.WaitForConnectionAsync(ProcessContext context, int timeOutMs, CancellationToken cancellationToken)
+    async Task ISessionProcessTransport.WaitForConnectionAsync(SessionInstanceContext context, int timeOutMs, CancellationToken cancellationToken)
     {
         var server = new NamedPipeServerStream(
             pipeName,
@@ -55,10 +55,10 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
         catch (OperationCanceledException) { }
     }
 
-    bool ISessionProcessTransport.IsConnectionExists(ProcessContext context)
+    bool ISessionProcessTransport.IsConnectionExists(SessionInstanceContext context)
         => connections.ContainsKey(context);
 
-    private async Task ReadLoopAsync(ProcessContext context, NamedPipeServerStream stream, CancellationToken cancellationToken)
+    private async Task ReadLoopAsync(SessionInstanceContext context, NamedPipeServerStream stream, CancellationToken cancellationToken)
     {
         try
         {
@@ -96,7 +96,7 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
         }
     }
 
-    async Task ISessionProcessTransport.SendAsync(byte[] data, ProcessContext context, CancellationToken cancellationToken)
+    async Task ISessionProcessTransport.SendAsync(byte[] data, SessionInstanceContext context, CancellationToken cancellationToken)
     {
         if (connections.TryGetValue(context, out var stream) && writeLocks.TryGetValue(context, out var writeLock))
         {
@@ -117,7 +117,7 @@ public sealed class NamedPipeProcessTransport : ISessionProcessTransport
         }
     }
 
-    Task ISessionProcessTransport.DisconnectAsync(ProcessContext context)
+    Task ISessionProcessTransport.DisconnectAsync(SessionInstanceContext context)
     {
         connections.TryRemove(context, out _);
         writeLocks.TryRemove(context, out _);
