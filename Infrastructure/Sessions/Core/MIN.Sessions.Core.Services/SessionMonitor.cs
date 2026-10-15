@@ -23,8 +23,8 @@ public class SessionMonitor : IHostedService
     private readonly IRoomFactory roomFactory;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
-    private readonly ISessionProcessManager sessionProcessManager;
     private readonly ISessionProcessBridge sessionProcessBridge;
+    private readonly ISessionInstanceManager sessionInstanceManager;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
@@ -37,8 +37,8 @@ public class SessionMonitor : IHostedService
         IRoomFactory roomFactory,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
-        ISessionProcessManager sessionProcessManager,
         ISessionProcessBridge sessionProcessBridge,
+        ISessionInstanceManager sessionInstanceManager,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
@@ -46,8 +46,8 @@ public class SessionMonitor : IHostedService
         this.roomFactory = roomFactory;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
-        this.sessionProcessManager = sessionProcessManager;
         this.sessionProcessBridge = sessionProcessBridge;
+        this.sessionInstanceManager = sessionInstanceManager;
         this.identityService = identityService;
         this.logger = logger;
     }
@@ -63,10 +63,10 @@ public class SessionMonitor : IHostedService
     }
 
     private async Task WentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
-        => await sessionProcessManager.StopForRoomAsync(e.RoomId);
+        => await sessionInstanceManager.StopForRoomAsync(e.RoomId);
 
     private async Task OnSessionDeactivated(SessionDeactivatedEvent e, CancellationToken cancellationToken)
-        => await sessionProcessManager.StopAsync(new ProcessContext(e.RoomId, e.SubRoomId, SessionProcessRole.Server));
+        => await sessionInstanceManager.StopAsync(new SessionInstanceContext(e.RoomId, e.SubRoomId, SessionInstanceRole.Server));
 
     private async Task OnParticipantLeft(ParticipantLeftEvent e, CancellationToken cancellationToken)
     {
@@ -122,6 +122,6 @@ public class SessionMonitor : IHostedService
         await EndAllSessions();
 
         await sessionProcessBridge.StopListeningAsync(cancellationToken);
-        await sessionProcessManager.StopAllAsync();
+        await sessionInstanceManager.StopAllAsync();
     }
 }

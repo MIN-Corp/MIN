@@ -1,0 +1,1 @@
+Не забудь обновить release chess. Я поменял string Body на byte[]

@@ -34,7 +34,7 @@ internal sealed class SessionSpecificHandler : BaseHandler
         var roomId = context.RoomContext.RoomId;
         var subRoomId = sessionSpecificMessage.SubRoomId;
 
-        if (sessionSpecificMessage.SessionProcessRole == SessionProcessRole.Server
+        if (sessionSpecificMessage.SessionInstanceRole == SessionInstanceRole.Server
             && message.RecipientId != context.SelfId && !message.IsPublic)
         {
             return HandlerResult.Success();
@@ -54,12 +54,12 @@ internal sealed class SessionSpecificHandler : BaseHandler
             return HandlerResult.Success(stopPropagation: true);
         }
 
-        var isClientRequest = sessionSpecificMessage.SessionProcessRole == SessionProcessRole.Client;
+        var isClientRequest = sessionSpecificMessage.SessionInstanceRole == SessionInstanceRole.Client;
 
         // ViaServer: role-swap логика
 
-        var processContext = new ProcessContext(roomId, subRoomId,
-            isClientRequest ? SessionProcessRole.Server : SessionProcessRole.Client);
+        var processContext = new SessionInstanceContext(roomId, subRoomId,
+            isClientRequest ? SessionInstanceRole.Server : SessionInstanceRole.Client);
 
         if (connections.Contains(processContext))
         {

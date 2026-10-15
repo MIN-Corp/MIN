@@ -12,12 +12,12 @@ public interface ISessionProcessBridge
     /// <summary>
     /// Зарегистрировать транспорт на контекст
     /// </summary>
-    void RegisterTransport(ProcessContext context, ISessionProcessTransport transport);
+    void RegisterTransport(SessionInstanceContext context, ISessionProcessTransport transport);
 
     /// <summary>
     /// Отрегестрировать транспорт с контекста
     /// </summary>
-    void UnregisterTransport(ProcessContext context);
+    void UnregisterTransport(SessionInstanceContext context);
 
     /// <summary>
     /// Запустить сервис, слушая все сообщения с приложениями
@@ -27,22 +27,22 @@ public interface ISessionProcessBridge
     /// <summary>
     /// Дождаться получения сообщения о готовности
     /// </summary>
-    Task<bool> WaitForReadyMessage(ProcessContext context, int timeOutMs, CancellationToken cancellationToken);
+    Task<bool> WaitForReadyMessage(SessionInstanceContext context, int timeOutMs, CancellationToken cancellationToken);
 
     /// <summary>
     /// Отправить запрос на закрытие приложения
     /// </summary>
-    Task SendCloseMessage(ProcessContext context, CancellationToken cancellationToken = default);
+    Task SendCloseMessage(SessionInstanceContext context, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Отправить междупроцессорное сообщение
     /// </summary>
-    Task SendIpcMessage(IpcMessage message, ProcessContext context, Guid senderId, CancellationToken cancellationToken = default);
+    Task SendIpcMessage(IpcMessage message, SessionInstanceContext context, Guid senderId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Получить список соединений с приложением  
     /// </summary>
-    IEnumerable<ProcessContext> GetConnections(Guid roomId, int subRoomId);
+    IEnumerable<SessionInstanceContext> GetConnections(Guid roomId, int subRoomId);
 
     /// <summary>
     /// Остановить сервис
