@@ -8,6 +8,7 @@ using MIN.Chat.Events;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
+using MIN.Core.Events.Events;
 using MIN.Desktop.ViewModels.Base;
 
 namespace MIN.Desktop.ViewModels.Cards;
@@ -111,17 +112,18 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
         {
             FillLabels();
 
-            if (!isSelf)
-            {
-                SubscribeToEvents(eventBus, roomId);
-            }
+            SubscribeToEvents(eventBus, roomId);
         }
     }
 
     private void SubscribeToEvents(IEventBus eventBus, Guid roomId)
     {
         roomScope = eventBus.CreateScope(roomId);
-        roomScope.Subscribe<OnlineStatusChangedEvent>(OnOnlineStatusChanged);
+        if (!isSelf)
+        {
+            roomScope.Subscribe<OnlineStatusChangedEvent>(OnOnlineStatusChanged);
+        }
+        roomScope.Subscribe<ParticipantUpdatedEvent>(OnParticipantUpdated);
     }
 
     private Task OnOnlineStatusChanged(OnlineStatusChangedEvent eventMessage, CancellationToken cancellationToken)
@@ -134,6 +136,15 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
             {
                 ParticipantLastSeenAt = DateTime.Now;
             }
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnParticipantUpdated(ParticipantUpdatedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.NewParticipant.Id == participant.Id)
+        {
+            ParticipantName = eventMessage.NewParticipant.Name;
         }
         return Task.CompletedTask;
     }

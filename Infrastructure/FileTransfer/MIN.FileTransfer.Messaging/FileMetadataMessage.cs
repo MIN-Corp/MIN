@@ -9,7 +9,7 @@ namespace MIN.FileTransfer.Messaging;
 /// <summary>
 /// Сообщения мета-данные файла
 /// </summary>
-public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable, IMessageWithSecuredFields
+public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable, IMessageWithSecuredFields, IAuthoredMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.FileMetadata;
@@ -24,6 +24,9 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     /// Отправитель сообщения
     /// </summary>
     public ParticipantInfo Sender { get; set; } = null!;
+
+    /// <inheritdoc />
+    public string SenderName { get => Sender.Name; set => Sender.Name = value; }
 
     /// <summary>
     /// Идентификатор потока, по которому придёт файл
@@ -66,7 +69,11 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     string IDescribable.GetDescription() => $"{Sender.Name}: {FileName}";
 
     IMessage IMessageWithSecuredFields.Sanitize()
-        => new FileMetadataMessage(this) { FilePath = null };
+        => new FileMetadataMessage(this)
+        {
+            FilePath = null,
+            AsDownloaded = false,
+        };
 
     /// <summary>
     /// Инициализирует новый экзмемпляр <see cref="FileMetadataMessage"/>

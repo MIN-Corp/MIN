@@ -36,6 +36,9 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     /// <inheritdoc />
     public override ViewLayoutType LayoutType => ViewLayoutType.LeftSideBar;
 
+    /// <inheritdoc />
+    public override EventHandler? OnNavigatedTo { get; }
+
     /// <summary>
     /// Текущие настройки
     /// </summary>
@@ -136,12 +139,19 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
 
             featureCollection.Helper.SettingsProvider.OnSettingsSaved += FillControls;
 
+            OnNavigatedTo = ActionOnNavigatedTo;
+
             FillControls();
 
             Application.Current!.RequestedThemeVariant = Settings.LightThemeEnabled
                 ? ThemeVariant.Light
                 : ThemeVariant.Dark;
         }
+    }
+
+    private async void ActionOnNavigatedTo(object? sender, EventArgs e)
+    {
+        ParticipantName = featureCollection.Core.IdentityService.SelfParticipant.Name;
     }
 
     partial void OnLightThemeEnabledChanged(bool value)
@@ -161,7 +171,6 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
             Settings.DiscoveryTimeout = DiscoveryTimeout;
             var localParticipant = featureCollection.Core.IdentityService.SelfParticipant;
             localParticipant.Name = ParticipantName;
-            await featureCollection.Core.IdentityService.SaveParticipant(localParticipant);
         }
 
         Settings.LightThemeEnabled = LightThemeEnabled;
@@ -173,6 +182,11 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
 
         await featureCollection.Helper.SettingsProvider.SaveSettings(Settings);
         ChangeViewToPrevious();
+
+        if (CanSave())
+        {
+            await featureCollection.Core.IdentityService.SaveParticipant(featureCollection.Core.IdentityService.SelfParticipant);
+        }
     }
 
     /// <summary>

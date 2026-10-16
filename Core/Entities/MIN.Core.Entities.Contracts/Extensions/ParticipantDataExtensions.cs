@@ -17,4 +17,10 @@ public static class ParticipantDataExtensions
             Id = participant.Id,
             Name = participant.Name,
         };
+
+    /// <summary>
+    /// Пользователь не менял свои данные та же
+    /// </summary>
+    public static bool IsSameProfile(this IParticipantData participant, IParticipantData incoming)
+        => participant.Name == incoming.Name;
 }

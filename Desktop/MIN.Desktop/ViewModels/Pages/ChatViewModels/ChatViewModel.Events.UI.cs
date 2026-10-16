@@ -32,6 +32,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 {
     private System.Timers.Timer? typingTimer;
     private bool isParentWindowActive = true;
+    private bool isParentWindowClosed = true;
     private int? activeVoiceChatSubroomId;
 
     [ObservableProperty]
@@ -361,6 +362,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         parentWindow.Activated += Parent_Activated;
         parentWindow.Deactivated += Parent_Deactivate;
+        parentWindow.Closing += Parent_OnClosing;
     }
 
     private void DisableAllConnectionActions()
@@ -377,6 +379,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
+        parentWindow.Closing -= Parent_OnClosing;
 
         featureCollection.Helper.NotificationService.OnNotificationClick -= OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked -= NotificationTurnOffClicked;
@@ -392,7 +395,13 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async void Parent_Activated(object? sender, EventArgs e)
     {
         await SendSelfStatusChangedMessage(OnlineStatus.Online);
+        isParentWindowClosed = false;
         isParentWindowActive = true;
+    }
+
+    private void Parent_OnClosing(object? sender, EventArgs e)
+    {
+        isParentWindowClosed = true;
     }
 
     [RelayCommand]

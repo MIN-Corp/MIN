@@ -15,6 +15,7 @@ using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards.Messages;
 using MIN.Desktop.ViewModels.Cards.Messages.Base;
 using MIN.Desktop.ViewModels.Cards.Messages.Files;
+using MIN.Desktop.ViewModels.Cards.Messages.Interfaces;
 using MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 using MIN.Desktop.ViewModels.Cards.Messages.Voice;
 using MIN.Desktop.ViewModels.Modals;
@@ -112,7 +113,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
         else if (IsAtBottom)
         {
-            await ScrollToBottom();
+            await ScrollToBottomAsync();
         }
     }
 
@@ -138,6 +139,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
         oldestLoadedTimestamp = messages[0].Timestamp;
         oldestLoadedMessageId = messages[0].Id;
+
+        await ScrollToBottomAsync();
     }
 
     private void DisposeMessageCards()
@@ -184,7 +187,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             return;
         }
-        if (existingCard is BaseUpdateableReplyableChatMessageViewModel baseUpdateable)
+        if (existingCard is IUpdateableChatMessageViewModel baseUpdateable)
         {
             baseUpdateable.Update(newMessage);
         }

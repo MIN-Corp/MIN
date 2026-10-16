@@ -26,7 +26,8 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// <summary>
     /// Имя отправителя сообщения
     /// </summary>
-    public string SenderName { get; } = string.Empty;
+    [ObservableProperty]
+    public partial string SenderName { get; set; } = string.Empty;
 
     /// <summary>
     /// Время отправления

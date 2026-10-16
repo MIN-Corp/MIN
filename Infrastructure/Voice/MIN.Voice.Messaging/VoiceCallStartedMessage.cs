@@ -10,7 +10,7 @@ namespace MIN.Voice.Messaging;
 /// <summary>
 /// Сообщение старта звонка (по сути и есть звонок)
 /// </summary>
-public sealed class VoiceCallStartedMessage : BaseUpdatebleMessage, IDescribable
+public sealed class VoiceCallStartedMessage : BaseUpdatebleMessage, IDescribable, IAuthoredMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.VoiceCallStarted;
@@ -28,6 +28,9 @@ public sealed class VoiceCallStartedMessage : BaseUpdatebleMessage, IDescribable
     /// </summary>
     public ParticipantInfo Sender { get; set; } = null!;
 
+    /// <inheritdoc />
+    public string SenderName { get => Sender.Name; set => Sender.Name = value; }
+
     /// <summary>
     /// Время завершения
     /// </summary>
@@ -39,8 +42,8 @@ public sealed class VoiceCallStartedMessage : BaseUpdatebleMessage, IDescribable
     public bool IsEnded => EndedAt != null;
 
     string IDescribable.GetDescription() => IsEnded
-        ? $"{Sender.Name} начал звонок в комнате продолжительностью {(EndedAt! - Timestamp).Value.ToFriendlyString()}"
-        : $"{Sender.Name} начал звонок в комнате";
+        ? $"{SenderName} начал звонок в комнате продолжительностью {(EndedAt! - Timestamp).Value.ToFriendlyString()}"
+        : $"{SenderName} начал звонок в комнате";
 
     /// <inheritdoc />
     public override void Update(IMessage newer)

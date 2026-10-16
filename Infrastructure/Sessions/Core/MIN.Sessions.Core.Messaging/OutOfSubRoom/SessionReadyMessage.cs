@@ -10,7 +10,7 @@ namespace MIN.Sessions.Core.Messaging.OutOfSubRoom;
 /// <summary>
 /// Сообщение готовности хостинга сессии
 /// </summary>
-public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable
+public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable, IAuthoredMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.SessionReady;
@@ -45,6 +45,9 @@ public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable
     /// Отправитель сообщения
     /// </summary>
     public ParticipantInfo Sender { get; set; } = null!;
+
+    /// <inheritdoc />
+    public string SenderName { get => Sender.Name; set => Sender.Name = value; }
 
     string IDescribable.GetDescription() => $"{Sender.Name} запустил \"{Session.Name}\"";
 

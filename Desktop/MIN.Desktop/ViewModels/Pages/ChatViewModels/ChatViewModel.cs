@@ -146,6 +146,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             ShowLoadMoreLabel();
         }
+
+        await ScrollToBottomAsync();
     }
 
     private void ActionOnNavigatedFrom(object? sender, EventArgs e)

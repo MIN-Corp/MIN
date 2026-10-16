@@ -1,4 +1,5 @@
-﻿using MIN.Core.Events.Contracts.Interfaces;
+﻿using MIN.Core.Entities.Contracts.Extensions;
+using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Exceptions;
@@ -7,6 +8,7 @@ using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Extensions;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
+using MIN.Core.Messaging.Stateless.RoomRelated.ParticipantRelated;
 using MIN.Core.Messaging.Stateless.RoomRelated.Sync;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Interfaces;
@@ -43,6 +45,15 @@ internal sealed class RoomSyncHandler : BaseHandler
                 LogInfo($"Отправляю упущенную информацию о комнате с id {roomId}");
 
                 var visible = context.RoomContext.Messages.GetHistory().SanitizeMessagesForParticipant(message.SenderId);
+
+                if (context.RoomContext.Participants.TryGetParticipantById(syncRequest.LocalParticipant.Id, out var storedParticipant)
+                    && !storedParticipant?.IsSameProfile(syncRequest.LocalParticipant) == true)
+                {
+                    await messageRouter.RouteAsync(new ParticipantUpdatedMessage
+                    {
+                        NewParticipant = syncRequest.LocalParticipant,
+                    }, roomId, context.SelfId, cancellationToken: context.CancellationToken);
+                }
 
                 return HandlerResult.WithResponse(new RoomSyncResponseMessage()
                 {

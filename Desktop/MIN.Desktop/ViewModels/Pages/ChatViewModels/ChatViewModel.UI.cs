@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Collections;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
@@ -112,11 +113,14 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     [RelayCommand]
-    private async Task ScrollToBottom()
+    private async Task ScrollToBottomAsync()
     {
-        AutoScrollBottom = true;
-        await Task.Yield();
-        AutoScrollBottom = false;
+        Dispatcher.UIThread.Post(async () =>
+        {
+            AutoScrollBottom = true;
+            await Task.Yield();
+            AutoScrollBottom = false;
+        });
     }
 
     #endregion
