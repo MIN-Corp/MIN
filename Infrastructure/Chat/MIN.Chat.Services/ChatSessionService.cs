@@ -3,6 +3,7 @@ using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
 
@@ -13,6 +14,7 @@ public sealed class ChatSessionService : IChatSessionService
 {
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
+    private readonly ITunnelSessionStore tunnelSessionStore;
     private readonly IIdentityService identityService;
 
     /// <summary>
@@ -20,10 +22,12 @@ public sealed class ChatSessionService : IChatSessionService
     /// </summary>
     public ChatSessionService(IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
+        ITunnelSessionStore tunnelSessionStore,
         IIdentityService identityService)
     {
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
+        this.tunnelSessionStore = tunnelSessionStore;
         this.identityService = identityService;
     }
 
@@ -59,8 +63,42 @@ public sealed class ChatSessionService : IChatSessionService
     }
 
     async Task IChatSessionService.ScanDownloadedSessions(CancellationToken cancellationToken)
+        => await sessionScanner.ScanAsync(cancellationToken);
+
+    async Task IChatSessionService.HostTunnelSessionAsync(Guid roomId, string name, int gamePort,
+       int? maximumParticipants, string? version, byte[]? thumbnailData, CancellationToken cancellationToken)
     {
+        if (gamePort is < 1 or > 65535)
+        {
+            throw new ArgumentOutOfRangeException(nameof(gamePort), "Порт должен быть в диапазоне от 1 до 65535");
+        }
+
+        if (!Version.TryParse(version, out var parsedVersion))
+        {
+            parsedVersion = new Version(1, 0, 0);
+        }
+
+        var session = new Session
+        {
+            SessionId = $"tunnel-{Guid.NewGuid()}",
+            Name = name,
+            Version = parsedVersion,
+            MaximumParticipants = maximumParticipants,
+            Kind = SessionKind.PortTunnel,
+            TunnelPort = gamePort,
+            ServerExecutableFileName = "-",
+            ClientExecutableFileName = "-",
+            DownloadLink = string.Empty,
+        };
+
+        await tunnelSessionStore.SaveAsync(session, thumbnailData, cancellationToken);
         await sessionScanner.ScanAsync(cancellationToken);
+
+        await SendAsync(new SessionHostRequestMessage()
+        {
+            SessionId = session.SessionId,
+            SessionVersion = session.Version,
+        }, roomId, cancellationToken);
     }
 
     private async Task SendAsync(IMessage? message, Guid roomId, CancellationToken cancellationToken)

@@ -8,6 +8,7 @@ using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
@@ -85,13 +86,15 @@ internal sealed class SessionHostHandler : BaseHandler
 
         var instanceContext = new SessionInstanceContext(roomId, subRoomId.Value, SessionInstanceRole.Server);
 
-        var hostResult = await sessionInstanceManager.StartAsync(session,
+        var instance = await sessionInstanceManager.StartAsync(session,
             instanceContext, context.CancellationToken).ConfigureAwait(false);
 
-        if (hostResult == null)
+        if (instance == null)
         {
             context.RoomContext.SubRooms.TryStopSubRoom(subRoomId.Value, message.SenderId);
-            return HandlerResult.WithErrorHandled("У хоста повреждёна или утеряна программа сервера");
+            return HandlerResult.WithErrorHandled(session.Kind == SessionKind.PortTunnel
+                ? "Не удалось запустить туннель сессии"
+                : "У хоста повреждёна или утеряна программа сервера");
         }
 
         if (isHosted)
@@ -106,7 +109,7 @@ internal sealed class SessionHostHandler : BaseHandler
                 ThumbnailData = sessionScanner.LoadThumbnail(session.SessionId)
             };
 
-            hostResult.NotifyParticipantJoined(senderParicipantInfo);
+            instance.NotifyParticipantJoined(senderParicipantInfo);
 
             await messageRouter.RouteAsync(hostReadyMessage, roomId, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 

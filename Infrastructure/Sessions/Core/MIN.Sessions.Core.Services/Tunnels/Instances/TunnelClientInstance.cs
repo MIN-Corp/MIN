@@ -1,42 +1,39 @@
-﻿using System.Diagnostics;
+﻿using System.Net;
+using System.Net.Sockets;
+using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
-using MIN.Helpers.Contracts.Models.Enums;
 using MIN.Sessions.Core.Events;
-using MIN.Sessions.Core.Messaging.Ipc;
+using MIN.Sessions.Core.Messaging.Contracts.Enums;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
-using MIN.Sessions.Core.Transport.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
-namespace MIN.Sessions.Core.Services.Tunnels.Instances;
+namespace MIN.Sessions.Core.Services.Instances.Tunnels;
 
 /// <summary>
-/// Экземпляр сессии, работающий во внешнем процессе (server.exe / client.exe)
+/// Экземпляр туннеля на стороне участника: слушает локальный порт для игрового клиента
 /// </summary>
 public class TunnelClientInstance : ISessionInstance
 {
-    private const int ProcessWaitingTimeOutMs = 30_000;
+    private const int HelloTimeoutMs = 15_000;
 
-    private readonly ISessionProcessBridge processBridge;
-    private readonly ISessionTransportFactory transportFactory;
     private readonly IMessageRouter messageRouter;
     private readonly IEventBus eventBus;
-    private readonly IRoomFactory roomFactory;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
-    private Process? process;
-    private ISessionProcessTransport? transport;
-    private EventHandler? exitHandler;
-    private Session? session;
-    private bool started;
+    private readonly CancellationTokenSource cts = new();
+
+    private TcpListener? listener;
+    private ParticipantConnection? connection;
+    private TaskCompletionSource<bool>? helloTcs;
+    private bool joinedAnnounced;
     private bool stopped;
 
     /// <inheritdoc />
@@ -45,99 +42,78 @@ public class TunnelClientInstance : ISessionInstance
     /// <inheritdoc />
     public event EventHandler? Ended;
 
+    /// <inheritdoc />
+    public bool IsJoinAnnounceDeferred => true;
+
+    /// <summary>
+    /// Локальный порт, на котором слушает туннель
+    /// </summary>
+    public int LocalPort { get; private set; }
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="TunnelClientInstance"/>
     /// </summary>
     public TunnelClientInstance(SessionInstanceContext context,
-        ISessionProcessBridge processBridge,
-        ISessionTransportFactory transportFactory,
         IMessageRouter messageRouter,
         IEventBus eventBus,
-        IRoomFactory roomFactory,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
         Context = context;
-        this.processBridge = processBridge;
-        this.transportFactory = transportFactory;
         this.messageRouter = messageRouter;
         this.eventBus = eventBus;
-        this.roomFactory = roomFactory;
         this.identityService = identityService;
         this.logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task StartAsync(Session session, CancellationToken ct)
+    public Task StartAsync(Session session, CancellationToken ct)
     {
-        this.session = session;
+        listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        LocalPort = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-        var fullPath = Context.Role == SessionInstanceRole.Client
-            ? session.GetClientPath()
-            : session.GetServerPath();
+        _ = AcceptLoopAsync();
 
-        logger.Log($"Стартую {session.Name} как {Context.Role}");
+        return Task.CompletedTask;
+    }
 
-        if (Context.Role == SessionInstanceRole.Client)
+    /// <inheritdoc />
+    async Task ISessionInstance.SendDataAsync(byte[] frame, Guid senderId, CancellationToken ct)
+    {
+        var (type, payload) = TunnelProtocol.Decode(frame);
+
+        switch (type)
         {
-            await eventBus.PublishAsync(new SessionProcessStartedEvent()
-            {
-                RoomId = Context.RoomId,
-                SubRoomId = Context.SubRoomId,
-                Session = session,
-            }, ct).ConfigureAwait(false);
+            case TunnelFrameType.HelloOk:
+                helloTcs?.TrySetResult(true);
+                break;
+
+            case TunnelFrameType.HelloFail:
+                helloTcs?.TrySetResult(false);
+                break;
+
+            case TunnelFrameType.Data:
+                if (connection != null)
+                {
+                    await connection.WriteAsync(payload).ConfigureAwait(false);
+                }
+                break;
+
+            case TunnelFrameType.Close:
+                CloseGameConnection();
+                break;
         }
+    }
 
-        if (!Path.Exists(fullPath))
-        {
-            throw new FileNotFoundException($"Не найден исполняемый файл сессии: {fullPath}");
-        }
+    /// <inheritdoc />
+    public void NotifyParticipantJoined(ParticipantInfo participant)
+    {
+    }
 
-        transport = transportFactory.Create();
-        processBridge.RegisterTransport(Context, transport);
-
-        await transport.StartAsync(Context.RoomId, ct).ConfigureAwait(false);
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = fullPath,
-            UseShellExecute = false,
-        };
-        psi.ArgumentList.Add(transport.GetConnectionString());
-
-        if (!OperatingSystem.IsWindows())
-        {
-            var mode = File.GetUnixFileMode(fullPath);
-            if ((mode & UnixFileMode.UserExecute) == 0)
-            {
-                psi.FileName = "dotnet";
-                psi.ArgumentList.Insert(0, fullPath);
-            }
-        }
-
-        process = Process.Start(psi);
-
-        if (process == null || process.HasExited)
-        {
-            await CleanupTransportAsync().ConfigureAwait(false);
-            throw new InvalidOperationException($"Не удалось запустить процесс сессии {session.Name}");
-        }
-
-        await transport.WaitForConnectionAsync(Context, ProcessWaitingTimeOutMs, ct).ConfigureAwait(false);
-
-        var readySuccess = await processBridge.WaitForReadyMessage(Context, ProcessWaitingTimeOutMs, ct).ConfigureAwait(false);
-
-        if (!readySuccess)
-        {
-            await CleanupTransportAsync().ConfigureAwait(false);
-            process.Kill();
-            throw new TimeoutException($"Сессия {session.Name} не прислала сообщение о готовности");
-        }
-
-        started = true;
-        process.EnableRaisingEvents = true;
-        exitHandler = async (_, _) => await OnProcessExitedAsync().ConfigureAwait(false);
-        process.Exited += exitHandler;
+    /// <inheritdoc />
+    public void NotifyParticipantLeft(Guid participantId)
+    {
     }
 
     /// <inheritdoc />
@@ -149,138 +125,193 @@ public class TunnelClientInstance : ISessionInstance
         }
 
         stopped = true;
-
-        if (exitHandler != null && process != null)
-        {
-            process.Exited -= exitHandler;
-        }
-
-        await eventBus.PublishAsync(new SessionProcessEndedEvent()
-        {
-            RoomId = Context.RoomId,
-            SubRoomId = Context.SubRoomId,
-        }).ConfigureAwait(false);
-
-        try
-        {
-            if (started)
-            {
-                await processBridge.SendCloseMessage(Context).ConfigureAwait(false);
-            }
-
-            if (process != null)
-            {
-                if (!started)
-                {
-                    process.Kill();
-                    await CleanupTransportAsync().ConfigureAwait(false);
-                    return;
-                }
-
-                var exitTask = process.WaitForExitAsync(CancellationToken.None);
-                var exited = await Task.WhenAny(exitTask, Task.Delay(ProcessWaitingTimeOutMs)).ConfigureAwait(false) == exitTask;
-
-                if (!exited)
-                {
-                    process.Kill();
-                    await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.Log($"Произошла ошибка при закрытии сессии {ex.Message}", LogLevel.Error);
-        }
-
-        await CleanupTransportAsync().ConfigureAwait(false);
+        cts.Cancel();
+        listener?.Stop();
+        CloseGameConnection();
+        cts.Dispose();
+        await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public void NotifyParticipantJoined(ParticipantInfo participant)
+    public ValueTask DisposeAsync()
     {
-        if (!started)
-        {
-            return;
-        }
-
-        _ = processBridge.SendIpcMessage(
-            new ParticipantConnectedMessage(participant.Id.ToString(), participant.Name),
-            Context, participant.Id, CancellationToken.None);
-    }
-
-    /// <inheritdoc />
-    public void NotifyParticipantLeft(Guid participantId)
-    {
-        if (!started)
-        {
-            return;
-        }
-
-        _ = processBridge.SendIpcMessage(
-            new ParticipantDisconnectedMessage(participantId.ToString()),
-            Context, participantId, CancellationToken.None);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await StopAsync(CancellationToken.None).ConfigureAwait(false);
         GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
     }
 
-    private async Task OnProcessExitedAsync()
+    private async Task AcceptLoopAsync()
     {
         try
         {
-            if (session == null)
+            while (!cts.IsCancellationRequested)
             {
-                return;
-            }
+                var client = await listener!.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false);
 
-            if (Context.Role == SessionInstanceRole.Server)
-            {
-                var roomContext = roomFactory.GetOrCreateContext(Context.RoomId);
-
-                if (roomContext.SubRooms.GetParticipantCount(Context.SubRoomId) == 0)
+                if (connection != null)
                 {
-                    return;
+                    client.Dispose();
+                    continue;
                 }
 
-                await messageRouter.RouteAsync(new SessionServerShutdownMessage()
-                {
-                    SubRoomId = Context.SubRoomId,
-                    Reason = $"Сервер сессии {session.Name} был закрыт хостом",
-                }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
-            }
-            else
-            {
-                await eventBus.PublishAsync(new SessionProcessEndedEvent()
+                var stream = client.GetStream();
+                helloTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                await SendSelfFrameAsync(TunnelProtocol.Encode(TunnelFrameType.Hello)).ConfigureAwait(false);
+                await eventBus.PublishAsync(new TunnelListenerStartedEvent()
                 {
                     RoomId = Context.RoomId,
                     SubRoomId = Context.SubRoomId,
+                    Port = LocalPort,
                 }).ConfigureAwait(false);
 
-                await messageRouter.RouteAsync(new SessionLeaveMessage()
+                var helloResult = await WaitForHelloAsync().ConfigureAwait(false);
+
+                if (!helloResult)
                 {
-                    SubRoomId = Context.SubRoomId,
-                }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+                    stream.Dispose();
+                    client.Dispose();
+                    helloTcs = null;
+
+                    await eventBus.PublishAsync(new TunnelGameConnectFailedEvent()
+                    {
+                        RoomId = Context.RoomId,
+                        SubRoomId = Context.SubRoomId,
+                    }).ConfigureAwait(false);
+                    continue;
+                }
+
+                connection = new ParticipantConnection(client);
+                joinedAnnounced = false;
+                await AnnounceJoinAsync().ConfigureAwait(false);
+                _ = ReadGameLoopAsync(connection);
             }
         }
-        finally
+        catch (OperationCanceledException)
         {
-            await CleanupTransportAsync().ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (Exception ex)
+        {
+            logger.Log($"Туннель: слушатель остановился с ошибкой: {ex.Message}",
+                Helpers.Contracts.Models.Enums.LogLevel.Error);
             Ended?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    private async Task CleanupTransportAsync()
+    private async Task<bool> WaitForHelloAsync()
     {
-        if (transport != null)
+        try
         {
-            transportFactory.Destroy(transport);
-            processBridge.UnregisterTransport(Context);
-            transport = null;
+            var completed = await Task.WhenAny(helloTcs!.Task, Task.Delay(HelloTimeoutMs)).ConfigureAwait(false) == helloTcs.Task;
+            return completed && helloTcs.Task.Result;
         }
-        await Task.CompletedTask;
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task ReadGameLoopAsync(ParticipantConnection gameConnection)
+    {
+        var buffer = new byte[TunnelProtocol.ChunkSize];
+
+        try
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                var read = await gameConnection.Stream.ReadAsync(buffer, cts.Token).ConfigureAwait(false);
+
+                if (read == 0)
+                {
+                    break;
+                }
+
+                var frame = TunnelProtocol.Encode(TunnelFrameType.Data, buffer.AsSpan(0, read));
+                await SendSelfFrameAsync(frame).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            logger.Log($"Туннель: игровой клиент отключился: {ex.Message}");
+        }
+        finally
+        {
+            await SendSelfFrameAsync(TunnelProtocol.Encode(TunnelFrameType.Close)).ConfigureAwait(false);
+            CloseGameConnection();
+        }
+    }
+
+    private async Task AnnounceJoinAsync()
+    {
+        if (joinedAnnounced)
+        {
+            return;
+        }
+
+        joinedAnnounced = true;
+        var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
+
+        await messageRouter.RouteAsync(new SessionParticipantJoinedMessage()
+        {
+            SubRoomId = Context.SubRoomId,
+            Participant = selfParticipant,
+        }, Context.RoomId, selfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task SendSelfFrameAsync(byte[] frame)
+    {
+        await messageRouter.RouteAsync(new SessionSpecificMessage()
+        {
+            SubRoomId = Context.SubRoomId,
+            SessionInstanceRole = SessionInstanceRole.Client,
+            Route = SessionMessageRoute.ViaServer,
+            Body = frame,
+        }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private void CloseGameConnection()
+    {
+        connection?.Dispose();
+        connection = null;
+        helloTcs = null;
+    }
+
+    private sealed class ParticipantConnection : IDisposable
+    {
+        private readonly TcpClient client;
+        private readonly SemaphoreSlim writeLock = new(1, 1);
+
+        public NetworkStream Stream { get; }
+
+        public ParticipantConnection(TcpClient client)
+        {
+            this.client = client;
+            Stream = client.GetStream();
+        }
+
+        public async Task WriteAsync(byte[] payload)
+        {
+            await writeLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await Stream.WriteAsync(payload).ConfigureAwait(false);
+                await Stream.FlushAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                writeLock.Release();
+            }
+        }
+
+        public void Dispose()
+        {
+            writeLock.Dispose();
+            client.Dispose();
+        }
     }
 }

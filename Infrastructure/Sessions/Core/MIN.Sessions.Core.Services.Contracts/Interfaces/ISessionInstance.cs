@@ -35,6 +35,16 @@ public interface ISessionInstance : IAsyncDisposable
     void NotifyParticipantLeft(Guid participantId);
 
     /// <summary>
+    /// Доставить фрейм данных в экземпляр сессии
+    /// </summary>
+    Task SendDataAsync(byte[] frame, Guid senderId, CancellationToken ct);
+
+    /// <summary>
+    /// Оповещение о входе в сессию откладывается до фактического подключения игры
+    /// </summary>
+    bool IsJoinAnnounceDeferred => false;
+
+    /// <summary>
     /// Событие по окончании сессии
     /// </summary>
     event EventHandler? Ended;

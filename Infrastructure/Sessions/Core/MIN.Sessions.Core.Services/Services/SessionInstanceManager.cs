@@ -1,16 +1,11 @@
-﻿using MIN.Core.Events.Contracts.Interfaces;
-using MIN.Core.Identity.Contracts.Interfaces;
-using MIN.Core.Services.Contracts.Interfaces.Messaging;
-using MIN.Core.Stores.Contracts.Interfaces;
-using MIN.Helpers.Contracts.Interfaces;
+﻿using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
-using MIN.Sessions.Core.Services.Instances;
-using MIN.Sessions.Core.Transport.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
-namespace MIN.Sessions.Core.Services;
+namespace MIN.Sessions.Core.Services.Services;
 
 /// <summary>
 /// Менеджер экземпляров сессий
@@ -18,31 +13,16 @@ namespace MIN.Sessions.Core.Services;
 public class SessionInstanceManager : ISessionInstanceManager
 {
     private readonly Dictionary<SessionInstanceContext, ISessionInstance> instances = [];
-    private readonly ISessionProcessBridge processBridge;
-    private readonly ISessionTransportFactory transportFactory;
-    private readonly IMessageRouter messageRouter;
-    private readonly IEventBus eventBus;
-    private readonly IRoomFactory roomFactory;
-    private readonly IIdentityService identityService;
+    private readonly IReadOnlyList<ISessionInstanceFactory> factories;
     private readonly ILoggerProvider logger;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="SessionInstanceManager"/>
     /// </summary>
-    public SessionInstanceManager(ISessionProcessBridge processBridge,
-        ISessionTransportFactory transportFactory,
-        IMessageRouter messageRouter,
-        IEventBus eventBus,
-        IRoomFactory roomFactory,
-        IIdentityService identityService,
+    public SessionInstanceManager(IEnumerable<ISessionInstanceFactory> factories,
         ILoggerProvider logger)
     {
-        this.processBridge = processBridge;
-        this.transportFactory = transportFactory;
-        this.messageRouter = messageRouter;
-        this.eventBus = eventBus;
-        this.roomFactory = roomFactory;
-        this.identityService = identityService;
+        this.factories = factories.ToList();
         this.logger = logger;
     }
 
@@ -54,7 +34,15 @@ public class SessionInstanceManager : ISessionInstanceManager
             return null;
         }
 
-        var instance = CreateInstance(session, context);
+        var factory = factories.FirstOrDefault(x => x.CanCreate(session));
+
+        if (factory == null)
+        {
+            logger.Log($"Не найдена фабрика для сессии {session.Name} (вид {session.Kind})", LogLevel.Error);
+            return null;
+        }
+
+        var instance = factory.Create(context);
         instances[context] = instance;
         instance.Ended += async (_, _) =>
         {
@@ -105,17 +93,11 @@ public class SessionInstanceManager : ISessionInstanceManager
     }
 
     bool ISessionInstanceManager.SessionClientAppExists(Session session)
-        => Path.Exists(session.GetClientPath());
+        => session.Kind == SessionKind.PortTunnel || Path.Exists(session.GetClientPath());
 
     IEnumerable<ISessionInstance> ISessionInstanceManager.GetInstances(Guid roomId, int subRoomId)
         => instances.Keys
             .Where(x => x.RoomId == roomId && x.SubRoomId == subRoomId)
             .Select(x => instances[x])
             .ToList();
-
-    /// <summary>
-    /// Создать экземпляр сессии (точка расширения для внутренних сервисов, например туннеля)
-    /// </summary>
-    protected virtual ISessionInstance CreateInstance(Session session, SessionInstanceContext context)
-        => new ExternalProcessInstance(context, processBridge, transportFactory, messageRouter, eventBus, roomFactory, identityService, logger);
 }

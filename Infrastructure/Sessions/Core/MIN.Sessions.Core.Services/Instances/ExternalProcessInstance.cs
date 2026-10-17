@@ -141,7 +141,7 @@ public class ExternalProcessInstance : ISessionInstance
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(CancellationToken ct)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         if (stopped)
         {
@@ -159,13 +159,13 @@ public class ExternalProcessInstance : ISessionInstance
         {
             RoomId = Context.RoomId,
             SubRoomId = Context.SubRoomId,
-        }).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
 
         try
         {
             if (started)
             {
-                await processBridge.SendCloseMessage(Context).ConfigureAwait(false);
+                await processBridge.SendCloseMessage(Context, cancellationToken).ConfigureAwait(false);
             }
 
             if (process != null)
@@ -178,7 +178,7 @@ public class ExternalProcessInstance : ISessionInstance
                 }
 
                 var exitTask = process.WaitForExitAsync(CancellationToken.None);
-                var exited = await Task.WhenAny(exitTask, Task.Delay(ProcessWaitingTimeOutMs)).ConfigureAwait(false) == exitTask;
+                var exited = await Task.WhenAny(exitTask, Task.Delay(ProcessWaitingTimeOutMs, cancellationToken)).ConfigureAwait(false) == exitTask;
 
                 if (!exited)
                 {
@@ -222,14 +222,25 @@ public class ExternalProcessInstance : ISessionInstance
     }
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync()
+    async Task ISessionInstance.SendDataAsync(byte[] frame, Guid senderId, CancellationToken ct)
     {
-        await StopAsync(CancellationToken.None).ConfigureAwait(false);
-        GC.SuppressFinalize(this);
+        if (!started || transport == null)
+        {
+            return;
+        }
+
+        await processBridge.SendIpcMessage(new InSessionMessage(frame), Context, senderId, ct).ConfigureAwait(false);
     }
 
     private async Task OnProcessExitedAsync()
     {
+        if (stopped)
+        {
+            return;
+        }
+
+        stopped = true;
+
         try
         {
             if (session == null)
@@ -282,5 +293,12 @@ public class ExternalProcessInstance : ISessionInstance
             transport = null;
         }
         await Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync(CancellationToken.None).ConfigureAwait(false);
+        GC.SuppressFinalize(this);
     }
 }

@@ -13,7 +13,7 @@ using MIN.Sessions.Core.Transport.Contracts.Events;
 using MIN.Sessions.Core.Transport.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
-namespace MIN.Sessions.Core.Services;
+namespace MIN.Sessions.Core.Services.Services;
 
 /// <summary>
 /// Сервис для отслеживания состояния сессий
@@ -168,7 +168,11 @@ public class SessionProcessBridge : ISessionProcessBridge
 
     private async Task SendData(byte[] data, SessionInstanceContext context, CancellationToken cancellationToken)
     {
-        var processTransport = transports[context];
+        if (!transports.TryGetValue(context, out var processTransport))
+        {
+            return;
+        }
+
         await processTransport.SendAsync(data, context, cancellationToken);
     }
 

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 
 namespace MIN.Sessions.Core.Services.Contracts.Models;
 
@@ -63,6 +64,16 @@ public class Session
     /// </summary>
     [JsonIgnore]
     public string SessionDirectory { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Вид сессии
+    /// </summary>
+    public SessionKind Kind { get; set; } = SessionKind.Process;
+
+    /// <summary>
+    /// Порт, на котором слушает игровой сервер хоста (для сессий вида PortTunnel)
+    /// </summary>
+    public int? TunnelPort { get; set; }
 
     /// <summary>
     /// Получить путь к программе сервера сессии

@@ -4,7 +4,6 @@ using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.Contracts.Enums;
-using MIN.Sessions.Core.Messaging.Ipc;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
@@ -14,15 +13,15 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionSpecificHandler : BaseHandler
 {
-    private readonly ISessionProcessBridge sessionProcessBridge;
+    private readonly ISessionInstanceManager sessionInstanceManager;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="SessionSpecificHandler"/>
     /// </summary>
-    public SessionSpecificHandler(ISessionProcessBridge sessionProcessBridge,
+    public SessionSpecificHandler(ISessionInstanceManager sessionInstanceManager,
         ILoggerProvider logger) : base(logger)
     {
-        this.sessionProcessBridge = sessionProcessBridge;
+        this.sessionInstanceManager = sessionInstanceManager;
     }
 
     public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.SessionSpecific];
@@ -40,16 +39,15 @@ internal sealed class SessionSpecificHandler : BaseHandler
             return HandlerResult.Success();
         }
 
-        var connections = sessionProcessBridge.GetConnections(roomId, subRoomId);
+        var instances = sessionInstanceManager.GetInstances(roomId, subRoomId);
 
         if (sessionSpecificMessage.Route == SessionMessageRoute.Direct)
         {
-            // Direct: отправить всем локальным процессам подкомнаты
+            // Direct: отправить всем локальным экземплярам подкомнаты
 
-            foreach (var conn in connections)
+            foreach (var instance in instances)
             {
-                await sessionProcessBridge.SendIpcMessage(
-                    new InSessionMessage(sessionSpecificMessage.Body), conn, message.SenderId, context.CancellationToken);
+                await instance.SendDataAsync(sessionSpecificMessage.Body, message.SenderId, context.CancellationToken);
             }
             return HandlerResult.Success(stopPropagation: true);
         }
@@ -61,10 +59,11 @@ internal sealed class SessionSpecificHandler : BaseHandler
         var processContext = new SessionInstanceContext(roomId, subRoomId,
             isClientRequest ? SessionInstanceRole.Server : SessionInstanceRole.Client);
 
-        if (connections.Contains(processContext))
+        var target = instances.FirstOrDefault(x => x.Context == processContext);
+
+        if (target != null)
         {
-            await sessionProcessBridge.SendIpcMessage(new InSessionMessage(sessionSpecificMessage.Body),
-                processContext, message.SenderId, context.CancellationToken);
+            await target.SendDataAsync(sessionSpecificMessage.Body, message.SenderId, context.CancellationToken);
         }
 
         return HandlerResult.Success(stopPropagation: isClientRequest);

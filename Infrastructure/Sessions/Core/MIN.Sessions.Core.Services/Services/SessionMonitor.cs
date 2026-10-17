@@ -12,7 +12,7 @@ using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
-namespace MIN.Sessions.Core.Services;
+namespace MIN.Sessions.Core.Services.Services;
 
 /// <summary>
 /// Сервис для отслеживания состояния сессий
@@ -63,7 +63,10 @@ public class SessionMonitor : IHostedService
     }
 
     private async Task WentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
-        => await sessionInstanceManager.StopForRoomAsync(e.RoomId);
+    {
+        await sessionInstanceManager.StopForRoomAsync(e.RoomId);
+        sessionScanner.UnregisterAdHocForRoom(e.RoomId);
+    }
 
     private async Task OnSessionDeactivated(SessionDeactivatedEvent e, CancellationToken cancellationToken)
         => await sessionInstanceManager.StopAsync(new SessionInstanceContext(e.RoomId, e.SubRoomId, SessionInstanceRole.Server));
