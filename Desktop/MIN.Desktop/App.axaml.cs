@@ -39,7 +39,12 @@ public partial class App : Application
         Dispatcher.UIThread.Post(() =>
         {
             mainWindow.Show();
-            mainWindow.WindowState = WindowState.Normal;
+
+            if (mainWindow.WindowState == WindowState.Minimized)
+            {
+                mainWindow.WindowState = WindowState.Normal;
+            }
+
             mainWindow.Activate();
         });
     }

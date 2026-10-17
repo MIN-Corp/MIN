@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Common.Core.Contracts.Interfaces;
@@ -67,9 +68,9 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private void OnNotificationClick()
     {
-        if (isParentWindowClosed)
+        if (isParentWindowClosed || !parentWindow.IsVisible)
         {
-            App.RequestShowMainWindow();
+            Dispatcher.UIThread.Post(App.RequestShowMainWindow);
         }
         if (parentWindow.WindowState == WindowState.Minimized)
         {

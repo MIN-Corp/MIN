@@ -11,6 +11,7 @@ using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.ViewModels.Base;
+using MIN.Desktop.ViewModels.Windows;
 using MIN.DI.FeatureCollection;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
@@ -23,6 +24,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private readonly ChatSideBarViewModel chatSideBarViewModel;
     private readonly DiscoveryViewModel discoveryViewModel;
     private readonly MainSideBarViewModel mainSideBarViewModel;
+    private readonly MainWindowViewModel mainWindowViewModel;
     private readonly IDialogService dialogService;
 
     private readonly IMinFeatureCollection featureCollection;
@@ -80,6 +82,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     public ChatViewModel(ChatSideBarViewModel chatSideBarViewModel,
         MainSideBarViewModel mainSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
+        MainWindowViewModel mainWindowViewModel,
         IMinFeatureCollection featureCollection,
         IRoomConnectionUiService roomConnectionUiService,
         IDialogService dialogService)
@@ -88,6 +91,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         this.roomConnectionUiService = roomConnectionUiService;
         this.mainSideBarViewModel = mainSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
+        this.mainWindowViewModel = mainWindowViewModel;
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
@@ -117,6 +121,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         if (!hasScrolledHistory)
         {
+            await RestoreScrollOrGoBottomAsync();
             return;
         }
 
@@ -129,6 +134,9 @@ public partial class ChatViewModel : RoutableViewModelBase
         var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
         var lastHistory = context.Messages.GetRecentHistory().ToList();
 
+        RemoveLoadMoreLabel();
+        DisposeMessageCards();
+        Messages.Clear();
         await RenderMessages(lastHistory);
 
         if (lastHistory.Count > 0)
@@ -147,7 +155,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             ShowLoadMoreLabel();
         }
 
-        await ScrollToBottomAsync();
+        await RestoreScrollOrGoBottomAsync();
     }
 
     private void ActionOnNavigatedFrom(object? sender, EventArgs e)

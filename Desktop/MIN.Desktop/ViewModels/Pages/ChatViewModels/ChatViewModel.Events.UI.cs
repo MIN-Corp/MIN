@@ -362,7 +362,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         parentWindow.Activated += Parent_Activated;
         parentWindow.Deactivated += Parent_Deactivate;
-        parentWindow.Closing += Parent_OnClosing;
+        mainWindowViewModel.OnMinimizedToTray += Parent_OnMinimizedToTray;
     }
 
     private void DisableAllConnectionActions()
@@ -379,7 +379,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
-        parentWindow.Closing -= Parent_OnClosing;
+        mainWindowViewModel.OnMinimizedToTray -= Parent_OnMinimizedToTray;
 
         featureCollection.Helper.NotificationService.OnNotificationClick -= OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked -= NotificationTurnOffClicked;
@@ -399,7 +399,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         isParentWindowActive = true;
     }
 
-    private void Parent_OnClosing(object? sender, EventArgs e)
+    private void Parent_OnMinimizedToTray()
     {
         isParentWindowClosed = true;
     }

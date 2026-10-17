@@ -301,6 +301,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
         hasScrolledHistory = false;
+        seenMessageIds.Clear();
+        UpdateScrollAnchor(null, 0);
 
         await SendSystemMessage(new SystemTextMessage()
         {

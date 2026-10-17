@@ -604,10 +604,10 @@
                         ScrollChanged="OnMessagesScrollChanged"
                         scrollBehaviors:AutoScrollToBottomBehavior.AutoScrollBottom="{Binding AutoScrollBottom}"
                         Classes="main">
-                        <ItemsControl ItemsSource="{Binding Messages}">
+                        <ItemsControl x:Name="MessagesControl" ItemsSource="{Binding Messages}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel />
+                                    <VirtualizingStackPanel CacheLength="1" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>

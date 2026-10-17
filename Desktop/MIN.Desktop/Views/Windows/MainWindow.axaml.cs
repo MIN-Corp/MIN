@@ -89,6 +89,13 @@ public partial class MainWindow : WindowEx<MainWindowViewModel>
         {
             e.Cancel = true;
             Hide();
+
+            if (DataContext is not MainWindowViewModel vm)
+            {
+                return;
+            }
+
+            vm.OnMinimizedToTray?.Invoke();
         }
         else
         {

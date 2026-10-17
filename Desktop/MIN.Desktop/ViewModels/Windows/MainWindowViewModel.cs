@@ -48,6 +48,11 @@ public partial class MainWindowViewModel : ViewModelBase, IMultiRoutingWindow
     /// </summary>
     public Action? RoutingCancellationRequested { get; set; }
 
+    /// <summary>
+    /// Окно было спрятано в tray
+    /// </summary>
+    public Action? OnMinimizedToTray { get; set; }
+
     [ObservableProperty]
     public partial bool IsCancellingRouting { get; set; }
 
