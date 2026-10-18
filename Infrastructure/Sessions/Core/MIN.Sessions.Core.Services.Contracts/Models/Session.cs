@@ -39,17 +39,17 @@ public class Session
     /// <summary>
     /// Название программы сервера сессии
     /// </summary>
-    public required string ServerExecutableFileName { get; set; }
+    public string ServerExecutableFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// Название программы клиента сессии
     /// </summary>
-    public required string ClientExecutableFileName { get; set; }
+    public string ClientExecutableFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// Ссылка на скачивание сессии
     /// </summary>
-    public required string DownloadLink { get; set; }
+    public string DownloadLink { get; set; } = string.Empty;
 
     /// <summary>
     /// Название файла обложки сессии

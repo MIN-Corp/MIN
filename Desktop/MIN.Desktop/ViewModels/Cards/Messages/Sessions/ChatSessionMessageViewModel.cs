@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Input.Platform;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,6 +18,7 @@ using MIN.Desktop.ViewModels.Modals;
 using MIN.Sessions.Core.DI.FeatureCollection;
 using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 
 namespace MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 
@@ -27,6 +29,8 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 {
     private readonly IDialogService dialogService = null!;
     private readonly int? maximumParticipants;
+    private readonly ParticipantInfo localParticipant;
+    private readonly IClipboard? clipboard;
     private bool asDownloaded;
     private int currentAmount;
 
@@ -71,6 +75,36 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     public partial bool IsNotAvailable { get; set; }
 
     /// <summary>
+    /// Является ли сессия туннелем
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsTunnel { get; set; }
+
+    /// <summary>
+    /// Идёт ожидание подключения к игре
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsWaitingForGame { get; set; }
+
+    /// <summary>
+    /// Информация о подключения к туннелю
+    /// </summary>
+    [ObservableProperty]
+    public partial string TunnelConnectInfo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Получена информация о подключения к туннелю
+    /// </summary>
+    [ObservableProperty]
+    public partial bool TunnelConnectInfoAvaible { get; set; }
+
+    /// <summary>
+    /// Адрес подключения к туннелю
+    /// </summary>
+    [ObservableProperty]
+    public partial string TunnelConnectAddress { get; set; } = string.Empty;
+
+    /// <summary>
     /// Событие, возникающее по нажатию на кнопку присоединиться
     /// </summary>
     public event Func<Task>? OnJoinRequested;
@@ -82,6 +116,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         IEventScope roomScope,
         IEventBus eventBus,
         IDialogService dialogService,
+        IClipboard? clipboard,
         SessionReadyMessage sessionReadyMessage,
         ParticipantInfo localParticipant,
         Thickness timePadding,
@@ -101,11 +136,15 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     {
 
         this.dialogService = dialogService;
+        this.localParticipant = localParticipant;
+        this.clipboard = clipboard;
         SessionMessage = sessionReadyMessage;
 
         currentAmount = sessionReadyMessage.CurrentParticipantAmount;
         maximumParticipants = sessionReadyMessage.Session.MaximumParticipants;
         asDownloaded = sessionFeatureCollection.SessionScanner.DownloadedSessions.ContainsKey(sessionReadyMessage.Session.SessionId);
+
+        IsTunnel = SessionMessage.Session.Kind == SessionKind.PortTunnel;
 
         FillLabels();
         SubscribeToEvents(roomScope, eventBus);
@@ -113,14 +152,18 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 
     private void SubscribeToEvents(IEventScope roomScope, IEventBus eventBus)
     {
-        Subscriptions.Add(eventBus.Subscribe<SessionRescanCompletedEvent>(OnSessionRescanCompletedEvent));
+        Subscriptions.Add(eventBus.Subscribe<SessionRescanCompletedEvent>(OnSessionRescanCompleted));
+
         Subscriptions.Add(roomScope.Subscribe<SessionProcessStartedEvent>(OnSessionProcessStarted));
         Subscriptions.Add(roomScope.Subscribe<SessionProcessEndedEvent>(OnSessionProcessEnded));
         Subscriptions.Add(roomScope.Subscribe<SessionParticipantJoinedEvent>(OnSessionParticipantJoined));
         Subscriptions.Add(roomScope.Subscribe<SessionParticipantLeftEvent>(OnSessionParticipantLeft));
+
+        Subscriptions.Add(roomScope.Subscribe<TunnelListenerStartedEvent>(OnTunnelListenerStarted));
+        Subscriptions.Add(roomScope.Subscribe<TunnelGameConnectFailedEvent>(OnTunnelGameConnectFailed));
     }
 
-    private Task OnSessionRescanCompletedEvent(SessionRescanCompletedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnSessionRescanCompleted(SessionRescanCompletedEvent eventMessage, CancellationToken cancellationToken)
     {
         asDownloaded = eventMessage.DownloadedSessions.ContainsKey(SessionMessage.Session.SessionId);
         UpdateStats();
@@ -159,6 +202,12 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
             return Task.CompletedTask;
         }
 
+        if (eventMessage.Participant.Id == localParticipant.Id)
+        {
+            IsWaitingForGame = false;
+            IsJoined = true;
+        }
+
         currentAmount++;
 
         UpdateStats();
@@ -172,7 +221,40 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
             return Task.CompletedTask;
         }
 
+        if (eventMessage.Participant.Id == localParticipant.Id)
+        {
+            IsWaitingForGame = false;
+            IsJoined = false;
+        }
+
         currentAmount--;
+        UpdateStats();
+        return Task.CompletedTask;
+    }
+
+    private Task OnTunnelListenerStarted(TunnelListenerStartedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.SubRoomId != SessionMessage.SubRoomId)
+        {
+            return Task.CompletedTask;
+        }
+
+        TunnelConnectInfoAvaible = true;
+        TunnelConnectAddress = $"127.0.0.1:{eventMessage.Port}";
+
+        UpdateStats();
+        return Task.CompletedTask;
+    }
+
+    private Task OnTunnelGameConnectFailed(TunnelGameConnectFailedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.SubRoomId != SessionMessage.SubRoomId)
+        {
+            return Task.CompletedTask;
+        }
+
+        TunnelConnectInfoAvaible = false;
+        InAppNotifier.Error($"Не удалось подключиться к сессии: {eventMessage.Reason}");
 
         UpdateStats();
         return Task.CompletedTask;
@@ -198,8 +280,12 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 
         var isFull = maximumParticipants.HasValue && currentAmount >= maximumParticipants.Value;
 
-        JoinButtonStateText = (!asDownloaded
+        TunnelConnectInfo = $"Запустите игру и подключитесь к {TunnelConnectAddress}";
+
+        JoinButtonStateText = (!asDownloaded && !IsTunnel
             ? "Скачать сессию"
+            : IsWaitingForGame
+            ? "Ожидание подключения игры..."
             : IsJoined ? "Вы учавствуете"
             : isFull ? "Заполнено" : "Присоединиться") + $" (Учавствуют: {participantsRatio})";
 
@@ -210,6 +296,15 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     [RelayCommand]
     private async Task JoinSession()
     {
+        if (IsTunnel)
+        {
+            CanJoin = false;
+            IsWaitingForGame = true;
+            TunnelConnectInfoAvaible = false;
+            OnJoinRequested?.Invoke();
+            return;
+        }
+
         if (asDownloaded)
         {
             CanJoin = false;
@@ -222,7 +317,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         {
             model.Title = "Скачивание сессии";
             model.Description = $"Хотите скачать сессию {SessionMessage.Session.Name}?\n" +
-            $"Вы будете перенесены по ссылке {SessionMessage.Session.DownloadLink}";
+                $"Вы будете перенесены по ссылке {SessionMessage.Session.DownloadLink}";
             model.ButtonOptions = ButtonOptions.YesNo;
         });
 
@@ -234,5 +329,24 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
                 UseShellExecute = true
             });
         }
+    }
+
+    [RelayCommand]
+    private async Task CopyTunnelAddress()
+    {
+        if (clipboard == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await clipboard.SetTextAsync(TunnelConnectAddress);
+            var previous = TunnelConnectInfo;
+            TunnelConnectInfo = "Скопировано!";
+            await Task.Delay(1000);
+            TunnelConnectInfo = previous;
+        }
+        catch { }
     }
 }

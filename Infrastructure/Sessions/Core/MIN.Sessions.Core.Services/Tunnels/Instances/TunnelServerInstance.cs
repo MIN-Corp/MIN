@@ -24,7 +24,7 @@ public class TunnelServerInstance : ISessionInstance
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
-    private readonly Dictionary<Guid, TunnelParticipantConnection> connections = [];
+    private readonly Dictionary<Guid, TunnelServerParticipantConnection> connections = [];
     private readonly CancellationTokenSource cts = new();
 
     private Session? session;
@@ -147,7 +147,7 @@ public class TunnelServerInstance : ISessionInstance
             connectCts.CancelAfter(GameConnectTimeoutMs);
             await client.ConnectAsync("127.0.0.1", port.Value, connectCts.Token).ConfigureAwait(false);
 
-            var connection = new TunnelParticipantConnection(participantId, client);
+            var connection = new TunnelServerParticipantConnection(participantId, client);
             connections[participantId] = connection;
             _ = ReadLoopAsync(connection);
 
@@ -162,7 +162,7 @@ public class TunnelServerInstance : ISessionInstance
         }
     }
 
-    private async Task ReadLoopAsync(TunnelParticipantConnection connection)
+    private async Task ReadLoopAsync(TunnelServerParticipantConnection connection)
     {
         var buffer = new byte[TunnelProtocol.ChunkSize];
 
@@ -227,41 +227,5 @@ public class TunnelServerInstance : ISessionInstance
             RecipientId = participantId,
             Body = TunnelProtocol.Encode(type, payload),
         }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
-    }
-
-    private sealed class TunnelParticipantConnection : IDisposable
-    {
-        private readonly TcpClient client;
-        private readonly SemaphoreSlim writeLock = new(1, 1);
-
-        public Guid ParticipantId { get; }
-        public NetworkStream Stream { get; }
-
-        public TunnelParticipantConnection(Guid participantId, TcpClient client)
-        {
-            ParticipantId = participantId;
-            this.client = client;
-            Stream = client.GetStream();
-        }
-
-        public async Task WriteAsync(byte[] payload)
-        {
-            await writeLock.WaitAsync().ConfigureAwait(false);
-            try
-            {
-                await Stream.WriteAsync(payload).ConfigureAwait(false);
-                await Stream.FlushAsync().ConfigureAwait(false);
-            }
-            finally
-            {
-                writeLock.Release();
-            }
-        }
-
-        public void Dispose()
-        {
-            writeLock.Dispose();
-            client.Dispose();
-        }
     }
 }

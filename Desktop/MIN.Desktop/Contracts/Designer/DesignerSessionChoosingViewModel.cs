@@ -2,4 +2,4 @@
 
 namespace MIN.Desktop.Contracts.Designer;
 
-internal class DesignerSessionChoosingViewModel() : SessionChoosingViewModel(null!);
+internal class DesignerSessionChoosingViewModel() : SessionChoosingViewModel(null!, null!, null!);

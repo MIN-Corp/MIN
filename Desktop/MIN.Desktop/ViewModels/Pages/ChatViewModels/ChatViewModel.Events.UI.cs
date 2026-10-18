@@ -167,16 +167,30 @@ public partial class ChatViewModel : RoutableViewModelBase
     [RelayCommand]
     private async Task StartSessionClick()
     {
-        var downloadedSessions = featureCollection.Sessions.SessionScanner.DownloadedSessions.Values;
-        if (!downloadedSessions.Any())
+        if (!IsHost && featureCollection.Sessions.SessionScanner.DownloadedSessions.Count == 0)
         {
             InAppNotifier.Info("У вас не установлена ни одна сессия!");
             return;
         }
 
-        var choosingForm = await dialogService.ShowDialogAsync<SessionChoosingViewModel>();
+        var choosingForm = await dialogService.ShowDialogAsync<SessionChoosingViewModel>(vm =>
+        {
+            vm.Initialize(IsHost);
+        });
+
         if (choosingForm! == true)
         {
+            if (choosingForm!.IsTunnelRequested)
+            {
+                var sessionCreationForm = await dialogService.ShowDialogAsync<CreateTunnelSessionViewModel>();
+                if (sessionCreationForm! == true)
+                {
+                    await SendTunnelSessionStartMessage(sessionCreationForm!.Name, sessionCreationForm.Port, sessionCreationForm.MaxPlayers,
+                        sessionCreationForm.Version, sessionCreationForm.Thumbnail);
+                }
+                return;
+            }
+
             InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
             await SendSessionStartMessage(choosingForm!.SelectedSession!);
         }

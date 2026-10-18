@@ -27,7 +27,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
     [NotifyDataErrorInfo]
     [Required(ErrorMessage = "Придумайте имя для комнаты")]
-    [RoomName]
+    [FileName]
     [NotEndsWith(".")]
     public partial string Name { get; set; } = "";
 

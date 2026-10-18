@@ -231,6 +231,11 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task SendSessionStartMessage(Session session)
         => await featureCollection.Chat.ChatSessionService.SendSessionHostRequestAsync(roomId, session, roomCts.Token);
 
+    private async Task SendTunnelSessionStartMessage(string name, int gamePort,
+       int? maximumParticipants, string? version, byte[]? thumbnailData)
+        => await featureCollection.Chat.ChatSessionService.HostTunnelSessionAsync(roomId, name, gamePort,
+            maximumParticipants, version, thumbnailData, roomCts.Token);
+
     private async Task SendVoiceCallStartMessage()
         => await featureCollection.Chat.ChatVoiceService.StartCallAsync(roomId, roomCts.Token);
 

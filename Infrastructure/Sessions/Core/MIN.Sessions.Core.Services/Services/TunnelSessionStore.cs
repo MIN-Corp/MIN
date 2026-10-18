@@ -31,10 +31,9 @@ public class TunnelSessionStore : ITunnelSessionStore
 
     async Task ITunnelSessionStore.SaveAsync(Session session, byte[]? thumbnailData, CancellationToken cancellationToken)
     {
-        if (thumbnailData != null && thumbnailData.Length > 0)
-        {
-            session.ThumbnailFileName = ThumbnailFileName;
-        }
+        session.ThumbnailFileName = thumbnailData != null && thumbnailData.Length > 0
+             ? ThumbnailFileName
+             : null;
 
         var sessionDirectory = Path.Combine(sessionScanner.SessionsDirectory, session.SessionId);
         Directory.CreateDirectory(sessionDirectory);
@@ -43,9 +42,15 @@ public class TunnelSessionStore : ITunnelSessionStore
         await using var stream = File.Create(presenterPath);
         await JsonSerializer.SerializeAsync(stream, session, jsonOptions, cancellationToken);
 
+        var thumbnailPath = Path.Combine(sessionDirectory, ThumbnailFileName);
+
         if (thumbnailData != null && thumbnailData.Length > 0)
         {
-            await File.WriteAllBytesAsync(Path.Combine(sessionDirectory, ThumbnailFileName), thumbnailData, cancellationToken);
+            await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
+        }
+        else if (File.Exists(thumbnailPath))
+        {
+            File.Delete(thumbnailPath);
         }
     }
 }

@@ -34,6 +34,6 @@ public interface IChatSessionService
     /// <param name="thumbnailData">Обложка сессии</param>
     /// <param name="cancellationToken">Токен отмены</param>
     Task HostTunnelSessionAsync(Guid roomId, string name, int gamePort,
-        int? maximumParticipants, string? version, byte[]? thumbnailData,
-        CancellationToken cancellationToken = default);
+       int? maximumParticipants, string? version, byte[]? thumbnailData,
+       CancellationToken cancellationToken = default);
 }

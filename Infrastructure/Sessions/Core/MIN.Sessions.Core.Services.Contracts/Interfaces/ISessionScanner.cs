@@ -46,4 +46,10 @@ public interface ISessionScanner
     /// Отрегестрировать кастомную сессию
     /// </summary>
     void UnregisterAdHocForRoom(Guid roomId);
+
+    /// <summary>
+    /// Удалить сессию с диска
+    /// </summary>
+    /// <returns>false если сессия не нашлась</returns>
+    Task<bool> DeleteSessionAsync(string sessionId, CancellationToken cancellationToken = default);
 }

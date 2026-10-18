@@ -60,10 +60,10 @@
                         VerticalAlignment="Center"
                         RowSpacing="8"
                         ColumnSpacing="8"
-                        RowDefinitions="Auto, Auto"
+                        RowDefinitions="Auto, Auto, Auto"
                         ColumnDefinitions="Auto, *">
                         <Border
-                            Grid.RowSpan="2"
+                            Grid.RowSpan="3"
                             Grid.Row="0"
                             Grid.Column="0"
                             Classes="card"
@@ -102,6 +102,18 @@
                             <TextBlock
                                 TextWrapping="Wrap"
                                 Text="{Binding JoinButtonStateText}" />
+                        </Button>
+
+                        <Button
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Classes="no-background"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            IsVisible="{Binding TunnelConnectInfoAvaible}"
+                            Command="{Binding CopyTunnelAddressCommand}">
+                            <TextBlock TextWrapping="Wrap"
+                                Text="{Binding TunnelConnectInfo}" />
                         </Button>
                     </Grid>
                 </DockPanel>

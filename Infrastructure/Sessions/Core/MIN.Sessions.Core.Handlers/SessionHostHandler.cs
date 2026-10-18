@@ -74,6 +74,11 @@ internal sealed class SessionHostHandler : BaseHandler
                 $"\nВерсия сессии хоста комнаты - {session.Version}");
         }
 
+        if (session.Kind == SessionKind.PortTunnel && message.SenderId != context.SelfId)
+        {
+            return HandlerResult.WithErrorHandled("Туннельные сессии может запустить только хост комнаты");
+        }
+
         var subRoomId = sessionHostRequestMessage.SubRoomId;
         var isHosted = false;
 

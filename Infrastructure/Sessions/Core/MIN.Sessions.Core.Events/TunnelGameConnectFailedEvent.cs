@@ -17,4 +17,9 @@ public sealed record TunnelGameConnectFailedEvent : BaseEvent, IRoomScopedEvent
     /// Идентификатор подкомнаты
     /// </summary>
     public int SubRoomId { get; init; }
+
+    /// <summary>
+    /// Причина отклонения клиента
+    /// </summary>
+    public string Reason { get; init; } = string.Empty;
 }

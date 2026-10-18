@@ -57,6 +57,9 @@
     <Compile Update="Views\Cards\Messages\SystemChatMessageView.axaml.cs">
       <DependentUpon>SystemChatMessageView.axaml</DependentUpon>
     </Compile>
+    <Compile Update="Views\Modals\CreateTunnelSessionModal.axaml.cs">
+      <DependentUpon>CreateTunnelSessionModal.axaml</DependentUpon>
+    </Compile>
     <Compile Update="Views\Modals\RoomMismatchModal.axaml.cs">
       <DependentUpon>RoomMismatchModal.axaml</DependentUpon>
     </Compile>

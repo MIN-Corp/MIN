@@ -131,4 +131,45 @@ public class SessionScanner : ISessionScanner
             adHocSessions.Remove(sessionId);
         }
     }
+
+    async Task<bool> ISessionScanner.DeleteSessionAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        if (!downloadedSessions.ContainsKey(sessionId))
+        {
+            return false;
+        }
+
+        var sessionDirectory = Path.Combine(sessionsDirectory, sessionId);
+
+        if (!Path.GetFullPath(sessionDirectory).StartsWith(
+                Path.GetFullPath(sessionsDirectory) + Path.DirectorySeparatorChar))
+        {
+            return false;
+        }
+
+        if (Directory.Exists(sessionDirectory))
+        {
+            var deletingPath = sessionDirectory + ".deleting";
+            Directory.Move(sessionDirectory, deletingPath);
+
+            try
+            {
+                Directory.Delete(deletingPath, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                logger.Log($"Не удалось полностью очистить {deletingPath}: {ex.Message}");
+            }
+        }
+
+        downloadedSessions.Remove(sessionId);
+        adHocSessions.Remove(sessionId);
+
+        await eventBus.PublishAsync(new SessionRescanCompletedEvent()
+        {
+            DownloadedSessions = downloadedSessions,
+        }, cancellationToken);
+
+        return true;
+    }
 }

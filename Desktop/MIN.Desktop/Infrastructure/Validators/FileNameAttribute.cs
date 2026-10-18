@@ -7,7 +7,7 @@ namespace MIN.Desktop.Infrastructure.Validators;
 /// <summary>
 /// Проверяет, можно ли использовать значение в качестве имени комнаты
 /// </summary>
-public sealed class RoomNameAttribute : TypedValidationAttribute<string>
+public sealed class FileNameAttribute : TypedValidationAttribute<string>
 {
     private const int MAX_ROOM_NAME = 70;
 

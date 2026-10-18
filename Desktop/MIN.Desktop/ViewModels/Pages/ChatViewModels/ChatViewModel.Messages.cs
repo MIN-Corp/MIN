@@ -472,7 +472,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
-            roomScope, featureCollection.Core.EventBus, dialogService,
+            roomScope, featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
             msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
         card.OnReplyRequested += () => SetReplyTo(msg);
