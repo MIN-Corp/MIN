@@ -42,7 +42,9 @@ internal sealed class SessionHostHandler : BaseHandler
 
         if (context.Role != Role.Host)
         {
-            return HandlerResult.Failure($"Получил сообщение {message.GetType()} в {nameof(SessionHostHandler)} как {context.Role}, хотя не должен был", stopPropagation: false);
+            return HandlerResult.Failure($"Получил сообщение {message.GetType()} в" +
+                $"{nameof(SessionHostHandler)} как {context.Role}, хотя не должен был",
+                stopPropagation: false);
         }
 
         if (!context.RoomContext.Participants.TryGetParticipantById(message.SenderId, out var sender))
@@ -52,12 +54,6 @@ internal sealed class SessionHostHandler : BaseHandler
 
         var senderParicipantInfo = sender!.ToParticipantInfo();
         var roomId = context.RoomContext.RoomId;
-
-        if (sessionHostRequestMessage.SubRoomId != null
-            && !context.RoomContext.SubRooms.ActivateSubRoom(sessionHostRequestMessage.SubRoomId.Value, senderParicipantInfo))
-        {
-            return HandlerResult.WithErrorHandled("Хост не смог создать подкомнату");
-        }
 
         var session = sessionScanner.GetSessionById(sessionHostRequestMessage.SessionId);
 
@@ -79,12 +75,19 @@ internal sealed class SessionHostHandler : BaseHandler
             return HandlerResult.WithErrorHandled("Туннельные сессии может запустить только хост комнаты");
         }
 
+        if (sessionHostRequestMessage.SubRoomId != null
+            && !context.RoomContext.SubRooms.ActivateSubRoom(sessionHostRequestMessage.SubRoomId.Value, senderParicipantInfo))
+        {
+            return HandlerResult.WithErrorHandled("Хост не смог создать подкомнату");
+        }
+
         var subRoomId = sessionHostRequestMessage.SubRoomId;
         var isHosted = false;
 
         if (subRoomId == null)
         {
-            var subRoomInfo = context.RoomContext.SubRooms.HostSubRoom(senderParicipantInfo, SubRoomPurpose.Activity, session.MaximumParticipants);
+            var subRoomInfo = context.RoomContext.SubRooms.HostSubRoom(senderParicipantInfo,
+                SubRoomPurpose.Activity, session.MaximumParticipants, includeCreator: session.Kind != SessionKind.PortTunnel);
             isHosted = true;
             subRoomId = subRoomInfo.Id;
         }
@@ -107,25 +110,31 @@ internal sealed class SessionHostHandler : BaseHandler
             var hostReadyMessage = new SessionReadyMessage()
             {
                 SubRoomId = subRoomId.Value,
-                CurrentParticipantAmount = 1,
+                CurrentParticipantAmount = session.Kind == SessionKind.PortTunnel ? 0 : 1,
                 Session = session,
                 Sender = senderParicipantInfo,
                 SenderId = message.SenderId,
                 ThumbnailData = sessionScanner.LoadThumbnail(session.SessionId)
             };
 
-            instance.NotifyParticipantJoined(senderParicipantInfo);
+            if (session.Kind != SessionKind.PortTunnel)
+            {
+                instance.NotifyParticipantJoined(senderParicipantInfo);
+            }
 
             await messageRouter.RouteAsync(hostReadyMessage, roomId, message.SenderId, context.CancellationToken).ConfigureAwait(false);
 
             if (context.SelfId == message.SenderId)
             {
-                await messageRouter.RouteAsync(new SessionJoinResponseMessage()
+                if (session.Kind != SessionKind.PortTunnel)
                 {
-                    NeedToAnnounce = false,
-                    SessionId = session.SessionId,
-                    SubRoomId = subRoomId.Value,
-                }, context.RoomContext.RoomId, context.SelfId, context.CancellationToken).ConfigureAwait(false);
+                    await messageRouter.RouteAsync(new SessionJoinResponseMessage()
+                    {
+                        NeedToAnnounce = false,
+                        SessionId = session.SessionId,
+                        SubRoomId = subRoomId.Value,
+                    }, context.RoomContext.RoomId, context.SelfId, context.CancellationToken).ConfigureAwait(false);
+                }
 
                 return HandlerResult.Success();
             }
@@ -145,12 +154,15 @@ internal sealed class SessionHostHandler : BaseHandler
 
         if (context.SelfId == message.SenderId)
         {
-            await messageRouter.RouteAsync(new SessionJoinResponseMessage()
+            if (session.Kind != SessionKind.PortTunnel)
             {
-                NeedToAnnounce = true,
-                SessionId = session.SessionId,
-                SubRoomId = subRoomId.Value,
-            }, roomId, context.SelfId, context.CancellationToken).ConfigureAwait(false);
+                await messageRouter.RouteAsync(new SessionJoinResponseMessage()
+                {
+                    NeedToAnnounce = true,
+                    SessionId = session.SessionId,
+                    SubRoomId = subRoomId.Value,
+                }, roomId, context.SelfId, context.CancellationToken).ConfigureAwait(false);
+            }
         }
         else
         {
@@ -159,7 +171,8 @@ internal sealed class SessionHostHandler : BaseHandler
                 NeedToAnnounce = true,
                 SessionId = session.SessionId,
                 SubRoomId = subRoomId.Value,
-            }, roomId, context.RoomContext.Connections.GetConnectionIdFromParticipantId(message.SenderId), context.CancellationToken).ConfigureAwait(false);
+            }, roomId, context.RoomContext.Connections.GetConnectionIdFromParticipantId(message.SenderId),
+                context.CancellationToken).ConfigureAwait(false);
         }
 
         return HandlerResult.Success();

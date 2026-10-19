@@ -36,4 +36,19 @@ public interface IChatSessionService
     Task HostTunnelSessionAsync(Guid roomId, string name, int gamePort,
        int? maximumParticipants, string? version, byte[]? thumbnailData,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Удалить сообщение сессии (останавливает сессию, если запущена)
+    /// </summary>
+    Task DeleteSessionMessageAsync(Guid roomId, SessionReadyMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Покинуть сессию
+    /// </summary>
+    Task SendSessionLeaveAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Остановить сессию (только хост)
+    /// </summary>
+    Task SendSessionStopAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken = default);
 }

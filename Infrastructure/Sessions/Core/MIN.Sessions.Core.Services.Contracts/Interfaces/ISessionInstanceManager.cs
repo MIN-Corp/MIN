@@ -14,6 +14,11 @@ public interface ISessionInstanceManager
     Task<ISessionInstance?> StartAsync(Session session, SessionInstanceContext context, CancellationToken ct = default);
 
     /// <summary>
+    /// Остановить экземпляр с оповещением комнаты (выход из сессии / остановка хостом)
+    /// </summary>
+    Task LeaveAsync(SessionInstanceContext context, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Остановить экземпляр сессии
     /// </summary>
     Task StopAsync(SessionInstanceContext context);

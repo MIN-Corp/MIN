@@ -22,7 +22,7 @@ public interface ISessionInstance : IAsyncDisposable
     /// <summary>
     /// Остановить экземпляр сессии
     /// </summary>
-    Task StopAsync(CancellationToken ct);
+    Task StopAsync(CancellationToken ct, bool announce = false);
 
     /// <summary>
     /// Оповестить приход участника в сессию

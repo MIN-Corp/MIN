@@ -36,7 +36,7 @@ public partial class SessionChoosingViewModel : ModalViewModelBase
     /// <summary>
     /// Выбран туннель
     /// </summary>
-    public bool IsTunnelRequested { get; set; }
+    public bool IsTunnelCreationRequested { get; set; }
 
     /// <summary>
     /// Скаченные сессии
@@ -143,7 +143,7 @@ public partial class SessionChoosingViewModel : ModalViewModelBase
             }
         }
         SelectedSession = selected ? session : null;
-        IsTunnelRequested = selected && card.IsCreateTunnelCard;
+        IsTunnelCreationRequested = selected && card.IsCreateTunnelCard;
         SelectSessionCommand.NotifyCanExecuteChanged();
     }
 
@@ -180,5 +180,5 @@ public partial class SessionChoosingViewModel : ModalViewModelBase
         Close(ButtonOptions.Ok);
     }
 
-    private bool CanProceed() => SelectedSession != null || IsTunnelRequested;
+    private bool CanProceed() => SelectedSession != null || IsTunnelCreationRequested;
 }

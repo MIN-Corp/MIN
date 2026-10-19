@@ -13,7 +13,7 @@ public interface ISubRoomManager
     /// <summary>
     /// Захостить подкомнату
     /// </summary>
-    SubRoomInfo HostSubRoom(ParticipantInfo creator, SubRoomPurpose purpose, int? maximum = null);
+    SubRoomInfo HostSubRoom(ParticipantInfo creator, SubRoomPurpose purpose, int? maximum = null, bool includeCreator = true);
 
     /// <summary>
     /// Запустить подкомнату

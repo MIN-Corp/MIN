@@ -8,6 +8,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 using MIN.Core.Messaging.Stateless.RoomRelated.ParticipantRelated;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
+using MIN.Core.Stores.Contracts.Exceptions;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Models;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
@@ -167,6 +168,10 @@ public class IdentityMonitor : IHostedService
         catch (OperationCanceledException)
         {
             throw;
+        }
+        catch (RoomNotRegistredException)
+        {
+            // Комната закрылась во время рассылки — обновлять некому
         }
         catch (Exception exception)
         {

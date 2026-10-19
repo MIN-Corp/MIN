@@ -22,6 +22,7 @@ using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.Desktop.ViewModels.Modals;
 using MIN.Desktop.Views;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 
@@ -180,7 +181,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         if (choosingForm! == true)
         {
-            if (choosingForm!.IsTunnelRequested)
+            if (choosingForm!.IsTunnelCreationRequested)
             {
                 var sessionCreationForm = await dialogService.ShowDialogAsync<CreateTunnelSessionViewModel>();
                 if (sessionCreationForm! == true)
@@ -191,7 +192,10 @@ public partial class ChatViewModel : RoutableViewModelBase
                 return;
             }
 
-            InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
+            if (choosingForm!.SelectedSession!.Kind == SessionKind.Process)
+            {
+                InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
+            }
             await SendSessionStartMessage(choosingForm!.SelectedSession!);
         }
     }

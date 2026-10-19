@@ -9,6 +9,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
@@ -89,6 +90,11 @@ internal sealed class SessionJoinHandler : BaseHandler
 
                 if (!subRoomInfo.IsActive)
                 {
+                    if (session.Kind == SessionKind.PortTunnel && message.SenderId != context.SelfId)
+                    {
+                        return HandlerResult.WithErrorHandled("Сессия была остановлена хостом. Попросите его запустить её заново.");
+                    }
+
                     await messageRouter.RouteAsync(new SessionHostRequestMessage()
                     {
                         SubRoomId = subRoomInfo.Id,
@@ -114,9 +120,23 @@ internal sealed class SessionJoinHandler : BaseHandler
                     return HandlerResult.Failure($"У вас не установлена сессия с id {sessionJoinResponseMessage.SessionId}");
                 }
 
-                var instance = await sessionInstanceManager.StartAsync(responseSession,
-                    new SessionInstanceContext(roomId, sessionJoinResponseMessage.SubRoomId, SessionInstanceRole.Client),
-                    context.CancellationToken).ConfigureAwait(false);
+                if (responseSession.Kind == SessionKind.PortTunnel && message.SenderId == context.SelfId)
+                {
+                    // хост туннеля не создаёт клиентский инстанс
+                    return HandlerResult.Success();
+                }
+
+                ISessionInstance? instance;
+                try
+                {
+                    instance = await sessionInstanceManager.StartAsync(responseSession,
+                        new SessionInstanceContext(roomId, sessionJoinResponseMessage.SubRoomId, SessionInstanceRole.Client),
+                        context.CancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return HandlerResult.Success();
+                }
 
                 if (instance == null)
                 {

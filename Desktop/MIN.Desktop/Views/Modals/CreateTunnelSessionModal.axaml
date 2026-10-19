@@ -53,7 +53,6 @@
                         <TextBlock Text="Имя сессии" />
                         <TextBox
                             MaxLength="120"
-                            MaxWidth="400"
                             Text="{Binding Name, Converter={converters:TrimConverter}}"
                             PlaceholderText="Введите имя...">
                             <Interaction.Behaviors>
@@ -68,7 +67,6 @@
                         <TextBlock Text="Описание сессии" />
                         <TextBox
                             MaxLength="120"
-                            MaxWidth="400"
                             Text="{Binding Description, Converter={converters:TrimConverter}}"
                             PlaceholderText="Описание...">
                             <Interaction.Behaviors>
@@ -83,7 +81,6 @@
                         <TextBlock Text="Версия сессии (программы)" />
                         <TextBox
                             MaxLength="120"
-                            MaxWidth="400"
                             Text="{Binding Version, Converter={converters:TrimConverter}}"
                             PlaceholderText="v1.0.0">
                             <Interaction.Behaviors>
@@ -94,14 +91,19 @@
                 </Border>
 
                 <Border Classes="card">
-                     <StackPanel Classes="form">
-                        <TextBlock Text="Максимальное количество участников (пусто — без лимита)" />
-                        <TextBox
-                            MaxLength="3"
-                            MaxWidth="400"
-                            Text="{Binding MaxPlayers, Converter={converters:NullableIntToStringConverter}}"
-                            PlaceholderText="Неограничено...">
-                        </TextBox>
+                    <StackPanel>
+                        <StackPanel Classes="form" Margin="0,0,0,8">
+                            <TextBlock Text="Максимальное количество участников" />
+                            <TextBox
+                                MaxLength="3"
+                                Text="{Binding MaxPlayers, Converter={converters:NullableIntToStringConverter}}"
+                                PlaceholderText="Неограничено...">
+                            </TextBox>
+                        </StackPanel>
+
+                        <TextBlock Classes="info">
+                            (пусто — без лимита)
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 
@@ -115,7 +117,7 @@
                             </TextBox>
                         </StackPanel>
 
-                        <TextBlock MaxWidth="300.0" Classes="info">
+                        <TextBlock HorizontalAlignment="Left" MaxWidth="300.0" Classes="info">
                             Порт игры. Запустите выбранную игру, создайте там мир,
                             и укажите порт, который игра даёт для сети.
                         </TextBlock>

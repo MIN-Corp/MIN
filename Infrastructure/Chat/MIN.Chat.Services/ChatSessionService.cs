@@ -6,6 +6,8 @@ using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
+using MIN.Sessions.Core.Transport.Contracts.Enums;
+using MIN.Sessions.Core.Transport.Contracts.Models;
 
 namespace MIN.Chat.Services;
 
@@ -13,7 +15,9 @@ namespace MIN.Chat.Services;
 public sealed class ChatSessionService : IChatSessionService
 {
     private readonly IMessageRouter messageRouter;
+    private readonly IChatMessageService chatMessageService;
     private readonly ISessionScanner sessionScanner;
+    private readonly ISessionInstanceManager sessionInstanceManager;
     private readonly ITunnelSessionStore tunnelSessionStore;
     private readonly IIdentityService identityService;
 
@@ -21,12 +25,16 @@ public sealed class ChatSessionService : IChatSessionService
     /// Инициализирует новый экземпляр <see cref="ChatSessionService"/>
     /// </summary>
     public ChatSessionService(IMessageRouter messageRouter,
+        IChatMessageService chatMessageService,
         ISessionScanner sessionScanner,
+        ISessionInstanceManager sessionInstanceManager,
         ITunnelSessionStore tunnelSessionStore,
         IIdentityService identityService)
     {
         this.messageRouter = messageRouter;
+        this.chatMessageService = chatMessageService;
         this.sessionScanner = sessionScanner;
+        this.sessionInstanceManager = sessionInstanceManager;
         this.tunnelSessionStore = tunnelSessionStore;
         this.identityService = identityService;
     }
@@ -95,6 +103,22 @@ public sealed class ChatSessionService : IChatSessionService
             SessionId = session.SessionId,
             SessionVersion = session.Version,
         }, roomId, cancellationToken);
+    }
+
+    async Task IChatSessionService.SendSessionLeaveAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
+       => await sessionInstanceManager.LeaveAsync(
+           new SessionInstanceContext(roomId, subRoomId, SessionInstanceRole.Client), cancellationToken);
+
+    async Task IChatSessionService.SendSessionStopAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
+        => await sessionInstanceManager.LeaveAsync(
+            new SessionInstanceContext(roomId, subRoomId, SessionInstanceRole.Server), cancellationToken);
+
+    async Task IChatSessionService.DeleteSessionMessageAsync(Guid roomId, SessionReadyMessage message, CancellationToken cancellationToken)
+    {
+        await sessionInstanceManager.LeaveAsync(
+            new SessionInstanceContext(roomId, message.SubRoomId, SessionInstanceRole.Server), cancellationToken);
+
+        await chatMessageService.DeleteMessageAsync(roomId, message.Id, cancellationToken);
     }
 
     private async Task SendAsync(IMessage? message, Guid roomId, CancellationToken cancellationToken)

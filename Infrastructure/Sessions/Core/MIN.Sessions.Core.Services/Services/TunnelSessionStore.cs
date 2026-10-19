@@ -9,8 +9,6 @@ namespace MIN.Sessions.Core.Services.Services;
 /// </summary>
 public class TunnelSessionStore : ITunnelSessionStore
 {
-    private const string DownloadedSessionsFolderName = "Скаченные сессии";
-
     private const string ThumbnailFileName = "thumbnail.png";
 
     private readonly ISessionScanner sessionScanner;

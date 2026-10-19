@@ -50,7 +50,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
 
         if (sharedSecret == null)
         {
-            logger.Log($"Не удалось ", LogLevel.Error);
+            logger.Log($"Не удалось вычислить сохранённый секрет для партнёра {partnerId}", LogLevel.Error);
             return false;
         }
 

@@ -1,8 +1,11 @@
-﻿using MIN.Helpers.Contracts.Interfaces;
+﻿using MIN.Core.Identity.Contracts.Interfaces;
+using MIN.Core.Stores.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
 using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
+using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
 namespace MIN.Sessions.Core.Services.Services;
@@ -14,15 +17,21 @@ public class SessionInstanceManager : ISessionInstanceManager
 {
     private readonly Dictionary<SessionInstanceContext, ISessionInstance> instances = [];
     private readonly IReadOnlyList<ISessionInstanceFactory> factories;
+    private readonly IRoomFactory roomFactory;
+    private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="SessionInstanceManager"/>
     /// </summary>
     public SessionInstanceManager(IEnumerable<ISessionInstanceFactory> factories,
+        IRoomFactory roomFactory,
+        IIdentityService identityService,
         ILoggerProvider logger)
     {
         this.factories = factories.ToList();
+        this.roomFactory = roomFactory;
+        this.identityService = identityService;
         this.logger = logger;
     }
 
@@ -55,6 +64,14 @@ public class SessionInstanceManager : ISessionInstanceManager
             await instance.StartAsync(session, ct).ConfigureAwait(false);
             return instance;
         }
+        catch (OperationCanceledException)
+        {
+            logger.Log($"Запуск сессии {session.Name} отменён");
+            instances.Remove(context);
+            await instance.StopAsync(CancellationToken.None).ConfigureAwait(false);
+            await instance.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
         catch (Exception ex)
         {
             logger.Log($"Не удалось запустить экземпляр сессии {session.Name}: {ex.Message}", LogLevel.Error);
@@ -62,6 +79,22 @@ public class SessionInstanceManager : ISessionInstanceManager
             await instance.StopAsync(CancellationToken.None).ConfigureAwait(false);
             await instance.DisposeAsync().ConfigureAwait(false);
             return null;
+        }
+    }
+
+    async Task ISessionInstanceManager.LeaveAsync(SessionInstanceContext context, CancellationToken cancellationToken)
+    {
+        if (!instances.Remove(context, out var instance))
+        {
+            return;
+        }
+
+        await instance.StopAsync(cancellationToken, announce: true).ConfigureAwait(false);
+        await instance.DisposeAsync().ConfigureAwait(false);
+
+        if (context.Role == SessionInstanceRole.Client)
+        {
+            await StopServerIfEmptyAsync(context).ConfigureAwait(false);
         }
     }
 
@@ -100,4 +133,29 @@ public class SessionInstanceManager : ISessionInstanceManager
             .Where(x => x.RoomId == roomId && x.SubRoomId == subRoomId)
             .Select(x => instances[x])
             .ToList();
+
+    /// <summary>
+    /// Если после выхода участника в сессии никого не осталось — остановить сервер и подкомнату
+    /// </summary>
+    private async Task StopServerIfEmptyAsync(SessionInstanceContext context)
+    {
+        var roomContext = roomFactory.GetOrCreateContext(context.RoomId);
+
+        if (roomContext.SubRooms.GetParticipantCount(context.SubRoomId) > 0)
+        {
+            return;
+        }
+
+        await ((ISessionInstanceManager)this).StopAsync(
+            new SessionInstanceContext(context.RoomId, context.SubRoomId, SessionInstanceRole.Server)).ConfigureAwait(false);
+
+        var subRoomInfo = roomContext.SubRooms.GetSubRoom(context.SubRoomId);
+
+        if (subRoomInfo == null || subRoomInfo.CreatorId != identityService.SelfParticipant.Id)
+        {
+            return;
+        }
+
+        roomContext.SubRooms.TryStopSubRoom(context.SubRoomId, subRoomInfo?.CreatorId ?? Guid.Empty);
+    }
 }

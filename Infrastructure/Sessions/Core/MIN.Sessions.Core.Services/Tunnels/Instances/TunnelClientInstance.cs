@@ -11,7 +11,6 @@ using MIN.Sessions.Core.Messaging.Contracts.Enums;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
-using MIN.Sessions.Core.Services.Instances.Tunnels;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
@@ -118,7 +117,7 @@ public class TunnelClientInstance : ISessionInstance
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(CancellationToken ct)
+    public async Task StopAsync(CancellationToken ct, bool announce = false)
     {
         if (stopped)
         {
@@ -126,11 +125,23 @@ public class TunnelClientInstance : ISessionInstance
         }
 
         stopped = true;
+
+        if (announce && joinedAnnounced)
+        {
+            joinedAnnounced = false;
+            await SendSelfFrameAsync(TunnelProtocol.Encode(TunnelFrameType.Close)).ConfigureAwait(false);
+
+            var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
+            await messageRouter.RouteAsync(new SessionLeaveMessage()
+            {
+                SubRoomId = Context.SubRoomId,
+            }, Context.RoomId, selfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+        }
+
         cts.Cancel();
         listener?.Stop();
         CloseGameConnection();
         cts.Dispose();
-        await Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -174,6 +185,12 @@ public class TunnelClientInstance : ISessionInstance
                     client.Dispose();
                     helloTcs = null;
 
+                    if (cts.IsCancellationRequested || stopped)
+                    {
+                        continue;
+                    }
+
+                    logger.Log("Туннель: хост не ответил на подключение");
                     await eventBus.PublishAsync(new TunnelGameConnectFailedEvent()
                     {
                         RoomId = Context.RoomId,
@@ -244,14 +261,19 @@ public class TunnelClientInstance : ISessionInstance
         }
         finally
         {
-            await SendSelfFrameAsync(TunnelProtocol.Encode(TunnelFrameType.Close)).ConfigureAwait(false);
-            CloseGameConnection();
-
-            var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
-            await messageRouter.RouteAsync(new SessionLeaveMessage()
+            if (joinedAnnounced && !stopped)
             {
-                SubRoomId = Context.SubRoomId,
-            }, Context.RoomId, selfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+                joinedAnnounced = false;
+                await SendSelfFrameAsync(TunnelProtocol.Encode(TunnelFrameType.Close)).ConfigureAwait(false);
+
+                var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
+                await messageRouter.RouteAsync(new SessionLeaveMessage()
+                {
+                    SubRoomId = Context.SubRoomId,
+                }, Context.RoomId, selfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+            }
+
+            CloseGameConnection();
         }
     }
 

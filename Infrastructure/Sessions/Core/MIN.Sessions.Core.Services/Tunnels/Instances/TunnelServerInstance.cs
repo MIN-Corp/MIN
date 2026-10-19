@@ -1,13 +1,15 @@
 ﻿using System.Net.Sockets;
+using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Helpers.Contracts.Interfaces;
+using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Messaging.Contracts.Enums;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
-using MIN.Sessions.Core.Services.Instances.Tunnels;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
@@ -19,15 +21,20 @@ namespace MIN.Sessions.Core.Services.Tunnels.Instances;
 public class TunnelServerInstance : ISessionInstance
 {
     private const int GameConnectTimeoutMs = 5_000;
+    private const int PollIntervalMs = 3_000;
+    private const int ProbeTimeoutMs = 500;
 
     private readonly IMessageRouter messageRouter;
     private readonly IIdentityService identityService;
+    private readonly IEventBus eventBus;
     private readonly ILoggerProvider logger;
 
     private readonly Dictionary<Guid, TunnelServerParticipantConnection> connections = [];
     private readonly CancellationTokenSource cts = new();
 
     private Session? session;
+    private bool stopped;
+    private bool hostInSession;
 
     /// <inheritdoc />
     public SessionInstanceContext Context { get; }
@@ -43,20 +50,30 @@ public class TunnelServerInstance : ISessionInstance
     /// </summary>
     public TunnelServerInstance(SessionInstanceContext context,
         IMessageRouter messageRouter,
+        IEventBus eventBus,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
         Context = context;
         this.messageRouter = messageRouter;
+        this.eventBus = eventBus;
         this.identityService = identityService;
         this.logger = logger;
     }
 
     /// <inheritdoc />
-    public Task StartAsync(Session session, CancellationToken ct)
+    public async Task StartAsync(Session session, CancellationToken ct)
     {
         this.session = session;
-        return Task.CompletedTask;
+
+        await eventBus.PublishAsync(new SessionProcessStartedEvent()
+        {
+            RoomId = Context.RoomId,
+            SubRoomId = Context.SubRoomId,
+            Session = session,
+        }, ct).ConfigureAwait(false);
+
+        _ = PollLoopAsync();
     }
 
     /// <inheritdoc />
@@ -84,17 +101,31 @@ public class TunnelServerInstance : ISessionInstance
     }
 
     /// <inheritdoc />
-    public void NotifyParticipantJoined(ParticipantInfo participant)
-    {
-    }
+    public void NotifyParticipantJoined(ParticipantInfo participant) { }
 
     /// <inheritdoc />
     public void NotifyParticipantLeft(Guid participantId)
         => _ = RemoveConnectionAsync(participantId, notifyPeer: false);
 
     /// <inheritdoc />
-    public async Task StopAsync(CancellationToken ct)
+    public async Task StopAsync(CancellationToken ct, bool announce = false)
     {
+        if (stopped)
+        {
+            return;
+        }
+
+        stopped = true;
+
+        if (announce && session != null)
+        {
+            await messageRouter.RouteAsync(new SessionServerShutdownMessage()
+            {
+                SubRoomId = Context.SubRoomId,
+                Reason = "Хост остановил сессию",
+            }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+        }
+
         cts.Cancel();
 
         foreach (var participantId in connections.Keys.ToList())
@@ -218,8 +249,7 @@ public class TunnelServerInstance : ISessionInstance
     }
 
     private async Task SendFrameAsync(Guid participantId, TunnelFrameType type, byte[]? payload = null)
-    {
-        await messageRouter.RouteAsync(new SessionSpecificMessage()
+        => await messageRouter.RouteAsync(new SessionSpecificMessage()
         {
             SubRoomId = Context.SubRoomId,
             SessionInstanceRole = SessionInstanceRole.Server,
@@ -227,5 +257,57 @@ public class TunnelServerInstance : ISessionInstance
             RecipientId = participantId,
             Body = TunnelProtocol.Encode(type, payload),
         }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+
+    private async Task PollLoopAsync()
+    {
+        var port = session!.TunnelPort!.Value;
+
+        while (!cts.IsCancellationRequested)
+        {
+            try
+            {
+                using var probe = new TcpClient();
+                using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                probeCts.CancelAfter(ProbeTimeoutMs);
+                await probe.ConnectAsync("127.0.0.1", port, probeCts.Token).ConfigureAwait(false);
+
+                if (!hostInSession)
+                {
+                    hostInSession = true;
+
+                    var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
+                    await messageRouter.RouteAsync(new SessionParticipantJoinedMessage()
+                    {
+                        SubRoomId = Context.SubRoomId,
+                        Participant = selfParticipant,
+                    }, Context.RoomId, selfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch
+            {
+                if (hostInSession)
+                {
+                    hostInSession = false;
+
+                    var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
+                    await messageRouter.RouteAsync(new SessionParticipantLeftMessage()
+                    {
+                        SubRoomId = Context.SubRoomId,
+                        Participant = selfParticipant,
+                        IsLast = false,
+                    }, Context.RoomId, selfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+
+            try
+            {
+                await Task.Delay(PollIntervalMs, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { return; }
+        }
     }
 }

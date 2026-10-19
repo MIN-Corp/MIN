@@ -5,7 +5,6 @@ using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
-using MIN.Sessions.Core.Services.Instances.Tunnels;
 using MIN.Sessions.Core.Services.Tunnels.Instances;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
@@ -41,6 +40,6 @@ public class TunnelInstanceFactory : ISessionInstanceFactory
 
     ISessionInstance ISessionInstanceFactory.Create(SessionInstanceContext context)
         => context.Role == SessionInstanceRole.Server
-            ? new TunnelServerInstance(context, messageRouter, identityService, logger)
+            ? new TunnelServerInstance(context, messageRouter, eventBus, identityService, logger)
             : new TunnelClientInstance(context, messageRouter, eventBus, identityService, logger);
 }

@@ -38,6 +38,7 @@ public class ExternalProcessInstance : ISessionInstance
     private Session? session;
     private bool started;
     private bool stopped;
+    private CancellationTokenSource? startCts;
 
     /// <inheritdoc />
     public SessionInstanceContext Context { get; }
@@ -72,6 +73,8 @@ public class ExternalProcessInstance : ISessionInstance
     {
         this.session = session;
 
+        startCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
         var fullPath = Context.Role == SessionInstanceRole.Client
             ? session.GetClientPath()
             : session.GetServerPath();
@@ -92,6 +95,8 @@ public class ExternalProcessInstance : ISessionInstance
         {
             throw new FileNotFoundException($"Не найден исполняемый файл сессии: {fullPath}");
         }
+
+        startCts.Token.ThrowIfCancellationRequested();
 
         transport = transportFactory.Create();
         processBridge.RegisterTransport(Context, transport);
@@ -120,17 +125,29 @@ public class ExternalProcessInstance : ISessionInstance
         if (process == null || process.HasExited)
         {
             await CleanupTransportAsync().ConfigureAwait(false);
+            startCts.Token.ThrowIfCancellationRequested();
             throw new InvalidOperationException($"Не удалось запустить процесс сессии {session.Name}");
         }
 
-        await transport.WaitForConnectionAsync(Context, ProcessWaitingTimeOutMs, ct).ConfigureAwait(false);
+        try
+        {
+            await transport.WaitForConnectionAsync(Context, ProcessWaitingTimeOutMs, startCts.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            startCts.Token.ThrowIfCancellationRequested();
+            throw;
+        }
 
-        var readySuccess = await processBridge.WaitForReadyMessage(Context, ProcessWaitingTimeOutMs, ct).ConfigureAwait(false);
+        var readySuccess = await processBridge.WaitForReadyMessage(Context, ProcessWaitingTimeOutMs, startCts.Token).ConfigureAwait(false);
 
         if (!readySuccess)
         {
             await CleanupTransportAsync().ConfigureAwait(false);
             process.Kill();
+
+            startCts.Token.ThrowIfCancellationRequested();
+
             throw new TimeoutException($"Сессия {session.Name} не прислала сообщение о готовности");
         }
 
@@ -141,7 +158,7 @@ public class ExternalProcessInstance : ISessionInstance
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken, bool announce = false)
     {
         if (stopped)
         {
@@ -150,16 +167,25 @@ public class ExternalProcessInstance : ISessionInstance
 
         stopped = true;
 
+        startCts?.Cancel();
+
         if (exitHandler != null && process != null)
         {
             process.Exited -= exitHandler;
         }
 
-        await eventBus.PublishAsync(new SessionProcessEndedEvent()
+        if (announce)
         {
-            RoomId = Context.RoomId,
-            SubRoomId = Context.SubRoomId,
-        }, cancellationToken).ConfigureAwait(false);
+            await AnnounceStopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            await eventBus.PublishAsync(new SessionProcessEndedEvent()
+            {
+                RoomId = Context.RoomId,
+                SubRoomId = Context.SubRoomId,
+            }, cancellationToken).ConfigureAwait(false);
+        }
 
         try
         {
@@ -193,6 +219,43 @@ public class ExternalProcessInstance : ISessionInstance
         }
 
         await CleanupTransportAsync().ConfigureAwait(false);
+    }
+
+    private async Task AnnounceStopAsync(CancellationToken ct)
+    {
+        if (session == null || !started)
+        {
+            return;
+        }
+
+        if (Context.Role == SessionInstanceRole.Server)
+        {
+            var roomContext = roomFactory.GetOrCreateContext(Context.RoomId);
+
+            if (roomContext.SubRooms.GetParticipantCount(Context.SubRoomId) == 0)
+            {
+                return;
+            }
+
+            await messageRouter.RouteAsync(new SessionServerShutdownMessage()
+            {
+                SubRoomId = Context.SubRoomId,
+                Reason = "Хост остановил сессию",
+            }, Context.RoomId, identityService.SelfParticipant.Id, ct).ConfigureAwait(false);
+        }
+        else
+        {
+            await eventBus.PublishAsync(new SessionProcessEndedEvent()
+            {
+                RoomId = Context.RoomId,
+                SubRoomId = Context.SubRoomId,
+            }, ct).ConfigureAwait(false);
+
+            await messageRouter.RouteAsync(new SessionLeaveMessage()
+            {
+                SubRoomId = Context.SubRoomId,
+            }, Context.RoomId, identityService.SelfParticipant.Id, ct).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />
@@ -243,39 +306,7 @@ public class ExternalProcessInstance : ISessionInstance
 
         try
         {
-            if (session == null)
-            {
-                return;
-            }
-
-            if (Context.Role == SessionInstanceRole.Server)
-            {
-                var roomContext = roomFactory.GetOrCreateContext(Context.RoomId);
-
-                if (roomContext.SubRooms.GetParticipantCount(Context.SubRoomId) == 0)
-                {
-                    return;
-                }
-
-                await messageRouter.RouteAsync(new SessionServerShutdownMessage()
-                {
-                    SubRoomId = Context.SubRoomId,
-                    Reason = $"Сервер сессии {session.Name} был закрыт хостом",
-                }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
-            }
-            else
-            {
-                await eventBus.PublishAsync(new SessionProcessEndedEvent()
-                {
-                    RoomId = Context.RoomId,
-                    SubRoomId = Context.SubRoomId,
-                }).ConfigureAwait(false);
-
-                await messageRouter.RouteAsync(new SessionLeaveMessage()
-                {
-                    SubRoomId = Context.SubRoomId,
-                }, Context.RoomId, identityService.SelfParticipant.Id, CancellationToken.None).ConfigureAwait(false);
-            }
+            await AnnounceStopAsync(CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {

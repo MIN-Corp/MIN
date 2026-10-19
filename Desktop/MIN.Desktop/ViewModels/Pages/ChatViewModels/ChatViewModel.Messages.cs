@@ -473,9 +473,13 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
             roomScope, featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
-            msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
+            msg, localParticipant, timePadding, IsHost, isHost, removeHeaders, IsAvaibleForNetwork);
+
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
         card.OnReplyRequested += () => SetReplyTo(msg);
+        card.OnLeaveRequested += () => featureCollection.Chat.ChatSessionService.SendSessionLeaveAsync(roomId, msg.SubRoomId, roomCts.Token);
+        card.OnShutdownRequested += () => featureCollection.Chat.ChatSessionService.SendSessionStopAsync(roomId, msg.SubRoomId, roomCts.Token);
+        card.OnDeleteRequested += () => featureCollection.Chat.ChatSessionService.DeleteSessionMessageAsync(roomId, msg, roomCts.Token);
 
         if (!withAppendOnTop)
         {

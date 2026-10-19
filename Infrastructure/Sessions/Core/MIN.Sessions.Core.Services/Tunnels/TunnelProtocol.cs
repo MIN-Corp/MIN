@@ -1,6 +1,6 @@
 ﻿using MIN.Sessions.Core.Messaging.Contracts.Enums;
 
-namespace MIN.Sessions.Core.Services.Instances.Tunnels;
+namespace MIN.Sessions.Core.Services.Tunnels;
 
 /// <summary>
 /// Протокол фреймов туннеля: [frameType: 1 байт][payload]

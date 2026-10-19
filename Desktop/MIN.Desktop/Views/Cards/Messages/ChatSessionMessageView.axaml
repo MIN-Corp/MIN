@@ -17,11 +17,38 @@
         Classes.selected="{Binding IsSelected}">
 
         <Border.ContextFlyout>
-            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+            <MenuFlyout>
                 <MenuItem Header="Ответить"
                     Command="{Binding SetAsReplyCommand}">
                     <MenuItem.Icon>
                         <Svg Path="/Assets/Icons/answer.svg" />
+                    </MenuItem.Icon>
+                </MenuItem>
+
+                <Separator />
+
+                <MenuItem Header="Остановить сессию"
+                    Command="{Binding StopSessionCommand}"
+                    IsVisible="{Binding IsLocalRoomHost}"
+                    Classes="danger">
+                    <MenuItem.Icon>
+                        <Svg Path="/Assets/Icons/close.svg" />
+                    </MenuItem.Icon>
+                </MenuItem>
+
+                <MenuItem Header="Удалить сообщение"
+                    Command="{Binding DeleteMessageCommand}"
+                    Classes="danger">
+
+                    <MenuItem.IsVisible>
+                        <MultiBinding Converter="{StaticResource OrMultiConverter}">
+                            <Binding Path="IsLocal" />
+                            <Binding Path="IsLocalRoomHost" />
+                        </MultiBinding>
+                    </MenuItem.IsVisible>
+
+                    <MenuItem.Icon>
+                        <Svg Path="/Assets/Icons/delete.svg" />
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuFlyout>
@@ -104,17 +131,30 @@
                                 Text="{Binding JoinButtonStateText}" />
                         </Button>
 
-                        <Button
+                        <StackPanel
                             Grid.Row="2"
                             Grid.Column="1"
-                            Classes="no-background"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
-                            IsVisible="{Binding TunnelConnectInfoAvaible}"
-                            Command="{Binding CopyTunnelAddressCommand}">
-                            <TextBlock TextWrapping="Wrap"
-                                Text="{Binding TunnelConnectInfo}" />
-                        </Button>
+                            Spacing="4">
+
+                            <TextBlock
+                                IsVisible="{Binding IsHostTunnelInfoVisible}"
+                                Text="{Binding TunnelHostInfo}"
+                                Classes="info"
+                                TextWrapping="Wrap" />
+
+                            <Button
+                                Classes="no-background"
+                                Padding="0"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding IsTunnelConnectVisible}"
+                                Command="{Binding CopyTunnelAddressCommand}">
+
+                                <TextBlock
+                                    TextWrapping="Wrap"
+                                    HorizontalAlignment="Left"
+                                    Text="{Binding TunnelConnectInfo}" />
+                            </Button>
+                        </StackPanel>
                     </Grid>
                 </DockPanel>
             </StackPanel>
