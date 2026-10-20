@@ -24,7 +24,7 @@ internal sealed class SessionParticipantLeftHandler : BaseHandler
 
     public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.SessionParticipantLeft];
 
-    protected override async Task<HandlerResult> HandleAsync(IMessage message, MessageContext context)
+    protected override Task<HandlerResult> HandleAsync(IMessage message, MessageContext context)
     {
         var sessionParticipantLeftMessage = (SessionParticipantLeftMessage)message;
         var roomId = context.RoomContext.RoomId;
@@ -51,11 +51,11 @@ internal sealed class SessionParticipantLeftHandler : BaseHandler
             context.RoomContext.Messages.UpdateMessage(existing.Id, existing);
         }
 
-        return HandlerResult.WithEvent(new SessionParticipantLeftEvent()
+        return Task.FromResult(HandlerResult.WithEvent(new SessionParticipantLeftEvent()
         {
             Participant = participant,
             SubRoomId = subRoomId,
             RoomId = roomId,
-        });
+        }));
     }
 }

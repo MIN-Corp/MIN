@@ -97,7 +97,7 @@ public class SessionMonitor : IHostedService
         }
     }
 
-    private async Task EndAllSessions()
+    private void EndAllSessions()
     {
         var contexts = roomFactory.GetAllContexts();
         foreach (var context in contexts)
@@ -122,7 +122,7 @@ public class SessionMonitor : IHostedService
 
     async Task IHostedService.StopAsync(CancellationToken cancellationToken)
     {
-        await EndAllSessions();
+        EndAllSessions();
 
         await sessionProcessBridge.StopListeningAsync(cancellationToken);
         await sessionInstanceManager.StopAllAsync();

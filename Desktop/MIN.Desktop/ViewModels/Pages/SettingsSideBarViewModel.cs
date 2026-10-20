@@ -149,7 +149,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
         }
     }
 
-    private async void ActionOnNavigatedTo(object? sender, EventArgs e)
+    private void ActionOnNavigatedTo(object? sender, EventArgs e)
     {
         ParticipantName = featureCollection.Core.IdentityService.SelfParticipant.Name;
     }

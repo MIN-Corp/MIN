@@ -113,7 +113,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     [RelayCommand]
-    private async Task ScrollToBottomAsync()
+    private Task ScrollToBottomAsync()
     {
         Dispatcher.UIThread.Post(async () =>
         {
@@ -121,6 +121,8 @@ public partial class ChatViewModel : RoutableViewModelBase
             await Task.Yield();
             AutoScrollBottom = false;
         });
+
+        return Task.CompletedTask;
     }
 
     #endregion

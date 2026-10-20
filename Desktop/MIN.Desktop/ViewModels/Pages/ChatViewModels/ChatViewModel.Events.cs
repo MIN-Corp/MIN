@@ -375,7 +375,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         return Task.CompletedTask;
     }
 
-    private async Task OnRoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnRoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
         IsOnline = false;
         chatSideBarViewModel.IsOnline = false;
@@ -385,6 +385,8 @@ public partial class ChatViewModel : RoutableViewModelBase
             NotifyIfNeeded(eventMessage.Reason);
             InAppNotifier.Info(eventMessage.Reason);
         }
+
+        return Task.CompletedTask;
     }
 
     #endregion

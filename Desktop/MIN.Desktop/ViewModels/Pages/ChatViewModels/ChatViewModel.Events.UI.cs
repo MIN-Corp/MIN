@@ -472,7 +472,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             var timestamp = DateTime.Now.ToString("yyyy-dd-MM-HH-mm-ss-fffff");
             var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{timestamp}.png");
-            bitmap.Save(tempPath, new PngBitmapEncoderOptions());
+            bitmap.Save(tempPath);
             UploadFile(tempPath);
         }
     }
