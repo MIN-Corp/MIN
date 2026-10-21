@@ -102,11 +102,11 @@ public partial class ChatViewModel : RoutableViewModelBase
             OnNavigatedTo = ActionOnNavigatedTo;
             OnNavigatedFrom = ActionOnNavigatedFrom;
 
-            InitializeUIActions();
+            InitializeUiActions();
         }
     }
 
-    private void InitializeUIActions()
+    private void InitializeUiActions()
     {
         InitializeLayoutStyles();
         InitializeObservableCollections();
@@ -187,7 +187,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         foreach (var message in Messages)
         {
-            message.IsAvaibleForNetwork = value;
+            message.IsAvailableForNetwork = value;
         }
     }
 

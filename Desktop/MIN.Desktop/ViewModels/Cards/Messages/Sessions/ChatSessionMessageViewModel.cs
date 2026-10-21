@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
+using MIN.Core.Stores.Contracts.Models;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Infrastructure.Services;
@@ -156,6 +157,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     /// Инициализирует новый экземпляр <see cref="ChatSessionMessageViewModel"/>
     /// </summary>
     public ChatSessionMessageViewModel(ISessionFeatureCollection sessionFeatureCollection,
+        RoomContext? roomContext,
         IEventScope roomScope,
         IEventBus eventBus,
         IDialogService dialogService,
@@ -166,7 +168,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         bool isLocalRoomHost,
         bool isHostMessage,
         bool removeHeaders,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(sessionReadyMessage,
             sessionReadyMessage,
             null,
@@ -176,9 +178,8 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
             localParticipant.Id == sessionReadyMessage.SenderId,
             isHostMessage,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
-
         this.dialogService = dialogService;
         this.localParticipant = localParticipant;
         this.clipboard = clipboard;
@@ -191,6 +192,8 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         asDownloaded = sessionFeatureCollection.SessionScanner.DownloadedSessions.ContainsKey(sessionReadyMessage.Session.SessionId);
 
         IsTunnel = SessionMessage.Session.Kind == SessionKind.PortTunnel;
+
+        IsSessionStopped = IsLocal && roomContext?.SubRooms.GetSubRoom(sessionReadyMessage.SubRoomId)?.IsActive == false;
 
         FillLabels();
         SubscribeToEvents(roomScope, eventBus);
@@ -470,13 +473,13 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     private Task LeaveSession()
        => OnLeaveRequested?.Invoke() ?? Task.CompletedTask;
 
-    private bool CanLeave() => IsJoined && IsAvaibleForNetwork;
+    private bool CanLeave() => IsJoined && IsAvailableForNetwork;
 
     [RelayCommand(CanExecute = nameof(CanStop))]
     private Task StopSession()
            => OnShutdownRequested?.Invoke() ?? Task.CompletedTask;
 
-    private bool CanStop() => IsAvaibleForNetwork
+    private bool CanStop() => IsAvailableForNetwork
            && (IsTunnel ? IsLocal
                : IsLocalRoomHost && (currentAmount > 0 || IsWaitingForGame));
 

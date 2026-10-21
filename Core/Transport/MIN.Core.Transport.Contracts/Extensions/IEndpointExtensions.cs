@@ -27,15 +27,15 @@ public static class IEndpointExtensions
 
         if (ipAddress.IsPrivate())
         {
-            return AddressOrigin.LAN;
+            return AddressOrigin.Lan;
         }
 
         if (ipAddress.IsVpn())
         {
-            return AddressOrigin.VPN;
+            return AddressOrigin.Vpn;
         }
 
         // 3. Все остальное - WAN
-        return AddressOrigin.WAN;
+        return AddressOrigin.Wan;
     }
 }

@@ -83,7 +83,7 @@ public class UdpTransport : IAsyncDisposable
             RawMessageReceived?.Invoke(this, args);
         };
 
-        await client.ConnectAsync(udpEp.IPAddress, udpEp.Port, cancellationToken);
+        await client.ConnectAsync(udpEp.IpAddress, udpEp.Port, cancellationToken);
         clients.TryAdd(client.ConnectionId, client);
 
         return client.ConnectionId;
@@ -137,7 +137,7 @@ public class UdpTransport : IAsyncDisposable
         {
             includeWan = true;
 
-            ResultCodes? result = ResultCodes.UNKNOWN_ERROR;
+            ResultCodes? result = ResultCodes.UnknownError;
             try
             {
                 result = await PortForwardingHelper.MapPortAsync(server.Port, Protocol.Udp, cancellationToken, $"Room {server.Port}");
@@ -149,16 +149,16 @@ public class UdpTransport : IAsyncDisposable
 
             switch (result)
             {
-                case ResultCodes.SUCCESS:
+                case ResultCodes.Success:
                     logger.Log($"Порт проброшен. Публичный порт: {server.Port}");
                     break;
 
-                case ResultCodes.CONFLICT_IN_MAPPING_ENTRY:
+                case ResultCodes.ConflictInMappingEntry:
                     var conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
                     logger.Log(conflictMessage, LogLevel.Error);
                     throw new InvalidOperationException(conflictMessage);
 
-                case ResultCodes.UNKNOWN_ERROR:
+                case ResultCodes.UnknownError:
                     var message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
                     logger.Log(message, LogLevel.Error);
                     throw new InvalidOperationException(message);
@@ -195,7 +195,7 @@ public class UdpTransport : IAsyncDisposable
             endpoints.Add(new UdpEndpoint
             {
                 Origin = ip.Origin,
-                IPAddress = ip.Address.ToString(),
+                IpAddress = ip.Address.ToString(),
                 NetworkName = ip.NetworkName,
                 Port = server.Port
             });

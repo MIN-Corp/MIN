@@ -29,7 +29,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private System.Timers.Timer? typingTimer;
     private bool isParentWindowActive = true;

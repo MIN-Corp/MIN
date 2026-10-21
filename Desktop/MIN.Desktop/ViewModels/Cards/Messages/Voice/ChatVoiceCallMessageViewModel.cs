@@ -72,7 +72,7 @@ public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageVi
         Thickness timePadding,
         bool isHostMessage,
         bool removeHeaders,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(voiceCallStartedMessage,
             voiceCallStartedMessage,
             null,
@@ -81,7 +81,7 @@ public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageVi
             localParticipant.Id == voiceCallStartedMessage.SenderId,
             isHostMessage,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
         AsEnded = voiceCallStartedMessage.IsEnded;
         AsJoined = localParticipant.Id == voiceCallStartedMessage.SenderId && !AsEnded;

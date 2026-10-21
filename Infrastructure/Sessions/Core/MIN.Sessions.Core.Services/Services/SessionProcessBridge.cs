@@ -3,6 +3,7 @@ using System.Text.Json;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Helpers.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Models.Enums;
 using MIN.Sessions.Core.Messaging.Contracts.Models;
 using MIN.Sessions.Core.Messaging.Ipc;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -65,14 +66,21 @@ public class SessionProcessBridge : ISessionProcessBridge
 
     private async void OnTransportMessage(object? sender, ProcessTransportMessageEventArgs e)
     {
-        var envelope = JsonSerializer.Deserialize<IpcProcessMessageEnvelope>(e.Data);
-        if (envelope == null)
+        try
         {
-            return;
-        }
+            var envelope = JsonSerializer.Deserialize<IpcProcessMessageEnvelope>(e.Data);
+            if (envelope == null)
+            {
+                return;
+            }
 
-        var message = ipcSerializer.Deserialize(envelope.Body);
-        await HandleIpcMessage(message, e.Context, envelope);
+            var message = ipcSerializer.Deserialize(envelope.Body);
+            await HandleIpcMessage(message, e.Context, envelope);
+        }
+        catch (Exception ex)
+        {
+            logger.Log($"Ошибка получения сообщения с сессии {ex.Message}", LogLevel.Error);
+        }
     }
 
     private async Task HandleIpcMessage(IpcMessage message, SessionInstanceContext context, IpcProcessMessageEnvelope envelope)

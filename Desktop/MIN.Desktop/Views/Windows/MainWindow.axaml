@@ -4,7 +4,7 @@
         xmlns:pagesVm="using:MIN.Desktop.ViewModels.Pages"
         xmlns:pagesChatPanelVm="using:MIN.Desktop.ViewModels.Pages.ChatViewModels"
         xmlns:pagesCentral="using:MIN.Desktop.Views.Central"
-        xmlns:pagesLeft="using:MIN.Desktop.Views.Left"
+        xmlns:pagesLeft="using:MIN.Desktop.Views.Views.Left"
         xmlns:pagesRight="using:MIN.Desktop.Views.Right"
         xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
         xmlns:controls="using:MIN.Desktop.TemplatedControls"
@@ -221,7 +221,7 @@
                     </ContentControl.ContentTemplate>
                 </ContentControl>
             </Grid>
-            
+
             <!--  Notifications  -->
 
             <Grid Classes="notifications" ColumnDefinitions="*,280">

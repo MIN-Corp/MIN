@@ -34,7 +34,7 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
         bool isLocal,
         bool isHost,
         bool removeHeaders,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(message,
             replyable,
             dialogService,
@@ -43,7 +43,7 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
             isLocal,
             isHost,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
         IsUpdated = updateableMessage.IsUpdated;
     }

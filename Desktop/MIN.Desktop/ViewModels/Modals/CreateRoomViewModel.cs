@@ -155,7 +155,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
 
         Room.Name = Name;
 
-        if (CollegePCNameParser.TryParseComputerName(Environment.MachineName, out var roomNumber, out var computerNumber))
+        if (CollegePcNameParser.TryParseComputerName(Environment.MachineName, out var roomNumber, out var computerNumber))
         {
             Room.Cabinet = roomNumber.ToString();
             Room.PcNumber = computerNumber;

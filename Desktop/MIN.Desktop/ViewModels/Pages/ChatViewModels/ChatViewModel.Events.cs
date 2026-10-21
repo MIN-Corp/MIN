@@ -26,7 +26,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Модель чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private IEventScope roomScope = null!;
     private IDisposable errorToken = null!;

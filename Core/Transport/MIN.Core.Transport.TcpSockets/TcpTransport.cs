@@ -105,7 +105,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             ConnectionStateChanged?.Invoke(this, args);
         };
 
-        var connectedConnectionId = await client.ConnectAsync(tcpEp.IPAddress, tcpEp.Port, connectionId, cancellationToken);
+        var connectedConnectionId = await client.ConnectAsync(tcpEp.IpAddress, tcpEp.Port, connectionId, cancellationToken);
         clients.TryAdd(connectedConnectionId, client);
 
         var connectedArgs = new ConnectionStateChangedEventArgs(connectedConnectionId, true);
@@ -160,7 +160,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
         if ((oldNetworkOptions == null && networkOptions.EnablePortForwarding)
             || (oldNetworkOptions.HasValue && networkOptions.EnablePortForwarding && !oldNetworkOptions.Value.EnablePortForwarding))
         {
-            ResultCodes? result = ResultCodes.UNKNOWN_ERROR;
+            ResultCodes? result = ResultCodes.UnknownError;
             try
             {
                 result = await PortForwardingHelper.MapPortAsync(server.Port, Protocol.Tcp, cancellationToken, $"Room {server.Port}");
@@ -172,16 +172,16 @@ public class TcpTransport : ITransport, IAsyncDisposable
 
             switch (result)
             {
-                case ResultCodes.SUCCESS:
+                case ResultCodes.Success:
                     logger.Log($"Порт проброшен. Публичный порт: {server.Port}");
                     break;
 
-                case ResultCodes.CONFLICT_IN_MAPPING_ENTRY:
+                case ResultCodes.ConflictInMappingEntry:
                     var conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
                     logger.Log(conflictMessage, LogLevel.Error);
                     throw new InvalidOperationException(conflictMessage);
 
-                case ResultCodes.UNKNOWN_ERROR:
+                case ResultCodes.UnknownError:
                     var message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
                     logger.Log(message, LogLevel.Error);
                     throw new InvalidOperationException(message);
@@ -215,7 +215,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             endpoints.Add(new TcpEndpoint
             {
                 Origin = ip.Origin,
-                IPAddress = ip.Address.ToString(),
+                IpAddress = ip.Address.ToString(),
                 NetworkName = ip.NetworkName,
                 Port = server.Port
             });

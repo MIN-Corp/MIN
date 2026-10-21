@@ -17,7 +17,6 @@ using MIN.Core.Stores.Contracts.Registries.Models;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.Infrastructure.Services;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.FileTransfer.Messaging;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -28,7 +27,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private readonly Window parentWindow = MainWindowViewModel.GetWindow()!;
     private CancellationTokenSource? createRoomCts;
@@ -212,10 +211,12 @@ public partial class ChatViewModel : RoutableViewModelBase
                 roomCts.Token
             );
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
 
         await Task.CompletedTask;
-        return;
 #else
         try
         {
@@ -262,32 +263,32 @@ public partial class ChatViewModel : RoutableViewModelBase
 
             var lastFile = AttachedFiles.LastOrDefault();
 
-            foreach (var fileAttachement in AttachedFiles)
+            foreach (var fileAttachment in AttachedFiles)
             {
-                if (featureCollection.FileTransfer.FileHelperService.IsFileImage(fileAttachement.File.FileName))
+                if (featureCollection.FileTransfer.FileHelperService.IsFileImage(fileAttachment.File.FileName))
                 {
                     try
                     {
-                        using var bitmap = new Bitmap(fileAttachement.File.FilePath);
+                        using var bitmap = new Bitmap(fileAttachment.File.FilePath);
                     }
                     catch
                     {
                         try
                         {
-                            using var bitmap = ImageHelper.SvgToBitmap(fileAttachement.File.FilePath);
+                            using var bitmap = ImageHelper.SvgToBitmap(fileAttachment.File.FilePath);
                         }
                         catch (ArgumentException ex)
                         {
-                            InAppNotifier.Error($"Не удалось загрузить файл {fileAttachement.File.FileName}: {ex.Message}");
+                            InAppNotifier.Error($"Не удалось загрузить файл {fileAttachment.File.FileName}: {ex.Message}");
                             return;
                         }
                     }
                 }
 
                 await featureCollection.Chat.ChatFileService.SendFileAsync(roomId,
-                   fileAttachement == lastFile ? SendingMessage : string.Empty,
-                   fileAttachement.File.FileName,
-                   fileAttachement.File.FilePath,
+                    fileAttachment == lastFile ? SendingMessage : string.Empty,
+                   fileAttachment.File.FileName,
+                   fileAttachment.File.FilePath,
                    chatSideBarViewModel.PrivateChatParticipantId,
                    replyToPreviewId,
                    roomCts.Token
@@ -354,8 +355,12 @@ public partial class ChatViewModel : RoutableViewModelBase
                     await Disconnect(asForget: true);
                     await discoveryViewModel.OnRoomJoin(chosenEndpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
                     break;
-                default:
+                case RoomMismatchChoice.None:
+                case RoomMismatchChoice.Cancel:
+                case null:
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 

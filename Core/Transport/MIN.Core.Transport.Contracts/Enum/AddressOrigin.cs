@@ -8,15 +8,15 @@ public enum AddressOrigin
     /// <summary>
     /// Из локальной сети
     /// </summary>
-    LAN,
+    Lan,
 
     /// <summary>
     /// Из VPN сервисов
     /// </summary>
-    VPN,
+    Vpn,
 
     /// <summary>
     /// Из проброски порта как публичная сеть
     /// </summary>
-    WAN
+    Wan
 }

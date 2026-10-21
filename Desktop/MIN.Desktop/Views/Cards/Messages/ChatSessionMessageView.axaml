@@ -122,7 +122,7 @@
                             <Button.IsEnabled>
                                 <MultiBinding Converter="{StaticResource AndMultiConverter}">
                                     <Binding Path="CanJoin" />
-                                    <Binding Path="IsAvaibleForNetwork" />
+                                    <Binding Path="IsAvailableForNetwork" />
                                 </MultiBinding>
                             </Button.IsEnabled>
 

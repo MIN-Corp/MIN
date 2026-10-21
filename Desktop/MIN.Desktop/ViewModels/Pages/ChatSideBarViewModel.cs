@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Avalonia.Collections;
 using Avalonia.Controls;
@@ -111,7 +112,7 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     /// <summary>
     /// Открыта ли панель
     /// </summary>
-    public bool IsOpened { get; set; }
+    public bool IsOpened { get; private set; }
 
     /// <summary>
     /// Id выбранного участника для приватного общения
@@ -132,8 +133,8 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         {
             appCts = ctsProvider.AppCts;
 
-            OnNavigatedTo = (sender, e) => IsOpened = true;
-            OnNavigatedFrom = (sender, e) =>
+            OnNavigatedTo = (_, _) => IsOpened = true;
+            OnNavigatedFrom = (sender, _) =>
             {
                 if ((sender is ChatViewModel chatVm && chatVm.RoomId == roomId)
                     || (sender is ChatSideBarViewModel chatSideBarVm && chatSideBarVm.roomId == roomId))
@@ -190,6 +191,7 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         }
 
         Classroom = string.IsNullOrEmpty(room.Cabinet) ? DesktopConstants.UndefinedPcName : room.Cabinet;
+        ParticipantsInfo = $"{Room.ParticipantCount}/{Room.MaximumParticipants}";
     }
 
     /// <summary>
@@ -235,20 +237,17 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
                 isSelf: participant.Id == localParticipant.Id,
                 asHost: localParticipant.Id == Room.HostParticipant.Id);
 
-            card.OnPrivateChatMenuStripClicked += (selected, particpant) =>
+            card.OnPrivateChatMenuStripClicked += (selected, _) =>
             {
-                foreach (var participantCard in RoomParticipants)
+                foreach (var participantCard in RoomParticipants.Where(participantCard => participantCard.ParticipantId != participant.Id))
                 {
-                    if (participantCard.ParticipantId != participant.Id)
-                    {
-                        participantCard.IsSelected = false;
-                    }
+                    participantCard.IsSelected = false;
                 }
 
                 PrivateChatParticipantId = selected ? participant.Id : null;
             };
 
-            card.OnKickParticipantClicked += async (participant) =>
+            card.OnKickParticipantClicked += async void (_) =>
             {
                 var kickVm = await dialogService.ShowDialogAsync<ParticipantKickViewModel>(x => x.ParticipantName = participant.Name);
 
@@ -276,7 +275,7 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     /// Закрыть страницу
     /// </summary>
     [RelayCommand]
-    public void CloseAsync()
+    private void CloseAsync()
     {
         CloseView(this);
     }

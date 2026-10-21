@@ -24,8 +24,8 @@ internal enum DateMode
 /// </summary>
 internal sealed class DateConverter : Converter<DateConverter>
 {
-    private const float DAYS_IN_YEAR = 365.2425f;
-    private const float MEAN_DAYS_IN_MONTH = DAYS_IN_YEAR / 12f;
+    private const float DaysInYear = 365.2425f;
+    private const float MeanDaysInMonth = DaysInYear / 12f;
 
     public override object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -58,7 +58,7 @@ internal sealed class DateConverter : Converter<DateConverter>
         {
             { TotalDays: < 1 } => $"{date:t}",
             { TotalDays: < 2 } => $"{date.DayOfWeek}",
-            { TotalDays: < MEAN_DAYS_IN_MONTH } => $"{date:d}",
+            { TotalDays: < MeanDaysInMonth } => $"{date:d}",
             _ => $"{date:D}"
         };
     }
@@ -75,11 +75,11 @@ internal sealed class DateConverter : Converter<DateConverter>
             { TotalHours: < 1.5 } => "час назад",
             { TotalDays: < 1 } => $"{(int)delta.TotalHours} часов назад",
             { TotalDays: < 2 } => "вчера",
-            { TotalDays: < MEAN_DAYS_IN_MONTH } => $"{(int)delta.TotalDays} дней назад",
-            { TotalDays: < MEAN_DAYS_IN_MONTH * 2 } => "месяц назад",
-            { TotalDays: < DAYS_IN_YEAR } => $"{(int)(delta.TotalDays / MEAN_DAYS_IN_MONTH)} месяцев назад",
-            { TotalDays: < DAYS_IN_YEAR * 2 } => "год назад",
-            _ => $"{(int)(delta.TotalDays / DAYS_IN_YEAR)} лет назад"
+            { TotalDays: < MeanDaysInMonth } => $"{(int)delta.TotalDays} дней назад",
+            { TotalDays: < MeanDaysInMonth * 2 } => "месяц назад",
+            { TotalDays: < DaysInYear } => $"{(int)(delta.TotalDays / MeanDaysInMonth)} месяцев назад",
+            { TotalDays: < DaysInYear * 2 } => "год назад",
+            _ => $"{(int)(delta.TotalDays / DaysInYear)} лет назад"
         };
     }
 }

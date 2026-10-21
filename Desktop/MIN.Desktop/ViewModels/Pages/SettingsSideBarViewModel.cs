@@ -73,6 +73,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     [Display(Name = "Имя участника")]
     [NotifyDataErrorInfo]
     [ParticipantName]
+    [Required(ErrorMessage = "Введите имя участника")]
     [NotEndsWith(".")]
     public partial string ParticipantName { get; set; } = string.Empty;
 
@@ -104,7 +105,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     /// Выбранное (по номеру) шумоподавление
     /// </summary>
     [ObservableProperty]
-    public partial int ChoosenNoiseReduction { get; set; }
+    public partial int ChosenNoiseReduction { get; set; }
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="SettingsSideBarViewModel"/>
@@ -163,7 +164,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     /// Вернуться назад
     /// </summary>
     [RelayCommand]
-    public async Task Back()
+    private async Task Back()
     {
         if (CanSave())
         {
@@ -175,9 +176,9 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
 
         Settings.LightThemeEnabled = LightThemeEnabled;
 
-        if (ChoosenNoiseReduction >= 0 && ChoosenNoiseReduction < Enum.GetValues(typeof(NoiseReduction)).Length)
+        if (ChosenNoiseReduction >= 0 && ChosenNoiseReduction < Enum.GetValues(typeof(NoiseReduction)).Length)
         {
-            Settings.NoiseReduction = (NoiseReduction)ChoosenNoiseReduction;
+            Settings.NoiseReduction = (NoiseReduction)ChosenNoiseReduction;
         }
 
         await featureCollection.Helper.SettingsProvider.SaveSettings(Settings);
@@ -193,27 +194,17 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     /// Открыть окно логов
     /// </summary>
     [RelayCommand]
-    public async Task OpenLogsAsync()
+    private async Task OpenLogsAsync()
     {
         await dialogService.ShowAsync<LogViewModel>();
         ChangeViewToPrevious();
     }
 
     /// <summary>
-    /// Очистить кэш
-    /// </summary>
-    [RelayCommand]
-    public void ClearCacheAsync()
-    {
-        featureCollection.Helper.AppDataProvider.ClearFolder("network");
-        InAppNotifier.Success("Кэш был успешно очищен");
-    }
-
-    /// <summary>
     /// Отсканировать папку с сессиями
     /// </summary>
     [RelayCommand]
-    public async Task ScanSessionsAsync()
+    private async Task ScanSessionsAsync()
     {
         await featureCollection.Chat.ChatSessionService.ScanDownloadedSessions(appCts.Token);
         InAppNotifier.Info($"Найдено установленных активностей: {featureCollection.Sessions.SessionScanner.DownloadedSessions.Count}");
@@ -227,7 +218,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
         LightThemeEnabled = Settings.LightThemeEnabled;
         DiscoveryTimeout = Settings.DiscoveryTimeout;
         DiscoveryPort = Settings.DiscoveryPort;
-        ChoosenNoiseReduction = (int)Settings.NoiseReduction;
+        ChosenNoiseReduction = (int)Settings.NoiseReduction;
 
         ParticipantName = featureCollection.Core.IdentityService.SelfParticipant.Name;
     }

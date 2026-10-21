@@ -38,7 +38,7 @@ public class RoomFileEncryptor : IRoomFileEncryptor, IDisposable
     byte[] IRoomFileEncryptor.Protect(byte[] data)
     {
         var key = GetMasterKey();
-        var iv = RandomNumberGenerator.GetBytes(CryptographyConstants.IVSize);
+        var iv = RandomNumberGenerator.GetBytes(CryptographyConstants.IvSize);
 
         using var aes = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize); // 16
         var ciphertext = new byte[data.Length];
@@ -57,16 +57,16 @@ public class RoomFileEncryptor : IRoomFileEncryptor, IDisposable
     {
         var key = GetMasterKey();
 
-        if (encryptedData.Length < CryptographyConstants.IVSize + CryptographyConstants.AuthTagSize)
+        if (encryptedData.Length < CryptographyConstants.IvSize + CryptographyConstants.AuthTagSize)
         {
             logger.Log($"Invalid encrypted payload: length {encryptedData.Length}", LogLevel.Error);
             throw new InvalidDataException($"Invalid encrypted payload: length {encryptedData.Length}");
         }
 
-        var iv = encryptedData.AsSpan(0, CryptographyConstants.IVSize).ToArray();
+        var iv = encryptedData.AsSpan(0, CryptographyConstants.IvSize).ToArray();
         var tag = encryptedData[^CryptographyConstants.AuthTagSize..].ToArray();
-        var ciphertext = encryptedData.AsSpan(CryptographyConstants.IVSize,
-            encryptedData.Length - CryptographyConstants.IVSize - CryptographyConstants.AuthTagSize).ToArray();
+        var ciphertext = encryptedData.AsSpan(CryptographyConstants.IvSize,
+            encryptedData.Length - CryptographyConstants.IvSize - CryptographyConstants.AuthTagSize).ToArray();
 
         using var aes = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize);
         var plaintext = new byte[ciphertext.Length];

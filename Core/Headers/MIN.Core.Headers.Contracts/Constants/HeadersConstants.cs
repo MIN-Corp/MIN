@@ -15,5 +15,5 @@ public static class HeadersConstants
     /// <summary>
     /// Размер заголовка шифрования
     /// </summary>
-    public const int EncryptionHeaderSize = 1 + CryptographyConstants.IVSize + CryptographyConstants.AuthTagSize;
+    public const int EncryptionHeaderSize = 1 + CryptographyConstants.IvSize + CryptographyConstants.AuthTagSize;
 }

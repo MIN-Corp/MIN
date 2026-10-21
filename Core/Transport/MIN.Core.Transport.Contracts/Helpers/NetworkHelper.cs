@@ -198,14 +198,14 @@ public static partial class NetworkHelper
         {
             if (knownIp.Address.IsPrivate())
             {
-                knownIps.Add(new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.LAN, knownIp.NetworkName));
+                knownIps.Add(new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.Lan, knownIp.NetworkName));
             }
         }
         if (includeWan)
         {
             if (await wanIp is { } wanAddress && !wanAddress.IsPrivate())
             {
-                knownIps.Add(new MachineKnownIp(wanAddress, AddressOrigin.WAN));
+                knownIps.Add(new MachineKnownIp(wanAddress, AddressOrigin.Wan));
             }
         }
         if (includeVpns)
@@ -216,14 +216,14 @@ public static partial class NetworkHelper
                 {
                     continue;
                 }
-                knownIps.Add(new MachineKnownIp(vpnAddress.TryExtractMappedIPv4(), AddressOrigin.VPN, vpnName));
+                knownIps.Add(new MachineKnownIp(vpnAddress.TryExtractMappedIPv4(), AddressOrigin.Vpn, vpnName));
             }
         }
         foreach (var knownIp in await machineKnownIps)
         {
             if (!knownIp.Address.IsPrivate() && !SupportedVpnNames.Where(x => x.Contains(knownIp.NetworkName ?? string.Empty)).Any())
             {
-                knownIps.Add(new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.WAN, knownIp.NetworkName));
+                knownIps.Add(new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.Wan, knownIp.NetworkName));
             }
         }
         return knownIps.Where(ip => ip.Address.AddressFamily == AddressFamily.InterNetwork);
@@ -278,7 +278,7 @@ public static partial class NetworkHelper
                     continue;
                 }
 
-                yield return new MachineKnownIp(address, address.IsPrivate() ? AddressOrigin.LAN : AddressOrigin.WAN, networkInterface.Name);
+                yield return new MachineKnownIp(address, address.IsPrivate() ? AddressOrigin.Lan : AddressOrigin.Wan, networkInterface.Name);
             }
         }
 

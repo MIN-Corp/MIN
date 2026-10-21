@@ -57,7 +57,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(DeleteMessageCommand))]
-    public partial bool IsAvaibleForNetwork { get; set; }
+    public partial bool IsAvailableForNetwork { get; set; }
 
     /// <summary>
     /// Приватное ли сообщение
@@ -82,7 +82,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// <summary>
     /// Состояние сети поменялось
     /// </summary>
-    protected Action? IsAvaibleForNetworkChanged;
+    protected Action? IsAvailableForNetworkChanged;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="BaseChatMessageViewModel"/>
@@ -111,7 +111,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
        bool isLocal,
        bool isHost,
        bool removeHeaders,
-       bool isAvaibleForNetwork)
+       bool isAvailableForNetwork)
     {
         this.dialogService = dialogService;
         Message = message;
@@ -122,16 +122,16 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
         IsHost = isHost;
         RemoveHeaders = removeHeaders;
         IsPrivate = !message.IsPublic;
-        IsAvaibleForNetwork = isAvaibleForNetwork;
+        IsAvailableForNetwork = isAvailableForNetwork;
     }
 
-    partial void OnIsAvaibleForNetworkChanged(bool value)
-        => IsAvaibleForNetworkChanged?.Invoke();
+    partial void OnIsAvailableForNetworkChanged(bool value)
+        => IsAvailableForNetworkChanged?.Invoke();
 
     /// <summary>
     /// Удалить сообщение
     /// </summary>
-    [RelayCommand(CanExecute = nameof(IsAvaibleForNetwork))]
+    [RelayCommand(CanExecute = nameof(IsAvailableForNetwork))]
     protected virtual async Task DeleteMessage()
     {
         if (dialogService == null)

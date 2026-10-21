@@ -11,7 +11,6 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.RoomRelated;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards.Messages;
 using MIN.Desktop.ViewModels.Cards.Messages.Base;
 using MIN.Desktop.ViewModels.Cards.Messages.Files;
@@ -28,7 +27,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private int maxRenderedMessages = StoreConstants.MessagesPageSize;
 
@@ -74,7 +73,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task AddMessageToChatFlow(IMessage message, bool appendOnTop = false, bool countTowardCap = true)
     {
         var isSelfMessage = message.SenderId == localParticipant.Id;
-        var isHostMessage = room?.HostParticipant?.Id == message.SenderId;
+        var isHostMessage = room.HostParticipant.Id == message.SenderId;
         var isCurrentPrivate = message.RecipientId == localParticipant.Id
             || (message.SenderId == localParticipant.Id && message.RecipientId != null);
 
@@ -135,7 +134,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             MissedMessagesCount++;
         }
-        else if (IsAtBottom)
+        else if (IsAtBottom || message.SenderId == localParticipant.Id)
         {
             await ScrollToBottomAsync();
         }
@@ -173,7 +172,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     /// <summary>
-    /// Запомнить якорь прокрутки: первое видимое сообщение и его отступ от верха вьюпорта.
+    /// Запомнить якорь прокрутки: первое видимое сообщение и его отступ от верха
     /// </summary>
     public void UpdateScrollAnchor(BaseChatMessageViewModel? topCard, double subOffset)
     {
@@ -472,7 +471,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
-            roomScope, featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
+            featureCollection.Core.RoomFactory.GetRoomContext(roomId), roomScope,
+            featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
             msg, localParticipant, timePadding, IsHost, isHost, removeHeaders, IsAvaibleForNetwork);
 
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
@@ -573,8 +573,8 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         lastPrivateChatParticipantId = otherParticipantId;
 
-        var sender = room?.CurrentParticipants.FirstOrDefault(x => x.Id == senderId);
-        var recipient = room?.CurrentParticipants.FirstOrDefault(x => x.Id == recipientId);
+        var sender = room.CurrentParticipants.FirstOrDefault(x => x.Id == senderId);
+        var recipient = room.CurrentParticipants.FirstOrDefault(x => x.Id == recipientId);
 
         await SendSystemMessage(new SystemTextMessage
         {

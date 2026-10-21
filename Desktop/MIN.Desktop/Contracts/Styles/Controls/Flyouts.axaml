@@ -1,6 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-<!--    <Design.PreviewWith>
+    <Design.PreviewWith>
         <Border Padding="250">
            <Border Background="{DynamicResource SidebarSecondaryBackground}" Padding="20">
             <StackPanel Spacing="8">
@@ -49,7 +49,7 @@
                                             Text="Отправить файл" />
                             </StackPanel>
                         </Button>
-                                   
+
                         <Button
                             Classes="no-background">
                             <StackPanel>
@@ -153,7 +153,6 @@
             </Border>
         </Border>
     </Design.PreviewWith>
--->
      <Style Selector="MenuFlyoutPresenter">
         <Setter Property="Background" Value="{DynamicResource SurfaceElevated}" />
         <Setter Property="CornerRadius" Value="{DynamicResource CornerRadiusLarge}" />
@@ -200,7 +199,7 @@
        <Setter Property="Padding" Value="{DynamicResource PaddingMedium}" />
         <Setter Property="CornerRadius" Value="{DynamicResource CornerRadiusLarge}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-        
+
         <Style Selector="^ > TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         </Style>
@@ -209,7 +208,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         </Style>
 
-       
+
 
         <Setter Property="Template">
             <ControlTemplate>

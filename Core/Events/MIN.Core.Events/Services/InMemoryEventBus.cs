@@ -50,14 +50,14 @@ public sealed class InMemoryEventBus : IEventBus, IAsyncDisposable
         var eventType = typeof(T);
         var handlers = this.handlers.GetOrAdd(eventType, _ => []);
 
-        Task wrappedHandler(object eventObj, CancellationToken ct) => handler((T)eventObj, ct);
+        Task WrappedHandler(object eventObj, CancellationToken ct) => handler((T)eventObj, ct);
 
         lock (handlers)
         {
-            handlers.Add(wrappedHandler);
+            handlers.Add(WrappedHandler);
         }
 
-        return new SubscriptionToken(() => Unsubscribe(eventType, wrappedHandler));
+        return new SubscriptionToken(() => Unsubscribe(eventType, WrappedHandler));
     }
 
     /// <summary>
