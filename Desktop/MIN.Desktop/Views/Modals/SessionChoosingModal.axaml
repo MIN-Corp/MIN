@@ -40,8 +40,8 @@
                 </Border>
 
                 <ScrollViewer Classes="main horizontal"
-                      MaxWidth="782"
-                      MaxHeight="780">
+                     MaxWidth="840"
+                     MaxHeight="780">
                     <ItemsControl ItemsSource="{Binding AvaibleSessions}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -53,72 +53,108 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Classes="card"
-                                        VerticalContentAlignment="Top"
-                                        Command="{Binding SelectCommand}"
-                                        Classes.selected="{Binding IsSelected}"
-                                        Width="250">
+                                <Panel>
 
-                                    <Grid RowSpacing="8"
-                                        RowDefinitions="Auto,Auto,*,Auto,Auto,Auto">
+                                    <Button Classes="card"
+                                            VerticalContentAlignment="Top"
+                                            Command="{Binding SelectCommand}"
+                                            Classes.selected="{Binding IsSelected}"
+                                            Width="250">
 
-                                        <Border Classes="card">
-                                            <Panel Grid.Row="0" Height="226">
-                                                <gif:GifImage Source="{Binding GifSessionImage}"
-                                                    Stretch="Uniform"
-                                                    IsVisible="{Binding SessionImage,
-                                                        Converter={converters:EqualityConverter},
-                                                        ConverterParameter={x:Null}}"/>
+                                        <Grid RowSpacing="8"
+                                            RowDefinitions="Auto,Auto,*,Auto,Auto,Auto">
 
-                                                <Image Source="{Binding SessionImage}"
-                                                    Stretch="Uniform"
-                                                    IsVisible="{Binding GifSessionImage,
-                                                        Converter={converters:EqualityConverter},
-                                                        ConverterParameter={x:Null}}"/>
+                                            <Border Classes="card">
+                                                <Panel Grid.Row="0" Height="226">
+                                                    <gif:GifImage Source="{Binding GifSessionImage}"
+                                                        Stretch="Uniform"
+                                                        IsVisible="{Binding SessionImage,
+                                                            Converter={converters:EqualityConverter},
+                                                            ConverterParameter={x:Null}}"/>
 
-                                                <Svg Path="/Assets/Icons/rocket.svg"
-                                                        Width="96"
-                                                        Height="96"
-                                                        IsVisible="{Binding Session.ThumbnailFileName,
-                                                        Converter={converters:EqualityConverter},
-                                                        ConverterParameter={x:Null}}"/>
-                                            </Panel>
-                                        </Border>
+                                                    <Image Source="{Binding SessionImage}"
+                                                        Stretch="Uniform"
+                                                        IsVisible="{Binding GifSessionImage,
+                                                            Converter={converters:EqualityConverter},
+                                                            ConverterParameter={x:Null}}"/>
 
-                                        <TextBlock Grid.Row="1"
-                                            Classes="header3"
-                                            HorizontalAlignment="Center"
-                                            Text="{Binding Session.Name}" />
+                                                    <Svg Path="/Assets/Icons/rocket.svg"
+                                                            Width="96"
+                                                            Height="96"
+                                                            IsVisible="{Binding Session.ThumbnailFileName,
+                                                            Converter={converters:EqualityConverter},
+                                                            ConverterParameter={x:Null}}"/>
+                                                </Panel>
+                                            </Border>
 
-                                        <TextBlock Grid.Row="2"
-                                            Classes="small"
-                                            HorizontalAlignment="Center"
-                                            TextWrapping="Wrap"
-                                            Text="{Binding Session.Description}" />
-
-                                        <TextBlock Grid.Row="3"
-                                            HorizontalAlignment="Center"
-                                            Text="{Binding MaximumParticipantInfo}" />
-
-                                        <TextBlock VerticalAlignment="Center" Grid.Row="4">
-                                                <TextBlock VerticalAlignment="Top"
-                                                    Text="Ссылка: " />
-                                                <TextBlock Classes="link"
+                                            <TextBlock Grid.Row="1"
+                                                Classes="header3"
                                                 HorizontalAlignment="Center"
-                                                Text="{Binding DownloadLink}" />
-                                                <Interaction.Behaviors>
-                                                <EventTriggerBehavior EventName="PointerPressed">
-                                                    <InvokeCommandAction
-                                                        Command="{Binding CopyLinkCommand}" />
-                                                </EventTriggerBehavior>
-                                            </Interaction.Behaviors>
-                                        </TextBlock>
+                                                Text="{Binding SessionName}" />
 
-                                        <TextBlock Grid.Row="5"
-                                            HorizontalAlignment="Center"
-                                            Text="{Binding Version}" />
-                                    </Grid>
-                                </Button>
+                                            <TextBlock Grid.Row="2"
+                                                Classes="small"
+                                                HorizontalAlignment="Center"
+                                                TextWrapping="Wrap"
+                                                Text="{Binding SessionDescription}" />
+
+                                            <TextBlock Grid.Row="3"
+                                                IsVisible="{Binding !IsCreateTunnelCard}"
+                                                HorizontalAlignment="Center"
+                                                Text="{Binding MaximumParticipantInfo}" />
+
+                                            <TextBlock Grid.Row="4"
+                                                IsVisible="{Binding !IsCreateTunnelCard}"
+                                                VerticalAlignment="Center">
+                                                    <TextBlock VerticalAlignment="Top"
+                                                        Text="Ссылка: " />
+                                                    <TextBlock Classes="link"
+                                                    HorizontalAlignment="Center"
+                                                    Text="{Binding DownloadLink}" />
+                                                    <Interaction.Behaviors>
+                                                    <EventTriggerBehavior EventName="PointerPressed">
+                                                        <InvokeCommandAction
+                                                            Command="{Binding CopyLinkCommand}" />
+                                                    </EventTriggerBehavior>
+                                                </Interaction.Behaviors>
+                                            </TextBlock>
+
+                                            <TextBlock Grid.Row="5"
+                                                IsVisible="{Binding !IsCreateTunnelCard}"
+                                                HorizontalAlignment="Center"
+                                                Text="{Binding Version}" />
+                                        </Grid>
+                                    </Button>
+                                    <Button HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="10"
+                                            Padding="6"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            IsVisible="{Binding !IsCreateTunnelCard}">
+
+                                        <Svg Path="/Assets/Icons/about.svg" />
+
+                                        <Button.Flyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="Редактировать"
+                                                    Command="{Binding EditCommand}"
+                                                    IsVisible="{Binding IsTunnelSession}">
+                                                    <MenuItem.Icon>
+                                                        <Svg Path="/Assets/Icons/pencil.svg" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Удалить"
+                                                    Command="{Binding DeleteCommand}"
+                                                    Classes="danger">
+                                                    <MenuItem.Icon>
+                                                        <Svg Path="/Assets/Icons/delete.svg" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </Panel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

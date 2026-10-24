@@ -11,6 +11,8 @@ using MIN.Core.Streaming.Contracts.Constants;
 using MIN.Core.Streaming.Contracts.Interfaces;
 using MIN.Core.Streaming.Contracts.Models;
 using MIN.Core.Transport.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Models.Enums;
 
 namespace MIN.Core.Services.Messaging;
 
@@ -24,6 +26,7 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
     private readonly IHeaderManager headerManager;
     private readonly IRoomFactory roomFactory;
     private readonly IStreamManager streamManager;
+    private readonly ILoggerProvider logger;
 
     /// <summary>
     /// Инциализирует новый экземпляр <see cref="MessageSender"/>
@@ -34,7 +37,8 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
         IMessageSerializer serializer,
         IHeaderManager headerManager,
         IRoomFactory roomFactory,
-        IStreamManager streamManager)
+        IStreamManager streamManager,
+        ILoggerProvider logger)
     {
         this.transport = transport;
         this.registry = registry;
@@ -43,6 +47,7 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
         this.headerManager = headerManager;
         this.roomFactory = roomFactory;
         this.streamManager = streamManager;
+        this.logger = logger;
     }
 
     /// <inheritdoc />
@@ -105,15 +110,25 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
             .Append(CoreRegistryConstants.LocalConnectionId);
 
         var tasks = participants
-            .Select(participant => new
-            {
-                ParticipantId = participant.Id,
-                HasConnection = context.Connections.TryGetConnectionIdFromParticipantId(participant.Id, out var connectionId),
-                ConnectionId = connectionId,
-            })
-            .Where(x => x.HasConnection && !excludeConnectionIds.Contains(x.ConnectionId))
-            .Select(x => SendAsync(message, roomId, x.ConnectionId, cancellationToken));
-
+           .Select(participant => new
+           {
+               ParticipantId = participant.Id,
+               HasConnection = context.Connections.TryGetConnectionIdFromParticipantId(participant.Id, out var connectionId),
+               ConnectionId = connectionId,
+           })
+           .Where(x => x.HasConnection && !excludeConnectionIds.Contains(x.ConnectionId))
+           .Select(async x =>
+           {
+               try
+               {
+                   await SendAsync(message, roomId, x.ConnectionId, cancellationToken);
+               }
+               catch (InvalidOperationException ex) when (ex.Message.StartsWith("Сессия не инициализирована"))
+               {
+                   logger.Log($"Не удалось отправить {message.TypeTag} участнику {x.ParticipantId}: ключи не согласованы",
+                       LogLevel.Warning);
+               }
+           });
 
         await Task.WhenAll(tasks);
     }

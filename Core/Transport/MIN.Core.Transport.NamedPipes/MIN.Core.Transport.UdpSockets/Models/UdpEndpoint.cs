@@ -18,7 +18,7 @@ public sealed class UdpEndpoint : IEndpoint
     /// <summary>
     /// IP Адрес
     /// </summary>
-    public string IPAddress { get; set; } = string.Empty;
+    public string IpAddress { get; set; } = string.Empty;
 
     /// <summary>
     /// Имя сети (если есть)
@@ -48,7 +48,7 @@ public sealed class UdpEndpoint : IEndpoint
             tostringSb.Append(' ');
         }
 
-        tostringSb.Append(IPAddress);
+        tostringSb.Append(IpAddress);
         tostringSb.Append(':');
         tostringSb.Append(Port);
 
@@ -72,7 +72,7 @@ public sealed class UdpEndpoint : IEndpoint
     string IEndpoint.GetAddress()
     {
         var tostringSb = new StringBuilder();
-        tostringSb.Append(IPAddress);
+        tostringSb.Append(IpAddress);
         tostringSb.Append(':');
         tostringSb.Append(Port);
 

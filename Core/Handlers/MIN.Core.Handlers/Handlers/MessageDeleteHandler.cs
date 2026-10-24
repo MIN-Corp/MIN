@@ -11,7 +11,8 @@ namespace MIN.Core.Handlers.Handlers;
 
 internal sealed class MessageDeleteHandler : BaseHandler
 {
-    private readonly static List<MessageTypeTag> allowedMessagesToDelete = [MessageTypeTag.ChatTextMessage, MessageTypeTag.FileMetadata];
+    private readonly static List<MessageTypeTag> allowedMessagesToDelete
+        = [MessageTypeTag.ChatTextMessage, MessageTypeTag.FileMetadata, MessageTypeTag.SessionReady];
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="MessageDeleteHandler"/>
@@ -40,9 +41,9 @@ internal sealed class MessageDeleteHandler : BaseHandler
 
         if (context.Role == Role.Host)
         {
-            if (existingMessage.SenderId != message.SenderId)
+            if (existingMessage.SenderId != message.SenderId && message.SenderId != context.SelfId)
             {
-                return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели удалить, было отправлено не вами"));
+                return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение можно удалить только отправителю или хосту комнаты"));
             }
 
             if (!allowedMessagesToDelete.Contains(existingMessage.TypeTag))
@@ -69,6 +70,7 @@ internal sealed class MessageDeleteHandler : BaseHandler
         return Task.FromResult(HandlerResult.WithEvent(new MessageDeletedEvent()
         {
             MessageId = chatDeleteMessage.MessageIdToDelete,
+            Message = existingMessage,
             RoomId = context.RoomContext.RoomId,
         }));
     }

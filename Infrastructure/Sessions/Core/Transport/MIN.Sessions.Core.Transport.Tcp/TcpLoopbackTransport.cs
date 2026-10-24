@@ -11,9 +11,9 @@ namespace MIN.Sessions.Core.Transport.Tcp;
 /// <inheritdoc cref="ISessionProcessTransport"/> на основе TCP Loopback
 public sealed class TcpLoopbackTransport : ISessionProcessTransport
 {
-    private readonly ConcurrentDictionary<ProcessContext, TcpClient> connections = [];
-    private readonly ConcurrentDictionary<ProcessContext, SemaphoreSlim> writeLocks = [];
-    private readonly ConcurrentDictionary<ProcessContext, SemaphoreSlim> readLocks = [];
+    private readonly ConcurrentDictionary<SessionInstanceContext, TcpClient> connections = [];
+    private readonly ConcurrentDictionary<SessionInstanceContext, SemaphoreSlim> writeLocks = [];
+    private readonly ConcurrentDictionary<SessionInstanceContext, SemaphoreSlim> readLocks = [];
     private readonly CancellationTokenSource cts = new();
     private TcpListener? listener;
     private int port;
@@ -37,7 +37,7 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
         });
 
     async Task ISessionProcessTransport.WaitForConnectionAsync(
-        ProcessContext context, int timeOutMs, CancellationToken ct)
+        SessionInstanceContext context, int timeOutMs, CancellationToken ct)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(timeOutMs);
@@ -52,10 +52,10 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
         catch (OperationCanceledException) { }
     }
 
-    bool ISessionProcessTransport.IsConnectionExists(ProcessContext context)
+    bool ISessionProcessTransport.IsConnectionExists(SessionInstanceContext context)
         => connections.ContainsKey(context);
 
-    private async Task ReadLoopAsync(ProcessContext context, NetworkStream stream, CancellationToken cancellationToken)
+    private async Task ReadLoopAsync(SessionInstanceContext context, NetworkStream stream, CancellationToken cancellationToken)
     {
         try
         {
@@ -93,7 +93,7 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
         }
     }
 
-    async Task ISessionProcessTransport.SendAsync(byte[] data, ProcessContext context, CancellationToken cancellationToken)
+    async Task ISessionProcessTransport.SendAsync(byte[] data, SessionInstanceContext context, CancellationToken cancellationToken)
     {
         if (connections.TryGetValue(context, out var client) && writeLocks.TryGetValue(context, out var writeLock))
         {
@@ -115,7 +115,7 @@ public sealed class TcpLoopbackTransport : ISessionProcessTransport
         }
     }
 
-    Task ISessionProcessTransport.DisconnectAsync(ProcessContext context)
+    Task ISessionProcessTransport.DisconnectAsync(SessionInstanceContext context)
     {
         connections.TryRemove(context, out _);
         writeLocks.TryRemove(context, out _);

@@ -11,10 +11,10 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.RoomRelated;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards.Messages;
 using MIN.Desktop.ViewModels.Cards.Messages.Base;
 using MIN.Desktop.ViewModels.Cards.Messages.Files;
+using MIN.Desktop.ViewModels.Cards.Messages.Interfaces;
 using MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 using MIN.Desktop.ViewModels.Cards.Messages.Voice;
 using MIN.Desktop.ViewModels.Modals;
@@ -27,7 +27,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private int maxRenderedMessages = StoreConstants.MessagesPageSize;
 
@@ -36,7 +36,30 @@ public partial class ChatViewModel : RoutableViewModelBase
     /// </summary>
     public AvaloniaList<BaseChatMessageViewModel> Messages { get; } = [];
 
+    /// <summary>
+    /// Raised before a batch of older messages is inserted at the top of the list.
+    /// The view snapshots the scroll anchor so the exact position can be restored.
+    /// </summary>
+    public event Action? HistoryPrependStarted;
+
+    /// <summary>
+    /// Raised after the prepend batch has been fully inserted.
+    /// </summary>
+    public event Action? HistoryPrependCompleted;
+
+    /// <summary>
+    /// Raised when the view should restore the scroll position to the given card
+    /// with the given offset (in pixels) from the top of the viewport.
+    /// </summary>
+    public event Action<BaseChatMessageViewModel, double>? ScrollRestoreRequested;
+
     private readonly int messageMaxPadding = 8;
+    private readonly HashSet<Guid> seenMessageIds = [];
+
+    private const int MaxTrackedSeenMessageIds = 10_000;
+
+    private Guid? scrollAnchorMessageId;
+    private double scrollAnchorSubOffset;
 
     private Guid? lastPrivateChatParticipantId;
     private IMessage? lastChatMessage;
@@ -50,7 +73,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task AddMessageToChatFlow(IMessage message, bool appendOnTop = false, bool countTowardCap = true)
     {
         var isSelfMessage = message.SenderId == localParticipant.Id;
-        var isHostMessage = room?.HostParticipant?.Id == message.SenderId;
+        var isHostMessage = room.HostParticipant.Id == message.SenderId;
         var isCurrentPrivate = message.RecipientId == localParticipant.Id
             || (message.SenderId == localParticipant.Id && message.RecipientId != null);
 
@@ -106,13 +129,22 @@ public partial class ChatViewModel : RoutableViewModelBase
             renderedMessageCount++;
         }
 
-        if (!IsAtBottom && message.SenderId != localParticipant.Id && !appendOnTop)
+        if (!appendOnTop)
         {
-            MissedMessagesCount++;
+            if (!IsAtBottom && message.SenderId != localParticipant.Id
+                && !seenMessageIds.Contains(message.Id))
+            {
+                MissedMessagesCount++;
+            }
+            else if (IsAtBottom || message.SenderId == localParticipant.Id)
+            {
+                await ScrollToBottomAsync();
+            }
         }
-        else if (IsAtBottom)
+
+        if (seenMessageIds.Add(message.Id) && seenMessageIds.Count > MaxTrackedSeenMessageIds)
         {
-            await ScrollToBottom();
+            seenMessageIds.Clear();
         }
     }
 
@@ -127,7 +159,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var messages = context.Messages.GetRecentHistory().ToList();
 
         await RenderMessages(messages);
@@ -138,6 +170,32 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
         oldestLoadedTimestamp = messages[0].Timestamp;
         oldestLoadedMessageId = messages[0].Id;
+
+        await RestoreScrollOrGoBottomAsync();
+    }
+
+    /// <summary>
+    /// Запомнить якорь прокрутки: первое видимое сообщение и его отступ от верха
+    /// </summary>
+    public void UpdateScrollAnchor(BaseChatMessageViewModel? topCard, double subOffset)
+    {
+        scrollAnchorMessageId = topCard?.Message?.Id;
+        scrollAnchorSubOffset = subOffset;
+    }
+
+    private Task RestoreScrollOrGoBottomAsync()
+    {
+        var anchorCard = scrollAnchorMessageId is { } anchorId
+            ? Messages.FirstOrDefault(x => x.Message?.Id == anchorId)
+            : null;
+
+        if (anchorCard != null)
+        {
+            ScrollRestoreRequested?.Invoke(anchorCard, scrollAnchorSubOffset);
+            return Task.CompletedTask;
+        }
+
+        return ScrollToBottomAsync();
     }
 
     private void DisposeMessageCards()
@@ -150,9 +208,19 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private async Task RenderMessages(List<IMessage> messages, bool appendOnTop = false)
     {
+        if (appendOnTop && messages.Count > 0)
+        {
+            HistoryPrependStarted?.Invoke();
+        }
+
         foreach (var message in messages)
         {
             await AddMessageToChatFlow(message, appendOnTop);
+        }
+
+        if (appendOnTop && messages.Count > 0)
+        {
+            HistoryPrependCompleted?.Invoke();
         }
     }
 
@@ -184,7 +252,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             return;
         }
-        if (existingCard is BaseUpdateableReplyableChatMessageViewModel baseUpdateable)
+        if (existingCard is IUpdateableChatMessageViewModel baseUpdateable)
         {
             baseUpdateable.Update(newMessage);
         }
@@ -230,7 +298,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private async Task OnLoadMoreClicked()
     {
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
 
         var olderInMemory = context.Messages
             .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId)
@@ -245,7 +313,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             && messagesCount < room.TotalMessageCount)
         {
             await featureCollection.Chat.ChatRoomService.SendChatHistoryRequest(
-                roomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
+                RoomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
             return;
         }
 
@@ -406,10 +474,15 @@ public partial class ChatViewModel : RoutableViewModelBase
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
-            roomScope, featureCollection.Core.EventBus, dialogService,
-            msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
+            featureCollection.Core.RoomFactory.GetRoomContext(RoomId), roomScope,
+            featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
+            msg, localParticipant, timePadding, IsHost, isHost, removeHeaders, IsAvaibleForNetwork);
+
+        card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
         card.OnReplyRequested += () => SetReplyTo(msg);
+        card.OnLeaveRequested += () => featureCollection.Chat.ChatSessionService.SendSessionLeaveAsync(RoomId, msg.SubRoomId, roomCts.Token);
+        card.OnShutdownRequested += () => featureCollection.Chat.ChatSessionService.SendSessionStopAsync(RoomId, msg.SubRoomId, roomCts.Token);
 
         if (!withAppendOnTop)
         {
@@ -503,8 +576,8 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         lastPrivateChatParticipantId = otherParticipantId;
 
-        var sender = room?.CurrentParticipants.FirstOrDefault(x => x.Id == senderId);
-        var recipient = room?.CurrentParticipants.FirstOrDefault(x => x.Id == recipientId);
+        var sender = room.CurrentParticipants.FirstOrDefault(x => x.Id == senderId);
+        var recipient = room.CurrentParticipants.FirstOrDefault(x => x.Id == recipientId);
 
         await SendSystemMessage(new SystemTextMessage
         {

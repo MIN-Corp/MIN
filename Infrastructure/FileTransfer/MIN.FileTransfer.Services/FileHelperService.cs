@@ -73,7 +73,7 @@ public sealed class FileHelperService : IFileHelperService
     public string GetMimeType(string fileName)
     {
         var extension = Path.GetExtension(fileName);
-        return mimeTypes.TryGetValue(extension, out var mime) ? mime : "application/octet-stream";
+        return mimeTypes.GetValueOrDefault(extension, "application/octet-stream");
     }
 
     string IFileHelperService.GetFileType(string fileName)
@@ -108,27 +108,12 @@ public sealed class FileHelperService : IFileHelperService
     }
 
     string IFileHelperService.FormatFileSize(long bytes)
-    {
-        if (bytes < 0)
+        => bytes switch
         {
-            throw new ArgumentException("Размер файла не может быть отрицательным", nameof(bytes));
-        }
-
-        if (bytes < 1024)
-        {
-            return $"{bytes} байт";
-        }
-
-        if (bytes < 1024 * 1024)
-        {
-            return $"{(bytes / 1024.0):F2} КБ".Replace('.', ',');
-        }
-
-        if (bytes < 1024L * 1024 * 1024)
-        {
-            return $"{(bytes / (1024.0 * 1024)):F2} МБ".Replace('.', ',');
-        }
-
-        return $"{(bytes / (1024.0 * 1024 * 1024)):F2} ГБ".Replace('.', ',');
-    }
+            < 0 => throw new ArgumentException("Размер файла не может быть отрицательным", nameof(bytes)),
+            < 1024 => $"{bytes} байт",
+            < 1024 * 1024 => $"{(bytes / 1024.0):F2} КБ".Replace('.', ','),
+            < 1024L * 1024 * 1024 => $"{(bytes / (1024.0 * 1024)):F2} МБ".Replace('.', ','),
+            _ => $"{(bytes / (1024.0 * 1024 * 1024)):F2} ГБ".Replace('.', ',')
+        };
 }

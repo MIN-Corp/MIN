@@ -5,7 +5,7 @@ using MIN.Sessions.Core.Events;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Services.Contracts.Models;
 
-namespace MIN.Sessions.Core.Services;
+namespace MIN.Sessions.Core.Services.Services;
 
 /// <inheritdoc cref="ISessionScanner"/>
 public class SessionScanner : ISessionScanner
@@ -16,6 +16,8 @@ public class SessionScanner : ISessionScanner
     private readonly IEventBus eventBus;
     private readonly ILoggerProvider logger;
 
+    string ISessionScanner.SessionsDirectory => sessionsDirectory;
+
     private readonly static JsonSerializerOptions jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -23,6 +25,7 @@ public class SessionScanner : ISessionScanner
     };
 
     private Dictionary<string, Session> downloadedSessions = [];
+    private readonly Dictionary<string, (Session Session, Guid RoomId)> adHocSessions = [];
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="SessionScanner"/>
@@ -37,10 +40,19 @@ public class SessionScanner : ISessionScanner
 
     IReadOnlyDictionary<string, Session> ISessionScanner.DownloadedSessions => downloadedSessions;
 
-    Session? ISessionScanner.GetSessionById(string sessionId)
-        => downloadedSessions.TryGetValue(sessionId, out var session) ? session : null;
 
-    bool ISessionScanner.IsSessionInstalled(string sessionId) => downloadedSessions.ContainsKey(sessionId);
+    Session? ISessionScanner.GetSessionById(string sessionId)
+    {
+        if (downloadedSessions.TryGetValue(sessionId, out var session))
+        {
+            return session;
+        }
+
+        return adHocSessions.TryGetValue(sessionId, out var adHoc) ? adHoc.Session : null;
+    }
+
+    bool ISessionScanner.IsSessionInstalled(string sessionId)
+        => downloadedSessions.ContainsKey(sessionId) || adHocSessions.ContainsKey(sessionId);
 
     async Task ISessionScanner.ScanAsync(CancellationToken cancellationToken)
     {
@@ -66,9 +78,9 @@ public class SessionScanner : ISessionScanner
                 await using var stream = File.OpenRead(jsonPath);
                 var session = await JsonSerializer.DeserializeAsync<Session>(stream, jsonOptions, cancellationToken: cancellationToken);
 
-                if (session?.SessionId == null || session.Name == null)
+                if (session?.SessionId == null)
                 {
-                    logger.Log($"Skipping {jsonPath}: missing sessionId or name");
+                    logger.Log($"Skipping {jsonPath}: missing sessionId");
                     continue;
                 }
 
@@ -104,5 +116,60 @@ public class SessionScanner : ISessionScanner
         var path = Path.Combine(
             sessionsDirectory, session.SessionId, session.GetThumbnailPath());
         return File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
+
+    void ISessionScanner.RegisterAdHoc(Guid roomId, Session session)
+        => adHocSessions[session.SessionId] = (session, roomId);
+
+    void ISessionScanner.UnregisterAdHocForRoom(Guid roomId)
+    {
+        foreach (var sessionId in adHocSessions
+                     .Where(x => x.Value.RoomId == roomId)
+                     .Select(x => x.Key)
+                     .ToList())
+        {
+            adHocSessions.Remove(sessionId);
+        }
+    }
+
+    async Task<bool> ISessionScanner.DeleteSessionAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        if (!downloadedSessions.ContainsKey(sessionId))
+        {
+            return false;
+        }
+
+        var sessionDirectory = Path.Combine(sessionsDirectory, sessionId);
+
+        if (!Path.GetFullPath(sessionDirectory).StartsWith(
+                Path.GetFullPath(sessionsDirectory) + Path.DirectorySeparatorChar))
+        {
+            return false;
+        }
+
+        if (Directory.Exists(sessionDirectory))
+        {
+            var deletingPath = sessionDirectory + ".deleting";
+            Directory.Move(sessionDirectory, deletingPath);
+
+            try
+            {
+                Directory.Delete(deletingPath, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                logger.Log($"Не удалось полностью очистить {deletingPath}: {ex.Message}");
+            }
+        }
+
+        downloadedSessions.Remove(sessionId);
+        adHocSessions.Remove(sessionId);
+
+        await eventBus.PublishAsync(new SessionRescanCompletedEvent()
+        {
+            DownloadedSessions = downloadedSessions,
+        }, cancellationToken);
+
+        return true;
     }
 }

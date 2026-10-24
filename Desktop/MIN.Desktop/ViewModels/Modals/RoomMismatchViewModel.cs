@@ -12,7 +12,7 @@ namespace MIN.Desktop.ViewModels.Modals;
 public partial class RoomMismatchViewModel : ModalViewModelBase
 {
     [ObservableProperty]
-    public partial string Cabinet { get; set; }
+    public partial string Cabinet { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial RoomInfo? ActualRoom { get; set; }

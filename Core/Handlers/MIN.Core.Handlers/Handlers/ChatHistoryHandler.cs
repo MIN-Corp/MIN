@@ -6,6 +6,7 @@ using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Messaging.Contracts;
+using MIN.Core.Messaging.Contracts.Extensions;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.RoomRelated;
 using MIN.Core.Messaging.Stateless.RoomRelated.History;
@@ -41,6 +42,7 @@ internal sealed class ChatHistoryHandler : BaseHandler
                 var olderMessages = context.RoomContext
                     .Messages
                     .GetMessagesOlderThan(request.OldestTimestamp, request.OldestMessageId, request.PageSize)
+                    .SanitizeMessagesForParticipant(request.SenderId)
                     .ToList();
 
                 return HandlerResult.WithResponse(new ChatHistoryResponseMessage
@@ -69,7 +71,6 @@ internal sealed class ChatHistoryHandler : BaseHandler
 
             case ChatHistoryClearMessage clearMessage:
                 var room = roomStore.GetRoom(roomId);
-                room.LocalRoomSettings.HistoryWipedOutUpTo = DateTime.Now;
 
                 var allMessages = context.RoomContext.Messages.GetHistory();
 
@@ -78,6 +79,7 @@ internal sealed class ChatHistoryHandler : BaseHandler
                     await eventBus.PublishAsync(new MessageDeletedEvent()
                     {
                         MessageId = messageToClear.Id,
+                        Message = messageToClear,
                         RoomId = roomId,
                     }, context.CancellationToken);
                 }

@@ -22,16 +22,18 @@ using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.Desktop.ViewModels.Modals;
 using MIN.Desktop.Views;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private System.Timers.Timer? typingTimer;
     private bool isParentWindowActive = true;
+    private bool isParentWindowClosed = true;
     private int? activeVoiceChatSubroomId;
 
     [ObservableProperty]
@@ -166,17 +168,34 @@ public partial class ChatViewModel : RoutableViewModelBase
     [RelayCommand]
     private async Task StartSessionClick()
     {
-        var downloadedSessions = featureCollection.Sessions.SessionScanner.DownloadedSessions.Values;
-        if (!downloadedSessions.Any())
+        if (!IsHost && featureCollection.Sessions.SessionScanner.DownloadedSessions.Count == 0)
         {
             InAppNotifier.Info("У вас не установлена ни одна сессия!");
             return;
         }
 
-        var choosingForm = await dialogService.ShowDialogAsync<SessionChoosingViewModel>();
+        var choosingForm = await dialogService.ShowDialogAsync<SessionChoosingViewModel>(vm =>
+        {
+            vm.Initialize(IsHost);
+        });
+
         if (choosingForm! == true)
         {
-            InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
+            if (choosingForm!.IsTunnelCreationRequested)
+            {
+                var sessionCreationForm = await dialogService.ShowDialogAsync<CreateTunnelSessionViewModel>();
+                if (sessionCreationForm! == true)
+                {
+                    await SendTunnelSessionStartMessage(sessionCreationForm!.Name, sessionCreationForm.Port, sessionCreationForm.MaxPlayers,
+                        sessionCreationForm.Version, sessionCreationForm.Thumbnail);
+                }
+                return;
+            }
+
+            if (choosingForm!.SelectedSession!.Kind == SessionKind.Process)
+            {
+                InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
+            }
             await SendSessionStartMessage(choosingForm!.SelectedSession!);
         }
     }
@@ -361,6 +380,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         parentWindow.Activated += Parent_Activated;
         parentWindow.Deactivated += Parent_Deactivate;
+        mainWindowViewModel.OnMinimizedToTray += Parent_OnMinimizedToTray;
     }
 
     private void DisableAllConnectionActions()
@@ -377,6 +397,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
+        mainWindowViewModel.OnMinimizedToTray -= Parent_OnMinimizedToTray;
 
         featureCollection.Helper.NotificationService.OnNotificationClick -= OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked -= NotificationTurnOffClicked;
@@ -392,7 +413,13 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async void Parent_Activated(object? sender, EventArgs e)
     {
         await SendSelfStatusChangedMessage(OnlineStatus.Online);
+        isParentWindowClosed = false;
         isParentWindowActive = true;
+    }
+
+    private void Parent_OnMinimizedToTray()
+    {
+        isParentWindowClosed = true;
     }
 
     [RelayCommand]
@@ -445,7 +472,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             var timestamp = DateTime.Now.ToString("yyyy-dd-MM-HH-mm-ss-fffff");
             var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{timestamp}.png");
-            bitmap.Save(tempPath, new PngBitmapEncoderOptions());
+            bitmap.Save(tempPath);
             UploadFile(tempPath);
         }
     }

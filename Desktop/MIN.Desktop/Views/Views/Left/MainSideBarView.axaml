@@ -9,7 +9,7 @@
              Padding="{DynamicResource PaddingPage}"
              DockPanel.Dock="Left"
              MinWidth="320"
-             x:Class="MIN.Desktop.Views.Left.MainSideBarView">
+             x:Class="MIN.Desktop.Views.Views.Left.MainSideBarView">
 
     <Design.DataContext>
         <design:DesignerMainSideBarViewModel/>

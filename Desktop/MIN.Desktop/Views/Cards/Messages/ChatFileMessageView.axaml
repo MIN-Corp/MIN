@@ -37,7 +37,7 @@
                 </MenuItem>
 
                 <MenuItem Header="Редактировать"
-                    IsEnabled="{Binding IsAvaibleForNetwork}" 
+                    IsEnabled="{Binding IsAvailableForNetwork}"
                     Command="{Binding ToggleEditingMessageCommand}">
                     <MenuItem.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
@@ -82,7 +82,7 @@
                      <MenuItem.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="IsLocal" />
-                            <Binding Path="!IsTransfering" />
+                            <Binding Path="!IsTransferring" />
                         </MultiBinding>
                     </MenuItem.IsVisible>
 
@@ -148,8 +148,7 @@
                             Grid.Column="0"
                             Height="70"
                             Width="70"
-                            Margin="4,0"
-                            Background="{DynamicResource Secondary}">
+                            Margin="4,0">
                             <Button
                                 Classes="file"
                                 IsEnabled="{Binding !CantDownload}"
@@ -201,7 +200,7 @@
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Top"
                             Value="{Binding DownloadProgress}"
-                            IsVisible="{Binding IsTransfering}"/>
+                            IsVisible="{Binding IsTransferring}"/>
                     </Grid>
                 </DockPanel>
 

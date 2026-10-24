@@ -31,7 +31,7 @@ public abstract class ValidatingRoutableViewModelBase : ValidatingViewModelBase,
     protected ValidatingRoutableViewModelBase() : base() { }
 
     /// <inheritdoc />
-    public void ChangeView<TViewModel>(TViewModel viewModel, CancellationToken cancellationToken) where TViewModel : IRoutableViewModel
+    public void ChangeView<TViewModel>(TViewModel viewModel, CancellationToken cancellationToken = default) where TViewModel : IRoutableViewModel
     {
         WeakReferenceMessenger.Default.Send(new ShowViewReferenceCommand(viewModel, cancellationToken));
     }

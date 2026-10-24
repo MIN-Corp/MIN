@@ -20,5 +20,5 @@ public sealed record RoomInfoUpdatedMessageEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Новые адреса подключения
     /// </summary>
-    public required IEnumerable<IEndpoint> Endpoints { get; set; }
+    public required IEnumerable<IEndpoint> Endpoints { get; init; }
 }

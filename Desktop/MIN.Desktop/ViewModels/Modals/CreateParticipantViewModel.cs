@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Infrastructure.Validators;
@@ -37,7 +36,7 @@ public partial class CreateParticipantViewModel : ModalViewModelBase
     [RelayCommand(CanExecute = nameof(CanProceed))]
     private async Task Proceed()
     {
-        var participant = identityService.SelfParticipant.ToParticipantInfo();
+        var participant = identityService.SelfParticipant;
         participant.Name = Name;
         await identityService.SaveParticipant(participant);
         Close(ButtonOptions.Ok);

@@ -24,7 +24,7 @@ internal sealed class ErrorHandler : BaseHandler
             return Task.FromResult(HandlerResult.Success());
         }
 
-        LogError($"Ошибка, полученная от получателя {context.RoomContext.Participants.GetParticipantById(message.SenderId).Name}: {errorMessage.Message}");
+        LogError($"Ошибка, полученная от хоста: {errorMessage.Message}");
         return Task.FromResult(HandlerResult.Failure(errorMessage.Message));
     }
 }

@@ -5,7 +5,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 namespace MIN.Core.Events.Events;
 
 /// <summary>
-/// Событие, возникающее при получении упущённой информации о комнате
+/// Событие, возникающее при получении упущенной информации о комнате
 /// </summary>
 public sealed record RoomSyncedEvent : BaseEvent, IRoomScopedEvent
 {
@@ -15,5 +15,5 @@ public sealed record RoomSyncedEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Упущенные сообщения
     /// </summary>
-    public List<IMessage> MissedMessages { get; set; } = null!;
+    public List<IMessage> MissedMessages { get; init; } = null!;
 }

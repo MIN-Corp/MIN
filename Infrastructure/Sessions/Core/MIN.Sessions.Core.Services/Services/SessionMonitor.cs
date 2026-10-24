@@ -12,7 +12,7 @@ using MIN.Sessions.Core.Services.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Enums;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 
-namespace MIN.Sessions.Core.Services;
+namespace MIN.Sessions.Core.Services.Services;
 
 /// <summary>
 /// Сервис для отслеживания состояния сессий
@@ -23,22 +23,22 @@ public class SessionMonitor : IHostedService
     private readonly IRoomFactory roomFactory;
     private readonly IMessageRouter messageRouter;
     private readonly ISessionScanner sessionScanner;
-    private readonly ISessionProcessManager sessionProcessManager;
     private readonly ISessionProcessBridge sessionProcessBridge;
+    private readonly ISessionInstanceManager sessionInstanceManager;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
     int IHostedService.Priority => 0;
 
     /// <summary>
-    /// Инициализирует новый экзепмляр <see cref="SessionMonitor"/>
+    /// Инициализирует новый экземпляр <see cref="SessionMonitor"/>
     /// </summary>
     public SessionMonitor(IEventBus eventBus,
         IRoomFactory roomFactory,
         IMessageRouter messageRouter,
         ISessionScanner sessionScanner,
-        ISessionProcessManager sessionProcessManager,
         ISessionProcessBridge sessionProcessBridge,
+        ISessionInstanceManager sessionInstanceManager,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
@@ -46,8 +46,8 @@ public class SessionMonitor : IHostedService
         this.roomFactory = roomFactory;
         this.messageRouter = messageRouter;
         this.sessionScanner = sessionScanner;
-        this.sessionProcessManager = sessionProcessManager;
         this.sessionProcessBridge = sessionProcessBridge;
+        this.sessionInstanceManager = sessionInstanceManager;
         this.identityService = identityService;
         this.logger = logger;
     }
@@ -59,14 +59,50 @@ public class SessionMonitor : IHostedService
 
         eventBus.Subscribe<RoomWentOfflineEvent>(WentOffline);
         eventBus.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
+        eventBus.Subscribe<MessageDeletedEvent>(OnMessageDeleted);
         eventBus.Subscribe<SessionDeactivatedEvent>(OnSessionDeactivated);
     }
 
+    private async Task OnMessageDeleted(MessageDeletedEvent e, CancellationToken cancellationToken)
+    {
+        if (e.Message is SessionReadyMessage sessionReady)
+        {
+            await sessionInstanceManager.LeaveAsync(new SessionInstanceContext(e.RoomId, sessionReady.SubRoomId, SessionInstanceRole.Server),
+                cancellationToken);
+        }
+    }
+
     private async Task WentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
-        => await sessionProcessManager.StopForRoomAsync(e.RoomId);
+    {
+        await sessionInstanceManager.StopForRoomAsync(e.RoomId);
+        sessionScanner.UnregisterAdHocForRoom(e.RoomId);
+
+        var roomContext = roomFactory.GetOrCreateContext(e.RoomId);
+
+        foreach (var subRoom in roomContext.SubRooms.GetRoomSubRooms().Where(x => x.IsActive).ToList())
+        {
+            var readyMessage = roomContext.Messages.GetHistory()
+                .OfType<SessionReadyMessage>()
+                .FirstOrDefault(x => x.SubRoomId == subRoom.Id);
+
+            if (readyMessage != null)
+            {
+                readyMessage.CurrentParticipantAmount = 0;
+                roomContext.Messages.UpdateMessage(readyMessage.Id, readyMessage);
+            }
+
+            await eventBus.PublishAsync(new SessionDeactivatedEvent()
+            {
+                RoomId = e.RoomId,
+                SubRoomId = subRoom.Id,
+            }, cancellationToken).ConfigureAwait(false);
+
+            roomContext.SubRooms.TryStopSubRoom(subRoom.Id, identityService.SelfParticipant.Id);
+        }
+    }
 
     private async Task OnSessionDeactivated(SessionDeactivatedEvent e, CancellationToken cancellationToken)
-        => await sessionProcessManager.StopAsync(new ProcessContext(e.RoomId, e.SubRoomId, SessionProcessRole.Server));
+        => await sessionInstanceManager.StopAsync(new SessionInstanceContext(e.RoomId, e.SubRoomId, SessionInstanceRole.Server));
 
     private async Task OnParticipantLeft(ParticipantLeftEvent e, CancellationToken cancellationToken)
     {
@@ -78,23 +114,25 @@ public class SessionMonitor : IHostedService
         var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Activity && x.IsActive);
         foreach (var subRoom in activeSubRooms)
         {
-            if (context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
+            if (!context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
             {
-                var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
-
-                var leaveMessage = new SessionParticipantLeftMessage()
-                {
-                    SubRoomId = subRoom.Id,
-                    Participant = e.Message.Participant,
-                    IsLast = isLast
-                };
-
-                await messageRouter.RouteAsync(leaveMessage, roomId, identityService.SelfParticipant.Id, cancellationToken);
+                continue;
             }
+
+            var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
+
+            var leaveMessage = new SessionParticipantLeftMessage()
+            {
+                SubRoomId = subRoom.Id,
+                Participant = e.Message.Participant,
+                IsLast = isLast
+            };
+
+            await messageRouter.RouteAsync(leaveMessage, roomId, identityService.SelfParticipant.Id, cancellationToken);
         }
     }
 
-    private async Task EndAllSessions()
+    private void EndAllSessions()
     {
         var contexts = roomFactory.GetAllContexts();
         foreach (var context in contexts)
@@ -119,9 +157,9 @@ public class SessionMonitor : IHostedService
 
     async Task IHostedService.StopAsync(CancellationToken cancellationToken)
     {
-        await EndAllSessions();
+        EndAllSessions();
 
         await sessionProcessBridge.StopListeningAsync(cancellationToken);
-        await sessionProcessManager.StopAllAsync();
+        await sessionInstanceManager.StopAllAsync();
     }
 }

@@ -13,6 +13,9 @@ public sealed class IdentityService : IIdentityService, IDisposable
 
     private ParticipantInfo? currentParticipant;
 
+    /// <inheritdoc />
+    public Func<IParticipantData, Task>? SelfParticipantSaved { get; set; }
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="IdentityService"/>
     /// </summary>
@@ -26,11 +29,11 @@ public sealed class IdentityService : IIdentityService, IDisposable
     /// <inheritdoc />
     async Task IIdentityService.SaveParticipant(IParticipantData participantData)
     {
-        currentParticipant?.Name = participantData.Name;
-        await identityFileStore.SaveParticipantAsync(participantData);
+        await identityFileStore.SaveParticipantAsync(participantData).ConfigureAwait(false);
+        await (SelfParticipantSaved?.Invoke(participantData)!).ConfigureAwait(false);
     }
 
-    private IParticipantData ResolveParticipant()
+    private ParticipantInfo ResolveParticipant()
     {
         if (currentParticipant != null)
         {

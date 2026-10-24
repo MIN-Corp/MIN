@@ -9,7 +9,7 @@
              x:DataType="vm:SettingsSideBarViewModel"
              Padding="{DynamicResource PaddingPage}"
              DockPanel.Dock="Left"
-             x:Class="MIN.Desktop.Views.Left.SettingsSideBarView">
+             x:Class="MIN.Desktop.Views.Views.Left.SettingsSideBarView">
 
     <Design.DataContext>
         <designer:DesignerSettingsViewModel/>
@@ -26,7 +26,7 @@
                     Classes="icon">
                     <Svg Path="/Assets/Icons/arrow-left.svg" />
                 </Button>
-             
+
                 <TextBlock Classes="header2" VerticalAlignment="Center">
                     Настройки
                 </TextBlock>
@@ -98,16 +98,16 @@
                                   HorizontalAlignment="Stretch"/>
                     </DockPanel>
 
-                    <TextBlock Text="{Binding #inputVolumeSlider.Value, StringFormat='Громкость микрофона: {0:F0}%'}" />
-                    <Slider x:Name="inputVolumeSlider" Minimum="0" Maximum="100" Value="{Binding Settings.InputDeviceVolume}" />
+                    <TextBlock Text="{Binding #InputVolumeSlider.Value, StringFormat='Громкость микрофона: {0:F0}%'}" />
+                    <Slider x:Name="InputVolumeSlider" Minimum="0" Maximum="100" Value="{Binding Settings.InputDeviceVolume}" />
 
-                    <TextBlock Text="{Binding #inputSensitivitySlider.Value, StringFormat='Чувствительность микрофона: {0:F0} дБ'}" />
-                    <Slider x:Name="inputSensitivitySlider" Minimum="-60" Maximum="-10" Value="{Binding Settings.InputDeviceSensitivity}" />
+                    <TextBlock Text="{Binding #InputSensitivitySlider.Value, StringFormat='Чувствительность микрофона: {0:F0} дБ'}" />
+                    <Slider x:Name="InputSensitivitySlider" Minimum="-60" Maximum="-10" Value="{Binding Settings.InputDeviceSensitivity}" />
 
                     <DockPanel HorizontalSpacing="12">
                         <TextBlock VerticalAlignment="Center">Шумоподавление</TextBlock>
                         <ComboBox ItemsSource="{Binding NoiseReductions}"
-                                  SelectedIndex="{Binding ChoosenNoiseReduction}"
+                                  SelectedIndex="{Binding ChosenNoiseReduction}"
                                   HorizontalAlignment="Stretch"/>
                     </DockPanel>
 
@@ -118,36 +118,8 @@
                                   HorizontalAlignment="Stretch"/>
                     </DockPanel>
 
-                    <TextBlock Text="{Binding #outputVolumeSlider.Value, StringFormat='Громкость динамиков: {0:F0}%'}" />
-                    <Slider x:Name="outputVolumeSlider" Minimum="0" Maximum="100" Value="{Binding Settings.OutputDeviceVolume}" />
-
-                    <!-- Logs -->
-
-                    <Button
-                        Command="{Binding OpenLogsCommand}"
-                        VerticalAlignment="Center">
-                        Открыть логи
-                    </Button>
-
-                    <TextBlock Classes="info"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Center">
-                        Для разраба, при ошибке сообщите в https://github.com/MIN-Corp/MIN/issues
-                    </TextBlock>
-
-                    <!-- Cache cleanup -->
-
-                    <Button
-                        Command="{Binding ClearCacheAsyncCommand}"
-                        VerticalAlignment="Center">
-                        Очистить кэш
-                    </Button>
-
-                    <TextBlock Classes="info"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Center">
-                        Обычно нужен при неправильных настройках в кэше
-                    </TextBlock>
+                    <TextBlock Text="{Binding #OutputVolumeSlider.Value, StringFormat='Громкость динамиков: {0:F0}%'}" />
+                    <Slider x:Name="OutputVolumeSlider" Minimum="0" Maximum="100" Value="{Binding Settings.OutputDeviceVolume}" />
 
                     <!-- Scan sessions -->
 
@@ -161,6 +133,29 @@
                                VerticalAlignment="Center">
                         Когда вы установили новую сессию
                     </TextBlock>
+
+                    <!-- Logs -->
+
+                    <Button
+                        Command="{Binding AnnounceErrorAtIssuesCommand}"
+                        VerticalAlignment="Center">
+                        Сообщить о проблеме
+                    </Button>
+
+                    <TextBlock Classes="info"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center">
+                        Если возникли проблемы, напишите как issue по ссылке,
+                        желательно указав описание ошибки и какие действия к ней привели
+                        (в логах или в уведомлении)
+                    </TextBlock>
+
+                    <Button
+                        Classes="secondary"
+                        Command="{Binding OpenLogsCommand}"
+                        VerticalAlignment="Center">
+                        Открыть логи
+                    </Button>
                 </StackPanel>
             </ScrollViewer>
         </DockPanel>

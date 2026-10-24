@@ -50,7 +50,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
 
         if (sharedSecret == null)
         {
-            logger.Log($"Не удалось ", LogLevel.Error);
+            logger.Log($"Не удалось вычислить сохранённый секрет для партнёра {partnerId}", LogLevel.Error);
             return false;
         }
 
@@ -77,7 +77,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
     byte[] IMessageEncryptor.EncryptMessage(byte[] plaintext, Guid partnerId)
     {
         var key = GetSessionKey(partnerId);
-        var iv = RandomNumberGenerator.GetBytes(CryptographyConstants.IVSize);
+        var iv = RandomNumberGenerator.GetBytes(CryptographyConstants.IvSize);
 
         using var aesGcm = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize);
         var ciphertext = new byte[plaintext.Length];
@@ -85,7 +85,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
         aesGcm.Encrypt(iv, plaintext, ciphertext, authTag);
 
         using var ms = new MemoryStream();
-        ms.Write(iv, 0, CryptographyConstants.IVSize);
+        ms.Write(iv, 0, CryptographyConstants.IvSize);
         ms.Write(ciphertext, 0, ciphertext.Length);
         ms.Write(authTag, 0, CryptographyConstants.AuthTagSize);
 
@@ -96,15 +96,15 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
     {
         var key = GetSessionKey(partnerId);
 
-        if (encryptedData.Length < CryptographyConstants.IVSize + CryptographyConstants.AuthTagSize)
+        if (encryptedData.Length < CryptographyConstants.IvSize + CryptographyConstants.AuthTagSize)
         {
             throw new InvalidDataException($"Invalid encrypted data: length {encryptedData.Length} < 28");
         }
 
-        var iv = encryptedData.AsSpan(0, CryptographyConstants.IVSize).ToArray();
+        var iv = encryptedData.AsSpan(0, CryptographyConstants.IvSize).ToArray();
         var authTag = encryptedData.AsSpan(encryptedData.Length - 16, 16).ToArray();
-        var ciphertextLength = encryptedData.Length - CryptographyConstants.IVSize - CryptographyConstants.AuthTagSize;
-        var ciphertext = encryptedData.AsSpan(CryptographyConstants.IVSize, ciphertextLength).ToArray();
+        var ciphertextLength = encryptedData.Length - CryptographyConstants.IvSize - CryptographyConstants.AuthTagSize;
+        var ciphertext = encryptedData.AsSpan(CryptographyConstants.IvSize, ciphertextLength).ToArray();
 
         using var aesGcm = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize);
         var plaintext = new byte[ciphertext.Length];
@@ -121,7 +121,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
         }
         catch (CryptographicException ex)
         {
-            logger.Log($"Возникла крипто-ошибка: {ex.Message}", LogLevel.Error);
+            logger.Log($"Возникла криптографическая ошибка: {ex.Message}", LogLevel.Error);
             throw;
         }
     }

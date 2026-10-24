@@ -22,4 +22,28 @@ public interface IChatSessionService
     /// Просканировать загруженные сессии
     /// </summary>
     Task ScanDownloadedSessions(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Создать и захостить туннельную сессию
+    /// </summary>
+    /// <param name="roomId">Идентификатор комнаты</param>
+    /// <param name="name">Название игры</param>
+    /// <param name="gamePort">Порт, на котором слушает игровой сервер</param>
+    /// <param name="maximumParticipants">Максимальное количество игроков</param>
+    /// <param name="version">Версия игры</param>
+    /// <param name="thumbnailData">Обложка сессии</param>
+    /// <param name="cancellationToken">Токен отмены</param>
+    Task HostTunnelSessionAsync(Guid roomId, string name, int gamePort,
+       int? maximumParticipants, string? version, byte[]? thumbnailData,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Покинуть сессию
+    /// </summary>
+    Task SendSessionLeaveAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Остановить сессию (только хост)
+    /// </summary>
+    Task SendSessionStopAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken = default);
 }

@@ -5,7 +5,7 @@ namespace MIN.Helpers.Services;
 /// <summary>
 /// Парсер имени компьютера от коллелджа
 /// </summary>
-public static class CollegePCNameParser
+public static class CollegePcNameParser
 {
     /// <summary>
     /// Распарсить имя компьютера на класс и номер компьютера

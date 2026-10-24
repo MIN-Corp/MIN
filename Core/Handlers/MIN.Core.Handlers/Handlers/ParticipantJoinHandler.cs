@@ -78,6 +78,7 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 if (isRejoin)
                 {
                     participant!.CurrentStatus = OnlineStatus.Online;
+                    participant.Name = participantJoinedMessage.Participant.Name;
                 }
                 else
                 {

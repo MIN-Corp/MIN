@@ -11,17 +11,17 @@ public enum ResultCodes
     /// <summary>
     /// Успех
     /// </summary>
-    SUCCESS,
+    Success,
 
     /// <summary>
     /// Конфликт
     /// </summary>
-    CONFLICT_IN_MAPPING_ENTRY,
+    ConflictInMappingEntry,
 
     /// <summary>
     /// Неизвестная ошибка
     /// </summary>
-    UNKNOWN_ERROR
+    UnknownError
 }
 
 /// <summary>
@@ -58,7 +58,7 @@ public static class PortForwardingHelper
         var device = await OpenNatHelper.GetDeviceAsync(cancellationToken: cancellationToken);
         if (device == null)
         {
-            return ResultCodes.UNKNOWN_ERROR;
+            return ResultCodes.UnknownError;
         }
 
         try
@@ -72,7 +72,7 @@ public static class PortForwardingHelper
                 }
                 catch
                 {
-                    return ResultCodes.CONFLICT_IN_MAPPING_ENTRY;
+                    return ResultCodes.ConflictInMappingEntry;
                 }
             }
 
@@ -80,12 +80,12 @@ public static class PortForwardingHelper
             var mapping = new Mapping(protocol, port, port, 0, $"{description} {port}");
             await device.CreatePortMapAsync(mapping);
             mappedPorts.Add(port);
-            return ResultCodes.SUCCESS;
+            return ResultCodes.Success;
         }
         catch
         {
             // UPnP не поддерживается, отключён или таймаут
-            return ResultCodes.UNKNOWN_ERROR;
+            return ResultCodes.UnknownError;
         }
     }
     /// <summary>

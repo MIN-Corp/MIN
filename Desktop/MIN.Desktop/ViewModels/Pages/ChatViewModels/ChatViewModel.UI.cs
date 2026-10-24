@@ -4,12 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Collections;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Models;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
@@ -17,7 +17,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private readonly AvaloniaList<IDescribableStatus> currentStatuses = [];
     private readonly List<ParticipantInfo> currentTypingParticipants = [];
@@ -47,7 +47,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     partial void OnIsAtBottomChanged(bool value)
     {
-        if (value == true)
+        if (value)
         {
             MissedMessagesCount = 0;
         }
@@ -60,7 +60,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     public partial int MissedMessagesCount { get; set; }
 
     /// <summary>
-    /// Показать приложенные файлаы
+    /// Показать приложенные файлы
     /// </summary>
     public bool SomeFilesAttached => AttachedFiles.Count > 0;
 
@@ -112,11 +112,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     [RelayCommand]
-    private async Task ScrollToBottom()
+    private Task ScrollToBottomAsync()
     {
-        AutoScrollBottom = true;
-        await Task.Yield();
-        AutoScrollBottom = false;
+        Dispatcher.UIThread.Post(async void () =>
+        {
+            AutoScrollBottom = true;
+            await Task.Yield();
+            AutoScrollBottom = false;
+        });
+
+        return Task.CompletedTask;
     }
 
     #endregion

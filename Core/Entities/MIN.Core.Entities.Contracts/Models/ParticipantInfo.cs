@@ -5,7 +5,7 @@ namespace MIN.Core.Entities.Contracts.Models;
 /// <summary>
 /// Данные участника для передачи по сети
 /// </summary>
-public record ParticipantInfo() : IParticipantData
+public record ParticipantInfo : IParticipantData
 {
     /// <inheritdoc />
     public Guid Id { get; set; }

@@ -17,15 +17,15 @@ public sealed class SessionJoinResponseMessage : BaseMessage
     /// <summary>
     /// Идентификатор сессии
     /// </summary>
-    public required string SessionId { get; set; }
+    public required string SessionId { get; init; }
 
     /// <summary>
     /// Флаг, указывающий, нужно ли оповещать остальных
     /// </summary>
-    public bool NeedToAnnounce { get; set; }
+    public bool NeedToAnnounce { get; init; }
 
     /// <summary>
     /// Идентификатор подкомнаты
     /// </summary>
-    public int SubRoomId { get; set; }
+    public int SubRoomId { get; init; }
 }

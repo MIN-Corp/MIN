@@ -43,7 +43,7 @@
                     <TextBlock.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="!AsEnded" />
-                            <Binding Path="!IsAvaibleForNetwork" />
+                            <Binding Path="!IsAvailableForNetwork" />
                         </MultiBinding>
                     </TextBlock.IsVisible>
                 </TextBlock>
@@ -55,7 +55,7 @@
                     <TextBlock.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="!AsEnded" />
-                            <Binding Path="IsAvaibleForNetwork" />
+                            <Binding Path="IsAvailableForNetwork" />
                         </MultiBinding>
                     </TextBlock.IsVisible>
                 </TextBlock>
@@ -65,7 +65,7 @@
                             Spacing="8"
                             Orientation="Horizontal">
                     <Button Command="{Binding JoinVoiceCallCommand}"
-                        IsEnabled="{Binding IsAvaibleForNetwork}" 
+                        IsEnabled="{Binding IsAvailableForNetwork}" 
                         ToolTip.Tip="Присоединиться к звонку"
                         Classes="icon"
                         IsVisible="{Binding !AsJoined}"
@@ -73,7 +73,7 @@
                         <Svg Path="/Assets/Icons/phone.svg" />
                     </Button>
                     <Button Command="{Binding LeaveOrRejectVoiceCallCommand}"
-                        IsEnabled="{Binding IsAvaibleForNetwork}" 
+                        IsEnabled="{Binding IsAvailableForNetwork}" 
                         ToolTip.Tip="Отклонить звонок"
                         IsVisible="{Binding !AsRejected}"
                         Classes="icon"

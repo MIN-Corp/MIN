@@ -33,7 +33,8 @@ public sealed class MessageRouter : IMessageRouter
         this.roomFactory = roomFactory;
     }
 
-    async Task IMessageRouter.RouteAsync(IMessage message, Guid roomId, Guid senderId, CancellationToken cancellationToken, IEnumerable<Guid>? broadcastExcludeIds)
+    async Task IMessageRouter.RouteAsync(IMessage message, Guid roomId, Guid senderId,
+        CancellationToken cancellationToken, IEnumerable<Guid>? broadcastExcludeIds)
     {
         message.SenderId = senderId;
 
@@ -65,8 +66,10 @@ public sealed class MessageRouter : IMessageRouter
     }
 
     /// <inheritdoc />
-    public async Task PublishLocally(IMessage message, Guid roomId, Role role, IEnumerable<Guid>? broadcastExcludeIds, CancellationToken cancellationToken)
-        => await eventBus.PublishAsync(new LocalMessageReceivedEvent(message, roomId, role, broadcastExcludeIds), cancellationToken).ConfigureAwait(false);
+    public async Task PublishLocally(IMessage message, Guid roomId, Role role,
+        IEnumerable<Guid>? broadcastExcludeIds, CancellationToken cancellationToken)
+        => await eventBus.PublishAsync(new LocalMessageReceivedEvent(message, roomId, role, broadcastExcludeIds),
+            cancellationToken).ConfigureAwait(false);
 
     private Guid GetHostConnectionId(Guid roomId, Guid hostId)
     {

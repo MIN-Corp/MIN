@@ -120,8 +120,24 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     }
                     else
                     {
-                        await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, context.ConnectionId, context.RoomContext.RoomId, result.CriticalErrorForConnection)
-                            .ConfigureAwait(false);
+                        var errorConnectionId = context.ConnectionId;
+
+                        if (errorConnectionId == CoreRegistryConstants.LocalConnectionId
+                            && message.SenderId != context.SelfId
+                            && context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(message.SenderId, out var senderConnection))
+                        {
+                            errorConnectionId = senderConnection;
+                        }
+
+                        try
+                        {
+                            await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, errorConnectionId,
+                                context.RoomContext.RoomId, result.CriticalErrorForConnection).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.Log($"Не удалось доставить ошибку «{result.ErrorMessage}»: {ex.Message}", LogLevel.Warning);
+                        }
                     }
                     continue;
                 }

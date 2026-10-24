@@ -1,0 +1,152 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MIN.Desktop.ViewModels.Modals"
+        xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:behaviors="using:MIN.Desktop.Infrastructure.Behaviors.Focus"
+        xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="350"
+        MinWidth="350"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        x:Class="MIN.Desktop.Views.Modals.CreateTunnelSessionModal"
+        x:DataType="vm:CreateTunnelSessionViewModel"
+        Title="{Binding Title,
+            Converter={converters:TruncateWithEllipsisConverter},
+            ConverterParameter=30}">
+
+    <Design.DataContext>
+        <vm:CreateTunnelSessionViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <controls:CustomTitleBar CanMinimize="False" CanMaximize="False" />
+
+        <StackPanel>
+            <StackPanel Classes="form" Margin="24">
+                 <Border Classes="card">
+                    <StackPanel Classes="form">
+                        <TextBlock Text="Заставка сессии" />
+                        <Border HorizontalAlignment="Center"
+                                MinHeight="100"
+                                MinWidth="100">
+                            <Image Stretch="Uniform"
+                                MaxHeight="140"
+                                Source="{Binding ThumbnailPreview}" />
+                        </Border>
+                        <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="8">
+                            <Button Command="{Binding PickThumbnailCommand}"
+                                Content="Выбрать изображение" />
+                            <Button Command="{Binding ClearThumbnailCommand}"
+                                Content="Убрать"
+                                Classes="secondary" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                      <StackPanel Classes="form">
+                        <TextBlock Text="Имя сессии" />
+                        <TextBox
+                            MaxLength="120"
+                            Text="{Binding Name, Converter={converters:TrimConverter}}"
+                            PlaceholderText="Введите имя...">
+                            <Interaction.Behaviors>
+                                <behaviors:FocusOnViewShowBehavior />
+                            </Interaction.Behaviors>
+                        </TextBox>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                      <StackPanel Classes="form">
+                        <TextBlock Text="Описание сессии" />
+                        <TextBox
+                            MaxLength="120"
+                            Text="{Binding Description, Converter={converters:TrimConverter}}"
+                            PlaceholderText="Описание...">
+                            <Interaction.Behaviors>
+                                <behaviors:FocusOnViewShowBehavior />
+                            </Interaction.Behaviors>
+                        </TextBox>
+                    </StackPanel>
+                </Border>
+
+                 <Border Classes="card">
+                      <StackPanel Classes="form">
+                        <TextBlock Text="Версия сессии (программы)" />
+                        <TextBox
+                            MaxLength="120"
+                            Text="{Binding Version, Converter={converters:TrimConverter}}"
+                            PlaceholderText="v1.0.0">
+                            <Interaction.Behaviors>
+                                <behaviors:FocusOnViewShowBehavior />
+                            </Interaction.Behaviors>
+                        </TextBox>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel>
+                        <StackPanel Classes="form" Margin="0,0,0,8">
+                            <TextBlock Text="Максимальное количество участников" />
+                            <TextBox
+                                MaxLength="3"
+                                Text="{Binding MaxPlayers, Converter={converters:NullableIntToStringConverter}}"
+                                PlaceholderText="Неограничено...">
+                            </TextBox>
+                        </StackPanel>
+
+                        <TextBlock Classes="info">
+                            (пусто — без лимита)
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel>
+                        <StackPanel Classes="form">
+                            <TextBlock Text="Порт" />
+                            <TextBox Margin="0,0,0,8"
+                                Text="{Binding Port, Converter={converters:IntToStringConverter}}"
+                                PlaceholderText="Введите порт...">
+                            </TextBox>
+                        </StackPanel>
+
+                        <TextBlock HorizontalAlignment="Left" MaxWidth="300.0" Classes="info">
+                            Порт игры. Запустите выбранную игру, создайте там мир,
+                            и укажите порт, который игра даёт для сети.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <Border Classes="footer">
+                <Panel>
+                    <Button
+                        Command="{Binding CloseCommand}"
+                        Content="Отмена"
+                        Classes="secondary"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Left"
+                        HotKey="Escape" />
+                    <Button
+                        Command="{Binding CreateCommand}"
+                        Content="Создать"
+                        IsVisible="{Binding IsNew}"
+                        HorizontalAlignment="Right"
+                        HotKey="Enter" />
+                    <Button
+                        Command="{Binding CreateCommand}"
+                        Content="Сохранить"
+                        IsVisible="{Binding !IsNew}"
+                        HorizontalAlignment="Right"
+                        HotKey="Enter" />
+                </Panel>
+            </Border>
+        </StackPanel>
+    </DockPanel>
+</Window>

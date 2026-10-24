@@ -11,7 +11,7 @@ public class SubRoomManager : ISubRoomManager
 {
     private SubRoomState state = new();
 
-    SubRoomInfo ISubRoomManager.HostSubRoom(ParticipantInfo creator, SubRoomPurpose purpose, int? maximum)
+    SubRoomInfo ISubRoomManager.HostSubRoom(ParticipantInfo creator, SubRoomPurpose purpose, int? maximum, bool includeCreator)
     {
         SubRoomInfo subRoom;
         lock (state)
@@ -22,7 +22,7 @@ public class SubRoomManager : ISubRoomManager
                 Purpose = purpose,
                 IsActive = true,
                 CreatorId = creator.Id,
-                Participants = [creator],
+                Participants = includeCreator ? [creator] : [],
                 MaximumParticipants = maximum,
                 CreatedAt = DateTime.Now
             };

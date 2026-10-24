@@ -29,22 +29,22 @@ public interface ISessionProcessTransport : IAsyncDisposable
     /// <summary>
     /// Соединено ли приложение
     /// </summary>
-    bool IsConnectionExists(ProcessContext context);
+    bool IsConnectionExists(SessionInstanceContext context);
 
     /// <summary>
     /// Ждать подключения одного процесса (server или client)
     /// </summary>
-    Task WaitForConnectionAsync(ProcessContext context, int timeOutMs, CancellationToken cancellationToken = default);
+    Task WaitForConnectionAsync(SessionInstanceContext context, int timeOutMs, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Отправить данные приложению
     /// </summary>
-    Task SendAsync(byte[] data, ProcessContext context, CancellationToken cancellationToken = default);
+    Task SendAsync(byte[] data, SessionInstanceContext context, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Закрыть конкретное подключение
     /// </summary>
-    Task DisconnectAsync(ProcessContext context);
+    Task DisconnectAsync(SessionInstanceContext context);
 
     /// <summary>
     /// Остановить транспорт, разорвать все соединения

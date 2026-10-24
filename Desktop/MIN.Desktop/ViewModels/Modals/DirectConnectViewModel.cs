@@ -68,7 +68,7 @@ public partial class DirectConnectViewModel : ModalViewModelBase
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private void Connect()
     {
-        Endpoint.IPAddress = IpAddress;
+        Endpoint.IpAddress = IpAddress;
         Endpoint.Port = Convert.ToInt32(Port);
 
         Endpoint.Origin = Endpoint.AssumeOriginOutOfAddress();
@@ -84,7 +84,7 @@ public partial class DirectConnectViewModel : ModalViewModelBase
         {
             try
             {
-                var validatedIp = await IpAddressParser.ValidateIP(gottenIpAddress);
+                var validatedIp = await IpAddressParser.ValidateIp(gottenIpAddress);
                 Port = port;
                 IpAddress = validatedIp;
                 ErrorMessage = null;
@@ -100,7 +100,7 @@ public partial class DirectConnectViewModel : ModalViewModelBase
         {
             try
             {
-                IpAddress = await IpAddressParser.ValidateIP(IpAddress);
+                IpAddress = await IpAddressParser.ValidateIp(IpAddress);
                 ErrorMessage = null;
                 IsEditing = false;
             }

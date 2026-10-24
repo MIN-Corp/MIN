@@ -107,7 +107,7 @@ internal sealed class HandshakeHandler : BaseHandler
 
         LogInfo($"Сессия с получателем {handshakeAckMessage.Participant.Name} инициализирована");
 
-        return await BuildFastChannelResponse(context);
+        return BuildFastChannelResponse(context);
     }
 
     private async Task<HandlerResult> HandleKeyRequest(MessageContext context)
@@ -150,7 +150,7 @@ internal sealed class HandshakeHandler : BaseHandler
             });
         }
 
-        return await BuildFastChannelResponse(context);
+        return BuildFastChannelResponse(context);
     }
 
     /// <summary>
@@ -187,7 +187,7 @@ internal sealed class HandshakeHandler : BaseHandler
         return new KeyNegotiationResult { NeedFullKey = true };
     }
 
-    private async Task<HandlerResult> BuildFastChannelResponse(MessageContext context)
+    private HandlerResult BuildFastChannelResponse(MessageContext context)
     {
         var savedRoom = roomStore.GetRoom(context.RoomContext.RoomId);
 

@@ -53,7 +53,7 @@ public static partial class IpAddressParser
     /// <summary>
     /// Валидировать IP адрес и вернуть ip адрес в случае DNS резолвинга
     /// </summary>
-    public static async Task<string> ValidateIP(string ipAddress)
+    public static async Task<string> ValidateIp(string ipAddress)
     {
         if (IPAddress.TryParse(ipAddress, out _) && ipAddress.Split('.').Length == 4)
         {

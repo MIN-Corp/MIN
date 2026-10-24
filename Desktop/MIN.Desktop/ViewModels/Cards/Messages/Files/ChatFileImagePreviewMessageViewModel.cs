@@ -54,9 +54,9 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
         bool isHostMessage,
         bool removeHeaders,
         IClipboard? clipboard,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(fileTransferFeatureCollection, dialogService, roomScope, fileMetadataMessage,
-            timePadding, localParticipant, isHostMessage, removeHeaders, clipboard, isAvaibleForNetwork)
+            timePadding, localParticipant, isHostMessage, removeHeaders, clipboard, isAvailableForNetwork)
     { }
 
     /// <inheritdoc />
@@ -64,7 +64,7 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
     {
         FileNameAndSize = Downloaded
             ? string.Empty
-            : $"{FileMetadataMessage.FileName} {fileTransferFeatureCollection.FileHelperService
+            : $"{FileMetadataMessage.FileName} {FileTransferFeatureCollection.FileHelperService
             .FormatFileSize(FileMetadataMessage.FileSize)}";
 
         LoadImage(FileMetadataMessage.FilePath ?? string.Empty);
@@ -100,12 +100,12 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
         gifStream?.Dispose();
         gifStream = null;
 
-        if (cachedFormat == "gif")
+        if (CachedFormat == "gif")
         {
             gifStream = File.OpenRead(filePath);
             GifPreviewImage = GifStreamSource.FromStream(gifStream);
         }
-        else if (cachedFormat == "svg")
+        else if (CachedFormat == "svg")
         {
             PreviewImage = ImageHelper.SvgToBitmap(filePath);
         }
@@ -118,10 +118,10 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
     [RelayCommand]
     private void InteractionClick()
     {
-        if (IsTransfering)
+        if (IsTransferring)
         {
             InvokeCancelRequested();
-            IsTransfering = false;
+            IsTransferring = false;
             return;
         }
 

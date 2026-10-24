@@ -31,11 +31,14 @@ public record Participant : IParticipantData
     /// <summary>
     /// Когда присоединился к комнате
     /// </summary>
-    public DateTime JoinedAt { get; set; }
+    public DateTime JoinedAt { get; init; }
 
     /// <summary>
     /// Когда участник последний раз менял описание
     /// </summary>
+    /// <remarks>
+    /// TODO: При перезаходе не всех участников обновлять а только обновлённых, новых и удалённых
+    /// </remarks>
     public DateTime? UpdatedAt { get; set; }
 
     /// <summary>
