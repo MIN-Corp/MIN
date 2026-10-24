@@ -121,20 +121,6 @@
                     <TextBlock Text="{Binding #OutputVolumeSlider.Value, StringFormat='Громкость динамиков: {0:F0}%'}" />
                     <Slider x:Name="OutputVolumeSlider" Minimum="0" Maximum="100" Value="{Binding Settings.OutputDeviceVolume}" />
 
-                    <!-- Logs -->
-
-                    <Button
-                        Command="{Binding OpenLogsCommand}"
-                        VerticalAlignment="Center">
-                        Открыть логи
-                    </Button>
-
-                    <TextBlock Classes="info"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Center">
-                        Для разработчика, при ошибке сообщите в https://github.com/MIN-Corp/MIN/issues
-                    </TextBlock>
-
                     <!-- Scan sessions -->
 
                     <Button
@@ -147,6 +133,29 @@
                                VerticalAlignment="Center">
                         Когда вы установили новую сессию
                     </TextBlock>
+
+                    <!-- Logs -->
+
+                    <Button
+                        Command="{Binding AnnounceErrorAtIssuesCommand}"
+                        VerticalAlignment="Center">
+                        Сообщить о проблеме
+                    </Button>
+
+                    <TextBlock Classes="info"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center">
+                        Если возникли проблемы, напишите как issue по ссылке,
+                        желательно указав описание ошибки и какие действия к ней привели
+                        (в логах или в уведомлении)
+                    </TextBlock>
+
+                    <Button
+                        Classes="secondary"
+                        Command="{Binding OpenLogsCommand}"
+                        VerticalAlignment="Center">
+                        Открыть логи
+                    </Button>
                 </StackPanel>
             </ScrollViewer>
         </DockPanel>

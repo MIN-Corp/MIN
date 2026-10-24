@@ -9,8 +9,8 @@
              x:DataType="vm:ChatSideBarViewModel"
              Padding="{DynamicResource PaddingPage}"
              DockPanel.Dock="Left"
-             MinWidth="300"
-             MaxWidth="600"
+             MinWidth="320"
+             MaxWidth="320"
              x:Class="MIN.Desktop.Views.Right.ChatSideBarView">
 
     <Design.DataContext>
@@ -118,7 +118,7 @@
                                         IsVisible="{Binding !IsOnline}"
                                         Text=" оффлайн" />
                             </TextBlock>
-                             
+
                             <ItemsControl ItemsSource="{Binding ConnectionAddresses}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>

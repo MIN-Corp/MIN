@@ -37,16 +37,16 @@ public class UdpTransport : IAsyncDisposable
         this.logger = logger;
     }
 
-    /// <inheritdoc />
-    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Начать хостинг
+    /// </summary>
+    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? preferredPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
-        var connectionId = serverConnectionId != null
-            ? serverConnectionId.Value
-            : Guid.NewGuid();
-        var port = PortProvider.AllocatePort();
+        var connectionId = serverConnectionId ?? Guid.NewGuid();
+        var port = PortProvider.AllocatePort(preferredPort, sequentialAttempts);
         var server = new UdpSocketServer(logger, port);
 
-        server.OnMessageReceived += (UdpSocketServer server, (UdpSocketConnection conn, byte[] msg) eventArgs) =>
+        server.OnMessageReceived += (UdpSocketServer _, (UdpSocketConnection conn, byte[] msg) eventArgs) =>
         {
             var args = new RawMessageReceivedEventArgs(eventArgs.msg, eventArgs.conn.Id, connectionId);
             RawMessageReceived?.Invoke(this, args);
@@ -58,7 +58,9 @@ public class UdpTransport : IAsyncDisposable
         return connectionId;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Остановить хостинг
+    /// </summary>
     public async Task StopHostingAsync(Guid connectionId)
     {
         if (servers.TryRemove(connectionId, out var server))

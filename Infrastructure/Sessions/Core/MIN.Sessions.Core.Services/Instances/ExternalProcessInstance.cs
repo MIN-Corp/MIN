@@ -153,7 +153,7 @@ public class ExternalProcessInstance : ISessionInstance
 
         started = true;
         process.EnableRaisingEvents = true;
-        exitHandler = async (_, _) => await OnProcessExitedAsync().ConfigureAwait(false);
+        exitHandler = async void (_, _) => await OnProcessExitedAsync().ConfigureAwait(false);
         process.Exited += exitHandler;
     }
 

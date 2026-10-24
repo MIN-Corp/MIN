@@ -25,7 +25,7 @@ public interface IMessageEncryptor
     /// <summary>
     /// Инициализировать сессию из сохранённого ключа партнёра (без перезаписи хранилища)
     /// </summary>
-    /// <returns>false, если сохранённого ключа нет или он повреждён</returns>
+    /// <returns>False, если сохранённого ключа нет или он повреждён</returns>
     Task<bool> TryInitializeSessionFromStoredAsync(Guid partnerId);
 
     /// <summary>

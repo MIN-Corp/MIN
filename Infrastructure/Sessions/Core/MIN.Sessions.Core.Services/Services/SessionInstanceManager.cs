@@ -98,7 +98,8 @@ public class SessionInstanceManager : ISessionInstanceManager
         }
     }
 
-    async Task ISessionInstanceManager.StopAsync(SessionInstanceContext context)
+    /// <inheritdoc />
+    public async Task StopAsync(SessionInstanceContext context)
     {
         if (!instances.Remove(context, out var instance))
         {
@@ -113,7 +114,7 @@ public class SessionInstanceManager : ISessionInstanceManager
     {
         foreach (var context in instances.Keys.Where(x => x.RoomId == roomId).ToList())
         {
-            await ((ISessionInstanceManager)this).StopAsync(context).ConfigureAwait(false);
+            await StopAsync(context).ConfigureAwait(false);
         }
     }
 
@@ -121,7 +122,7 @@ public class SessionInstanceManager : ISessionInstanceManager
     {
         foreach (var context in instances.Keys.ToList())
         {
-            await ((ISessionInstanceManager)this).StopAsync(context).ConfigureAwait(false);
+            await StopAsync(context).ConfigureAwait(false);
         }
     }
 
@@ -147,7 +148,7 @@ public class SessionInstanceManager : ISessionInstanceManager
         }
 
         await ((ISessionInstanceManager)this).StopAsync(
-            new SessionInstanceContext(context.RoomId, context.SubRoomId, SessionInstanceRole.Server)).ConfigureAwait(false);
+            context with { Role = SessionInstanceRole.Server }).ConfigureAwait(false);
 
         var subRoomInfo = roomContext.SubRooms.GetSubRoom(context.SubRoomId);
 
@@ -156,6 +157,6 @@ public class SessionInstanceManager : ISessionInstanceManager
             return;
         }
 
-        roomContext.SubRooms.TryStopSubRoom(context.SubRoomId, subRoomInfo?.CreatorId ?? Guid.Empty);
+        roomContext.SubRooms.TryStopSubRoom(context.SubRoomId, subRoomInfo.CreatorId);
     }
 }

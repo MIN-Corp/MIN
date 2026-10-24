@@ -55,8 +55,17 @@ public sealed class ChatSessionService : IChatSessionService
 
     async Task IChatSessionService.SendSessionJoinRequest(Guid roomId, SessionReadyMessage sessionReadyMessage, CancellationToken cancellationToken)
     {
-        var session = sessionScanner.GetSessionById(sessionReadyMessage.Session.SessionId)
-            ?? throw new DirectoryNotFoundException($"У вас не установлена программа для {sessionReadyMessage.Session.Name}");
+        var session = sessionScanner.GetSessionById(sessionReadyMessage.Session.SessionId);
+
+        switch (session)
+        {
+            case null when sessionReadyMessage.Session.Kind == SessionKind.Process:
+                throw new DirectoryNotFoundException($"У вас не установлена программа для {sessionReadyMessage.Session.Name}");
+            case null:
+                session = sessionReadyMessage.Session;
+                sessionScanner.RegisterAdHoc(roomId, session);
+                break;
+        }
 
         await SendAsync(new SessionJoinRequestMessage()
         {
@@ -112,14 +121,6 @@ public sealed class ChatSessionService : IChatSessionService
     async Task IChatSessionService.SendSessionStopAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
         => await sessionInstanceManager.LeaveAsync(
             new SessionInstanceContext(roomId, subRoomId, SessionInstanceRole.Server), cancellationToken);
-
-    async Task IChatSessionService.DeleteSessionMessageAsync(Guid roomId, SessionReadyMessage message, CancellationToken cancellationToken)
-    {
-        await sessionInstanceManager.LeaveAsync(
-            new SessionInstanceContext(roomId, message.SubRoomId, SessionInstanceRole.Server), cancellationToken);
-
-        await chatMessageService.DeleteMessageAsync(roomId, message.Id, cancellationToken);
-    }
 
     private async Task SendAsync(IMessage? message, Guid roomId, CancellationToken cancellationToken)
     {

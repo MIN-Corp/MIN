@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +30,8 @@ namespace MIN.Desktop.ViewModels.Pages;
 /// </summary>
 public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
 {
+    private const string IssueHandlingLink = @"https://github.com/MIN-Corp/MIN/issues/new";
+
     private readonly IMinFeatureCollection featureCollection;
     private readonly IDialogService dialogService;
     private readonly CancellationTokenSource appCts = null!;
@@ -117,37 +120,39 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
         this.featureCollection = featureCollection;
         this.dialogService = dialogService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            appCts = ctsProvider.AppCts;
-
-            var inputDeviceNames = featureCollection.Voice.AudioDeviceService.GetInputDevices(asDecoded: true).Select(x => x.Name);
-            foreach (var name in inputDeviceNames)
-            {
-                InputDevices.Add(name);
-            }
-
-            var outputDeviceNames = featureCollection.Voice.AudioDeviceService.GetOutputDevices(asDecoded: true).Select(x => x.Name);
-            foreach (var name in outputDeviceNames)
-            {
-                OutputDevices.Add(name);
-            }
-
-            foreach (NoiseReduction denoiser in Enum.GetValues(typeof(NoiseReduction)))
-            {
-                NoiseReductions.Add(denoiser.GetDescription());
-            }
-
-            featureCollection.Helper.SettingsProvider.OnSettingsSaved += FillControls;
-
-            OnNavigatedTo = ActionOnNavigatedTo;
-
-            FillControls();
-
-            Application.Current!.RequestedThemeVariant = Settings.LightThemeEnabled
-                ? ThemeVariant.Light
-                : ThemeVariant.Dark;
+            return;
         }
+
+        appCts = ctsProvider.AppCts;
+
+        var inputDeviceNames = featureCollection.Voice.AudioDeviceService.GetInputDevices(asDecoded: true).Select(x => x.Name);
+        foreach (var name in inputDeviceNames)
+        {
+            InputDevices.Add(name);
+        }
+
+        var outputDeviceNames = featureCollection.Voice.AudioDeviceService.GetOutputDevices(asDecoded: true).Select(x => x.Name);
+        foreach (var name in outputDeviceNames)
+        {
+            OutputDevices.Add(name);
+        }
+
+        foreach (NoiseReduction denoiser in Enum.GetValues(typeof(NoiseReduction)))
+        {
+            NoiseReductions.Add(denoiser.GetDescription());
+        }
+
+        featureCollection.Helper.SettingsProvider.OnSettingsSaved += FillControls;
+
+        OnNavigatedTo = ActionOnNavigatedTo;
+
+        FillControls();
+
+        Application.Current!.RequestedThemeVariant = Settings.LightThemeEnabled
+            ? ThemeVariant.Light
+            : ThemeVariant.Dark;
     }
 
     private void ActionOnNavigatedTo(object? sender, EventArgs e)
@@ -199,6 +204,17 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
         await dialogService.ShowAsync<LogViewModel>();
         ChangeViewToPrevious();
     }
+
+    /// <summary>
+    /// Сообщить об ошибке
+    /// </summary>
+    [RelayCommand]
+    private static void AnnounceErrorAtIssues()
+        => Process.Start(new ProcessStartInfo
+        {
+            FileName = IssueHandlingLink,
+            UseShellExecute = true
+        });
 
     /// <summary>
     /// Отсканировать папку с сессиями

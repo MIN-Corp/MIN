@@ -29,7 +29,7 @@ namespace MIN.Desktop.ViewModels.Cards.Messages.Sessions;
 /// </summary>
 public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMessageViewModel
 {
-    private readonly IDialogService dialogService = null!;
+    private readonly IDialogService dialogService;
     private readonly int? maximumParticipants;
     private readonly ParticipantInfo localParticipant;
     private readonly IClipboard? clipboard;
@@ -70,7 +70,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     public partial bool CanJoin { get; set; }
 
     /// <summary>
-    /// Учавствует ли пользователь уже в сессии
+    /// Участвует ли пользователь уже в сессии
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LeaveSessionCommand))]
@@ -113,20 +113,20 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTunnelConnectVisible))]
-    public partial bool TunnelConnectInfoAvaible { get; set; }
+    private partial bool TunnelConnectInfoAvailable { get; set; }
 
     /// <summary>
     /// Адрес подключения к туннелю
     /// </summary>
     [ObservableProperty]
-    public partial string TunnelConnectAddress { get; set; } = string.Empty;
+    private partial string TunnelConnectAddress { get; set; } = string.Empty;
 
     /// <summary>
     /// Сессия была остановлена (можно запустить заново)
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHostTunnelInfoVisible))]
-    public partial bool IsSessionStopped { get; set; } = true;
+    private partial bool IsSessionStopped { get; set; } = true;
 
     /// <summary>
     /// Показывать ли хосту туннеля подсказку о порте
@@ -136,7 +136,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
     /// <summary>
     /// Показывать ли участнику панель подключения
     /// </summary>
-    public bool IsTunnelConnectVisible => TunnelConnectInfoAvaible && !IsLocal;
+    public bool IsTunnelConnectVisible => TunnelConnectInfoAvailable && !IsLocal;
 
     /// <summary>
     /// Событие, возникающее по нажатию на кнопку присоединиться
@@ -222,7 +222,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         }
 
         IsWaitingForGame = false;
-        TunnelConnectInfoAvaible = false;
+        TunnelConnectInfoAvailable = false;
         UpdateStats();
         return Task.CompletedTask;
     }
@@ -277,13 +277,14 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         IsSessionStopped = true;
         IsJoined = false;
         IsWaitingForGame = false;
+        currentAmount = 0;
         UpdateStats();
         return Task.CompletedTask;
     }
 
     private Task OnSessionParticipantJoined(SessionParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.SubRoomId != SessionMessage.SubRoomId)
+        if (eventMessage.SubRoomId != SessionMessage.SubRoomId || IsSessionStopped)
         {
             return Task.CompletedTask;
         }
@@ -302,10 +303,11 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 
     private Task OnSessionParticipantLeft(SessionParticipantLeftEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.SubRoomId != SessionMessage.SubRoomId)
+        if (eventMessage.SubRoomId != SessionMessage.SubRoomId || IsSessionStopped)
         {
             return Task.CompletedTask;
         }
+
 
         if (eventMessage.Participant.Id == localParticipant.Id)
         {
@@ -326,7 +328,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         }
 
         IsWaitingForGame = true;
-        TunnelConnectInfoAvaible = true;
+        TunnelConnectInfoAvailable = true;
         TunnelConnectAddress = $"127.0.0.1:{eventMessage.Port}";
 
         UpdateStats();
@@ -341,7 +343,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         }
 
         IsWaitingForGame = false;
-        TunnelConnectInfoAvaible = false;
+        TunnelConnectInfoAvailable = false;
         InAppNotifier.Error($"Не удалось подключиться к сессии: {eventMessage.Reason}");
         UpdateStats();
         return Task.CompletedTask;
@@ -374,7 +376,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
            : IsWaitingForGame ? "Отменить подключение"
            : IsJoined ? "Покинуть сессию"
            : !asDownloaded && !IsTunnel ? "Скачать сессию"
-           : isFull ? "Заполнено" : "Присоединиться") + $" (Учавствуют: {participantsRatio})";
+           : isFull ? "Заполнено" : "Присоединиться") + $" (Участвуют: {participantsRatio})";
 
         TunnelHostInfo = IsJoined
             ? "Вы в сессии (сервер игры обнаружен)"
@@ -403,7 +405,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         if (IsWaitingForGame)
         {
             IsWaitingForGame = false;
-            TunnelConnectInfoAvaible = false;
+            TunnelConnectInfoAvailable = false;
             UpdateStats();
             OnLeaveRequested?.Invoke();
             return;
@@ -466,7 +468,10 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
             await Task.Delay(1000);
             TunnelConnectInfo = previous;
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanLeave))]
@@ -493,7 +498,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
         }
 
         IsWaitingForGame = false;
-        TunnelConnectInfoAvaible = false;
+        TunnelConnectInfoAvailable = false;
         UpdateStats();
     }
 }

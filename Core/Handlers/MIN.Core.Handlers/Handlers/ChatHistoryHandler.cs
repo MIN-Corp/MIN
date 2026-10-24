@@ -71,7 +71,6 @@ internal sealed class ChatHistoryHandler : BaseHandler
 
             case ChatHistoryClearMessage clearMessage:
                 var room = roomStore.GetRoom(roomId);
-                room.LocalRoomSettings.HistoryWipedOutUpTo = DateTime.Now;
 
                 var allMessages = context.RoomContext.Messages.GetHistory();
 
@@ -80,6 +79,7 @@ internal sealed class ChatHistoryHandler : BaseHandler
                     await eventBus.PublishAsync(new MessageDeletedEvent()
                     {
                         MessageId = messageToClear.Id,
+                        Message = messageToClear,
                         RoomId = roomId,
                     }, context.CancellationToken);
                 }

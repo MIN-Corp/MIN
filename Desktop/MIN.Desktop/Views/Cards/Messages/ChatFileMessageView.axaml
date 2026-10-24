@@ -148,8 +148,7 @@
                             Grid.Column="0"
                             Height="70"
                             Width="70"
-                            Margin="4,0"
-                            Background="{DynamicResource Secondary}">
+                            Margin="4,0">
                             <Button
                                 Classes="file"
                                 IsEnabled="{Binding !CantDownload}"

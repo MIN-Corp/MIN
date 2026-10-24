@@ -33,7 +33,10 @@ public sealed class SubscriptionBag : IDisposable
             {
                 token.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
         }
         tokens.Clear();
     }

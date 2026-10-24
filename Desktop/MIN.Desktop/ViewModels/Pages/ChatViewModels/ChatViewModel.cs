@@ -19,7 +19,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Модель чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel : ValidatingRoutableViewModelBase
 {
     private readonly ChatSideBarViewModel chatSideBarViewModel;
     private readonly DiscoveryViewModel discoveryViewModel;
@@ -33,7 +33,6 @@ public partial class ChatViewModel : RoutableViewModelBase
     private readonly ParticipantInfo localParticipant = null!;
 
     private TaskCompletionSource? loadingTcs = new();
-    private Guid roomId;
     private Guid connectionId;
     private bool isInitialized;
     private Room room = null!;
@@ -50,7 +49,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     /// <summary>
     /// Идентификатор комнаты
     /// </summary>
-    public Guid RoomId => roomId;
+    public Guid RoomId { get; private set; }
 
     /// <summary>
     /// Имя комнаты
@@ -95,15 +94,17 @@ public partial class ChatViewModel : RoutableViewModelBase
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
-
-            OnNavigatedTo = ActionOnNavigatedTo;
-            OnNavigatedFrom = ActionOnNavigatedFrom;
-
-            InitializeUiActions();
+            return;
         }
+
+        localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
+
+        OnNavigatedTo = ActionOnNavigatedTo;
+        OnNavigatedFrom = ActionOnNavigatedFrom;
+
+        InitializeUiActions();
     }
 
     private void InitializeUiActions()
@@ -131,7 +132,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var lastHistory = context.Messages.GetRecentHistory().ToList();
 
         RemoveLoadMoreLabel();
@@ -226,7 +227,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         IsOnline = room.IsOnline;
         chatSideBarViewModel.IsOnline = IsOnline;
         IsAvaibleForNetwork = IsOnline || IsHost;
-        roomId = room.Id;
+        RoomId = room.Id;
         SubscribeToEvents(featureCollection.Core.EventBus);
 
         await UpdateChatFlow();
@@ -255,25 +256,25 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (IsHost)
         {
-            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomId);
+            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(RoomId);
             if (asForget)
             {
-                await featureCollection.Core.Lifecycle.ForgetHostingAsync(roomId);
+                await featureCollection.Core.Lifecycle.ForgetHostingAsync(RoomId);
             }
             else
             {
-                await featureCollection.Core.Lifecycle.StopHostingAsync(roomId);
+                await featureCollection.Core.Lifecycle.StopHostingAsync(RoomId);
             }
         }
         else
         {
             if (asForget)
             {
-                await featureCollection.Core.Lifecycle.ForgetRoomAsync(roomId, connectionId);
+                await featureCollection.Core.Lifecycle.ForgetRoomAsync(RoomId, connectionId);
             }
             else
             {
-                await featureCollection.Core.Lifecycle.DisconnectAsync(roomId, connectionId);
+                await featureCollection.Core.Lifecycle.DisconnectAsync(RoomId, connectionId);
             }
         }
     }

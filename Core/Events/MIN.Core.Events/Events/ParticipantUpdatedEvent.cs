@@ -15,5 +15,5 @@ public sealed record ParticipantUpdatedEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Новые данные об участнике
     /// </summary>
-    public required Participant NewParticipant { get; set; }
+    public required Participant NewParticipant { get; init; }
 }

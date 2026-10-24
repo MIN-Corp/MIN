@@ -143,24 +143,21 @@ internal sealed class SessionJoinHandler : BaseHandler
                     return HandlerResult.Failure($"У вас повреждёна или утеряна программа для {responseSession.Name}");
                 }
 
-                if (!instance.IsJoinAnnounceDeferred)
+                if (instance.IsJoinAnnounceDeferred || !sessionJoinResponseMessage.NeedToAnnounce)
                 {
-                    if (!sessionJoinResponseMessage.NeedToAnnounce)
-                    {
-                        return HandlerResult.Success();
-                    }
-
-                    var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
-
-                    var sessionParticipantJoinedMessage = new SessionParticipantJoinedMessage()
-                    {
-                        SubRoomId = sessionJoinResponseMessage.SubRoomId,
-                        Participant = selfParticipant,
-                    };
-
-                    await messageRouter.RouteAsync(sessionParticipantJoinedMessage, roomId, selfParticipant.Id, context.CancellationToken)
-                        .ConfigureAwait(false);
+                    return HandlerResult.Success();
                 }
+
+                var selfParticipant = identityService.SelfParticipant.ToParticipantInfo();
+
+                var sessionParticipantJoinedMessage = new SessionParticipantJoinedMessage()
+                {
+                    SubRoomId = sessionJoinResponseMessage.SubRoomId,
+                    Participant = selfParticipant,
+                };
+
+                await messageRouter.RouteAsync(sessionParticipantJoinedMessage, roomId, selfParticipant.Id, context.CancellationToken)
+                    .ConfigureAwait(false);
 
                 return HandlerResult.Success();
 

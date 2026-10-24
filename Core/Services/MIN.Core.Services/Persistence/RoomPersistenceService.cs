@@ -116,7 +116,7 @@ public class RoomPersistenceService : IRoomPersistenceService
 
     private Task OnRoomDestroyed(RoomDestroyedEvent e, CancellationToken ct)
     {
-        var room = loadedRooms.Where(x => x.Id == e.RoomId).FirstOrDefault();
+        var room = loadedRooms.FirstOrDefault(x => x.Id == e.RoomId);
         if (room != null)
         {
             loadedRooms.Remove(room);

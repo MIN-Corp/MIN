@@ -14,7 +14,6 @@ public sealed class FileSystemKeyStorage : IDisposable
 {
     private readonly string keysPath;
     private readonly string partnersPath;
-    private readonly JsonSerializerOptions jsonOptions;
     private readonly SchemaFileStore schemaStore;
     private readonly SemaphoreSlim localKeyLock = new(1, 1);
     private readonly SemaphoreSlim partnersLock = new(1, 1);
@@ -29,7 +28,7 @@ public sealed class FileSystemKeyStorage : IDisposable
         keysPath = Path.Combine(directory, "keys.json");
         partnersPath = Path.Combine(directory, "partners.json");
 
-        jsonOptions = new JsonSerializerOptions
+        var jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -37,7 +36,7 @@ public sealed class FileSystemKeyStorage : IDisposable
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-        schemaStore = new(1, jsonOptions, logger);
+        schemaStore = new SchemaFileStore(1, jsonOptions, logger);
     }
 
     /// <summary>
@@ -75,46 +74,6 @@ public sealed class FileSystemKeyStorage : IDisposable
     }
 
     /// <summary>
-    /// Загрузить словарь публичных ключей партнёров
-    /// </summary>
-    public async Task<Dictionary<Guid, byte[]>> LoadPartnerPublicKeysAsync(CancellationToken cancellationToken = default)
-    {
-        await partnersLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (!File.Exists(partnersPath))
-            {
-                return [];
-            }
-
-            var json = await File.ReadAllTextAsync(partnersPath, cancellationToken);
-            var stringDict = await schemaStore.LoadOrCreateAsync(partnersPath, () => new Dictionary<string, string>());
-            if (stringDict == null)
-            {
-                return [];
-            }
-
-            var result = new Dictionary<Guid, byte[]>();
-            foreach (var kvp in stringDict)
-            {
-                if (Guid.TryParse(kvp.Key, out var guid))
-                {
-                    result[guid] = Convert.FromBase64String(kvp.Value);
-                }
-            }
-            return result;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidDataException("Failed to load partners file", ex);
-        }
-        finally
-        {
-            partnersLock.Release();
-        }
-    }
-
-    /// <summary>
     /// Сохранить публичный ключ партнёра в хранилище
     /// </summary>
     /// <param name="partnerId">Идентификатор партнёра (участника)</param>
@@ -142,7 +101,39 @@ public sealed class FileSystemKeyStorage : IDisposable
     public async Task<byte[]?> LoadPartnerPublicKeyAsync(Guid partnerId, CancellationToken cancellationToken = default)
     {
         var partners = await LoadPartnerPublicKeysAsync(cancellationToken);
-        return partners.TryGetValue(partnerId, out var key) ? key : null;
+        return partners.GetValueOrDefault(partnerId);
+    }
+
+    private async Task<Dictionary<Guid, byte[]>> LoadPartnerPublicKeysAsync(CancellationToken cancellationToken = default)
+    {
+        await partnersLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (!File.Exists(partnersPath))
+            {
+                return [];
+            }
+
+            var stringDict = await schemaStore.LoadOrCreateAsync(partnersPath, () => new Dictionary<string, string>());
+
+            var result = new Dictionary<Guid, byte[]>();
+            foreach (var kvp in stringDict)
+            {
+                if (Guid.TryParse(kvp.Key, out var guid))
+                {
+                    result[guid] = Convert.FromBase64String(kvp.Value);
+                }
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException("Failed to load partners file", ex);
+        }
+        finally
+        {
+            partnersLock.Release();
+        }
     }
 
     /// <inheritdoc cref="IDisposable.Dispose"/>

@@ -70,6 +70,7 @@ internal sealed class MessageDeleteHandler : BaseHandler
         return Task.FromResult(HandlerResult.WithEvent(new MessageDeletedEvent()
         {
             MessageId = chatDeleteMessage.MessageIdToDelete,
+            Message = existingMessage,
             RoomId = context.RoomContext.RoomId,
         }));
     }

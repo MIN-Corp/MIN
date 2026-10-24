@@ -78,9 +78,9 @@ public class SessionScanner : ISessionScanner
                 await using var stream = File.OpenRead(jsonPath);
                 var session = await JsonSerializer.DeserializeAsync<Session>(stream, jsonOptions, cancellationToken: cancellationToken);
 
-                if (session?.SessionId == null || session.Name == null)
+                if (session?.SessionId == null)
                 {
-                    logger.Log($"Skipping {jsonPath}: missing sessionId or name");
+                    logger.Log($"Skipping {jsonPath}: missing sessionId");
                     continue;
                 }
 

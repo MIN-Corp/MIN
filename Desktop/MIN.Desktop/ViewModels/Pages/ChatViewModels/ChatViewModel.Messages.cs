@@ -129,14 +129,17 @@ public partial class ChatViewModel
             renderedMessageCount++;
         }
 
-        if (!IsAtBottom && message.SenderId != localParticipant.Id
-            && !appendOnTop && !seenMessageIds.Contains(message.Id))
+        if (!appendOnTop)
         {
-            MissedMessagesCount++;
-        }
-        else if (IsAtBottom || message.SenderId == localParticipant.Id)
-        {
-            await ScrollToBottomAsync();
+            if (!IsAtBottom && message.SenderId != localParticipant.Id
+                && !seenMessageIds.Contains(message.Id))
+            {
+                MissedMessagesCount++;
+            }
+            else if (IsAtBottom || message.SenderId == localParticipant.Id)
+            {
+                await ScrollToBottomAsync();
+            }
         }
 
         if (seenMessageIds.Add(message.Id) && seenMessageIds.Count > MaxTrackedSeenMessageIds)
@@ -156,7 +159,7 @@ public partial class ChatViewModel
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var messages = context.Messages.GetRecentHistory().ToList();
 
         await RenderMessages(messages);
@@ -295,7 +298,7 @@ public partial class ChatViewModel
 
     private async Task OnLoadMoreClicked()
     {
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
 
         var olderInMemory = context.Messages
             .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId)
@@ -310,7 +313,7 @@ public partial class ChatViewModel
             && messagesCount < room.TotalMessageCount)
         {
             await featureCollection.Chat.ChatRoomService.SendChatHistoryRequest(
-                roomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
+                RoomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
             return;
         }
 
@@ -471,15 +474,15 @@ public partial class ChatViewModel
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
-            featureCollection.Core.RoomFactory.GetRoomContext(roomId), roomScope,
+            featureCollection.Core.RoomFactory.GetRoomContext(RoomId), roomScope,
             featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
             msg, localParticipant, timePadding, IsHost, isHost, removeHeaders, IsAvaibleForNetwork);
 
+        card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
         card.OnReplyRequested += () => SetReplyTo(msg);
-        card.OnLeaveRequested += () => featureCollection.Chat.ChatSessionService.SendSessionLeaveAsync(roomId, msg.SubRoomId, roomCts.Token);
-        card.OnShutdownRequested += () => featureCollection.Chat.ChatSessionService.SendSessionStopAsync(roomId, msg.SubRoomId, roomCts.Token);
-        card.OnDeleteRequested += () => featureCollection.Chat.ChatSessionService.DeleteSessionMessageAsync(roomId, msg, roomCts.Token);
+        card.OnLeaveRequested += () => featureCollection.Chat.ChatSessionService.SendSessionLeaveAsync(RoomId, msg.SubRoomId, roomCts.Token);
+        card.OnShutdownRequested += () => featureCollection.Chat.ChatSessionService.SendSessionStopAsync(RoomId, msg.SubRoomId, roomCts.Token);
 
         if (!withAppendOnTop)
         {

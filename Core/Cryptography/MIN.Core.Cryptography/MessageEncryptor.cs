@@ -121,7 +121,7 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
         }
         catch (CryptographicException ex)
         {
-            logger.Log($"Возникла крипто-ошибка: {ex.Message}", LogLevel.Error);
+            logger.Log($"Возникла криптографическая ошибка: {ex.Message}", LogLevel.Error);
             throw;
         }
     }

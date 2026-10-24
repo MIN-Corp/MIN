@@ -13,8 +13,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:designer="using:MIN.Desktop.Contracts.Designer"
         xmlns:system="clr-namespace:System;assembly=System.Runtime"
-        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="500"
-        Width="1124" Height="500"
+        xmlns:central="clr-namespace:MIN.Desktop.Views.Views.Central"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
+        Width="1280" Height="720"
         MinWidth="320" MinHeight="330"
         SizeChanged="Window_SizeChanged"
         x:Class="MIN.Desktop.Views.MainWindow"
@@ -122,13 +123,13 @@
                                     <Svg Path="{Binding AbsolutePath}"
                                             Classes="rotating"
                                             Height="50" />
-                                    <Button IsEnabled="{Binding !$parent[Window].DataContext.IsCancellingRouting}"
+                                    <Button IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                         Classes="no-background"
-                                        Command="{Binding $parent[Window].DataContext.CancelRoutingCommand}">
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CancelRoutingCommand}">
                                             <StackPanel>
-                                            <TextBlock IsVisible="{Binding !$parent[Window].DataContext.IsCancellingRouting}"
+                                            <TextBlock IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                                 Text="Отменить" />
-                                            <TextBlock IsVisible="{Binding $parent[Window].DataContext.IsCancellingRouting}"
+                                            <TextBlock IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                                 Text="Идёт отмена..." />
                                         </StackPanel>
                                     </Button>
@@ -160,13 +161,13 @@
                                     <Svg Path="{Binding AbsolutePath}"
                                             Classes="rotating"
                                             Height="50" />
-                                    <Button IsEnabled="{Binding !$parent[Window].DataContext.IsCancellingRouting}"
+                                    <Button IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                         Classes="no-background"
-                                        Command="{Binding $parent[Window].DataContext.CancelRoutingCommand}">
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CancelRoutingCommand}">
                                             <StackPanel>
-                                            <TextBlock IsVisible="{Binding !$parent[Window].DataContext.IsCancellingRouting}"
+                                            <TextBlock IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                                 Text="Отменить" />
-                                            <TextBlock IsVisible="{Binding $parent[Window].DataContext.IsCancellingRouting}"
+                                            <TextBlock IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                                 Text="Идёт отмена..." />
                                         </StackPanel>
                                     </Button>
@@ -177,13 +178,13 @@
                                 <pagesCentral:DiscoveryView />
                             </DataTemplate>
                             <DataTemplate x:DataType="pagesChatPanelVm:ChatViewModel">
-                                <pagesCentral:ChatView />
+                                <central:ChatView />
                             </DataTemplate>
                         </designer:MultiDataTemplate>
                     </ContentControl.ContentTemplate>
                 </ContentControl>
 
-                <!--  Right content (right side bar)  -->
+                <!--  Right content (right sidebar)  -->
 
                 <ContentControl
                     x:Name="Right"
@@ -201,13 +202,13 @@
                                     <Svg Path="{Binding AbsolutePath}"
                                             Classes="rotating"
                                             Height="50" />
-                                    <Button IsEnabled="{Binding !$parent[Window].DataContext.IsCancellingRouting}"
+                                    <Button IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                         Classes="no-background"
-                                        Command="{Binding $parent[Window].DataContext.CancelRoutingCommand}">
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CancelRoutingCommand}">
                                             <StackPanel>
-                                            <TextBlock IsVisible="{Binding !$parent[Window].DataContext.IsCancellingRouting}"
+                                            <TextBlock IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                                 Text="Отменить" />
-                                            <TextBlock IsVisible="{Binding $parent[Window].DataContext.IsCancellingRouting}"
+                                            <TextBlock IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCancellingRouting}"
                                                 Text="Идёт отмена..." />
                                         </StackPanel>
                                     </Button>

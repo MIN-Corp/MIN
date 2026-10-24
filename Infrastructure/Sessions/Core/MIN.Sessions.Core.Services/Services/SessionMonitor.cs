@@ -31,7 +31,7 @@ public class SessionMonitor : IHostedService
     int IHostedService.Priority => 0;
 
     /// <summary>
-    /// Инициализирует новый экзепмляр <see cref="SessionMonitor"/>
+    /// Инициализирует новый экземпляр <see cref="SessionMonitor"/>
     /// </summary>
     public SessionMonitor(IEventBus eventBus,
         IRoomFactory roomFactory,
@@ -59,13 +59,46 @@ public class SessionMonitor : IHostedService
 
         eventBus.Subscribe<RoomWentOfflineEvent>(WentOffline);
         eventBus.Subscribe<ParticipantLeftEvent>(OnParticipantLeft);
+        eventBus.Subscribe<MessageDeletedEvent>(OnMessageDeleted);
         eventBus.Subscribe<SessionDeactivatedEvent>(OnSessionDeactivated);
+    }
+
+    private async Task OnMessageDeleted(MessageDeletedEvent e, CancellationToken cancellationToken)
+    {
+        if (e.Message is SessionReadyMessage sessionReady)
+        {
+            await sessionInstanceManager.LeaveAsync(new SessionInstanceContext(e.RoomId, sessionReady.SubRoomId, SessionInstanceRole.Server),
+                cancellationToken);
+        }
     }
 
     private async Task WentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
     {
         await sessionInstanceManager.StopForRoomAsync(e.RoomId);
         sessionScanner.UnregisterAdHocForRoom(e.RoomId);
+
+        var roomContext = roomFactory.GetOrCreateContext(e.RoomId);
+
+        foreach (var subRoom in roomContext.SubRooms.GetRoomSubRooms().Where(x => x.IsActive).ToList())
+        {
+            var readyMessage = roomContext.Messages.GetHistory()
+                .OfType<SessionReadyMessage>()
+                .FirstOrDefault(x => x.SubRoomId == subRoom.Id);
+
+            if (readyMessage != null)
+            {
+                readyMessage.CurrentParticipantAmount = 0;
+                roomContext.Messages.UpdateMessage(readyMessage.Id, readyMessage);
+            }
+
+            await eventBus.PublishAsync(new SessionDeactivatedEvent()
+            {
+                RoomId = e.RoomId,
+                SubRoomId = subRoom.Id,
+            }, cancellationToken).ConfigureAwait(false);
+
+            roomContext.SubRooms.TryStopSubRoom(subRoom.Id, identityService.SelfParticipant.Id);
+        }
     }
 
     private async Task OnSessionDeactivated(SessionDeactivatedEvent e, CancellationToken cancellationToken)
@@ -81,19 +114,21 @@ public class SessionMonitor : IHostedService
         var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Activity && x.IsActive);
         foreach (var subRoom in activeSubRooms)
         {
-            if (context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
+            if (!context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
             {
-                var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
-
-                var leaveMessage = new SessionParticipantLeftMessage()
-                {
-                    SubRoomId = subRoom.Id,
-                    Participant = e.Message.Participant,
-                    IsLast = isLast
-                };
-
-                await messageRouter.RouteAsync(leaveMessage, roomId, identityService.SelfParticipant.Id, cancellationToken);
+                continue;
             }
+
+            var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
+
+            var leaveMessage = new SessionParticipantLeftMessage()
+            {
+                SubRoomId = subRoom.Id,
+                Participant = e.Message.Participant,
+                IsLast = isLast
+            };
+
+            await messageRouter.RouteAsync(leaveMessage, roomId, identityService.SelfParticipant.Id, cancellationToken);
         }
     }
 

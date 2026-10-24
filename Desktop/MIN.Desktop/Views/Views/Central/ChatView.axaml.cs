@@ -7,7 +7,7 @@ using MIN.Desktop.ViewModels.Cards.Messages;
 using MIN.Desktop.ViewModels.Pages.ChatViewModels;
 using MIN.Desktop.Views.Base;
 
-namespace MIN.Desktop.Views.Central;
+namespace MIN.Desktop.Views.Views.Central;
 
 /// <summary>
 /// Страница чата
@@ -113,11 +113,13 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
 
             Dispatcher.UIThread.Post(() =>
             {
-                if (prependAnchorCard == card)
+                if (prependAnchorCard != card)
                 {
-                    ApplyAnchorOffset(card, subOffset);
-                    prependAnchorCard = null;
+                    return;
                 }
+
+                ApplyAnchorOffset(card, subOffset);
+                prependAnchorCard = null;
             }, DispatcherPriority.Loaded);
         }, DispatcherPriority.Loaded);
     }
@@ -196,12 +198,8 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
     private void ApplyAnchorOffset(BaseChatMessageViewModel card, double subOffset)
     {
         var container = MessagesControl.ContainerFromItem(card);
-        if (container is null)
-        {
-            return;
-        }
 
-        var y = container.TranslatePoint(default, MessagesScroller)?.Y;
+        var y = container?.TranslatePoint(default, MessagesScroller)?.Y;
         if (y is null)
         {
             return;

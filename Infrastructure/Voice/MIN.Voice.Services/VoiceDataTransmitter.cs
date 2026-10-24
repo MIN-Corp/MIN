@@ -126,7 +126,6 @@ public class VoiceDataTransmitter : IVoiceDataTransmitter
                 {
                     SubRoomId = subRoomId,
                     SequenceNumber = currentSequence,
-                    Codec = codec.Kind,
                     Data = codec.Encode(data),
                 };
 

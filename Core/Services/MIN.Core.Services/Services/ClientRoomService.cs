@@ -281,8 +281,7 @@ internal sealed class ClientRoomService
         });
         await eventBus.PublishAsync(new RoomDestroyedEvent()
         {
-            RoomId = roomId,
-            Reason = reason
+            RoomId = roomId
         });
     }
 }

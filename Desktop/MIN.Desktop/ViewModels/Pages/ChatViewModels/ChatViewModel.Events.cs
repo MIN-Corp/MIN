@@ -14,7 +14,6 @@ using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Models.Statuses;
 using MIN.Desktop.Infrastructure.Events;
 using MIN.Desktop.Infrastructure.Services;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.FileTransfer.Events;
 using MIN.FileTransfer.Services.Contracts.Models.Enums;
@@ -33,7 +32,7 @@ public partial class ChatViewModel
 
     private void SubscribeToEvents(IEventBus eventBus)
     {
-        roomScope = eventBus.CreateScope(roomId);
+        roomScope = eventBus.CreateScope(RoomId);
 
         // Text
         roomScope.Subscribe<ChatTextMessageReceivedEvent>(OnChatTextMessageReceived);
@@ -75,7 +74,7 @@ public partial class ChatViewModel
     private async Task PublishNewDescribable(Guid id, IDescribable describable, CancellationToken cancellationToken)
         => await featureCollection.Core.EventBus.PublishAsync(new DescribableMessageReceivedEvent()
         {
-            RoomId = roomId,
+            RoomId = RoomId,
             MessageId = id,
             DescribableMessage = describable
         }, cancellationToken);
@@ -270,6 +269,7 @@ public partial class ChatViewModel
         hasScrolledHistory = true;
 
         RemoveLoadMoreLabel();
+        maxRenderedMessages += StoreConstants.MessagesPageSize;
         await RenderMessages(e.Messages, appendOnTop: true);
 
         if (e.Messages.Count > 0)
@@ -279,7 +279,7 @@ public partial class ChatViewModel
             oldestLoadedMessageId = oldest.Id;
         }
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var moreInMemory = context.Messages
             .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
             .Any();
@@ -393,7 +393,7 @@ public partial class ChatViewModel
 
     private async Task OnErrorOccured(ErrorOccurredEvent e, CancellationToken cancellationToken)
     {
-        if (e.NeedToDisconnect && e.RoomId == roomId)
+        if (e.NeedToDisconnect && e.RoomId == RoomId)
         {
             IsOnline = false;
             chatSideBarViewModel.IsOnline = false;

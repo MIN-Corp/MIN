@@ -8,7 +8,7 @@ using MIN.Helpers.Contracts.Interfaces;
 namespace MIN.Core.Cryptography;
 
 /// <summary>
-/// Помошник с ключами
+/// Помощник с ключами
 /// </summary>
 public sealed class KeyProvider : IDisposable
 {
@@ -152,7 +152,7 @@ public sealed class KeyProvider : IDisposable
     /// Получить сохранённый публичный ключ собеседника
     /// </summary>
     public async Task<byte[]?> GetPartnerPublicKeyAsync(Guid partnerId, CancellationToken cancellationToken = default)
-        => await storage.LoadPartnerPublicKeyAsync(partnerId);
+        => await storage.LoadPartnerPublicKeyAsync(partnerId, cancellationToken);
 
     private KeyPair GenerateNewKeys()
     {
@@ -160,10 +160,8 @@ public sealed class KeyProvider : IDisposable
 
         return new KeyPair
         {
-            EcdhPublicKeyPem = ecdh.ExportSubjectPublicKeyInfoPem(),
             EncryptedEcdhPrivateKeyPem = Protect(ecdh.ExportPkcs8PrivateKeyPem()),
             EcdhPublicKeyBytes = ecdh.ExportSubjectPublicKeyInfo(),
-            CreatedAt = DateTime.UtcNow
         };
     }
 

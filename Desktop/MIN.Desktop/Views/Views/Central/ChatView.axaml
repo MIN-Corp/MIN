@@ -4,10 +4,10 @@
              xmlns:behaviors="using:MIN.Desktop.Infrastructure.Behaviors"
              xmlns:scrollBehaviors="using:MIN.Desktop.Infrastructure.Behaviors.ScrollViewers"
              xmlns:messages="using:MIN.Desktop.Views.Cards.Messages"
-             xmlns:messagesVM="using:MIN.Desktop.ViewModels.Cards.Messages"
-             xmlns:messagesVMFiles="using:MIN.Desktop.ViewModels.Cards.Messages.Files"
-             xmlns:messagesVMSessions="using:MIN.Desktop.ViewModels.Cards.Messages.Sessions"
-             xmlns:messagesVMVoices="using:MIN.Desktop.ViewModels.Cards.Messages.Voice"
+             xmlns:messagesVm="using:MIN.Desktop.ViewModels.Cards.Messages"
+             xmlns:messagesVmFiles="using:MIN.Desktop.ViewModels.Cards.Messages.Files"
+             xmlns:messagesVmSessions="using:MIN.Desktop.ViewModels.Cards.Messages.Sessions"
+             xmlns:messagesVmVoices="using:MIN.Desktop.ViewModels.Cards.Messages.Voice"
              xmlns:designer="using:MIN.Desktop.Contracts.Designer"
              xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -18,7 +18,7 @@
              Padding="{DynamicResource PaddingPage}"
              MaxWidth="960"
              MinWidth="300"
-             x:Class="MIN.Desktop.Views.Central.ChatView">
+             x:Class="MIN.Desktop.Views.Views.Central.ChatView">
 
     <Design.DataContext>
         <designer:DesignerChatViewModel/>
@@ -197,17 +197,17 @@
                             <Style Selector="Button.talking">
                                 <Setter Property="BorderBrush" Value="{DynamicResource VoiceTalking}" />
                             </Style>
-               
+
                             <Style Selector="TextBlock.callTimer-in">
                                 <Setter Property="Foreground" Value="{DynamicResource VoiceTimerOn}" />
                             </Style>
                         </Expander.Styles>
 
-                        <Border 
+                        <Border
                             CornerRadius="{DynamicResource CornerRadiusLarge}">
 
                             <StackPanel Margin="0,8,0,0" Spacing="8">
-                                <ScrollViewer Classes="horizontal"
+                                <ScrollViewer
                                     scrollBehaviors:PrimaryScrollWheelBehavior.PrimaryScrollWheelDirection="Horizontal">
                                     <ItemsControl ItemsSource="{Binding VoiceChatParticipants}">
                                         <ItemsControl.ItemsPanel>
@@ -231,7 +231,7 @@
 
                                                         <Button.Flyout>
                                                             <Flyout Placement="Bottom" FlyoutPresenterClasses="cardDetails">
-                                                                <Border>      
+                                                                <Border>
                                                                     <StackPanel Spacing="8">
                                                                         <TextBlock
                                                                             HorizontalAlignment="Center"
@@ -381,7 +381,7 @@
                         CornerRadius="{DynamicResource CornerRadiusLarge}">
                     <StackPanel>
                         <Border IsVisible="{Binding SomeFilesAttached}">
-                            <ScrollViewer Classes="horizontal"
+                            <ScrollViewer
                                 scrollBehaviors:PrimaryScrollWheelBehavior.PrimaryScrollWheelDirection="Horizontal">
                                 <ItemsControl ItemsSource="{Binding AttachedFiles}">
                                     <ItemsControl.ItemsPanel>
@@ -455,7 +455,7 @@
                                 </TextBlock>
                             </DockPanel>
                         </Border>
-                       
+
                         <DockPanel HorizontalSpacing="8" >
                             <Button
                                 VerticalAlignment="Bottom"
@@ -598,7 +598,7 @@
 
                 <!-- Messages -->
 
-                <Panel VerticalAlignment="Bottom" > 
+                <Panel VerticalAlignment="Bottom" >
                     <ScrollViewer
                         x:Name="MessagesScroller"
                         ScrollChanged="OnMessagesScrollChanged"
@@ -612,27 +612,27 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <designer:MultiDataTemplate UseCache="False">
-                                    <DataTemplate x:DataType="messagesVM:SystemChatMessageViewModel">
+                                    <DataTemplate x:DataType="messagesVm:SystemChatMessageViewModel">
                                        <messages:SystemChatMessageView />
                                     </DataTemplate>
 
-                                    <DataTemplate x:DataType="messagesVM:ChatTextMessageViewModel">
+                                    <DataTemplate x:DataType="messagesVm:ChatTextMessageViewModel">
                                        <messages:ChatTextMessageView />
                                     </DataTemplate>
 
-                                    <DataTemplate x:DataType="messagesVMFiles:ChatFileMessageViewModel">
+                                    <DataTemplate x:DataType="messagesVmFiles:ChatFileMessageViewModel">
                                        <messages:ChatFileMessageView />
                                     </DataTemplate>
 
-                                    <DataTemplate x:DataType="messagesVMFiles:ChatFileImagePreviewMessageViewModel">
+                                    <DataTemplate x:DataType="messagesVmFiles:ChatFileImagePreviewMessageViewModel">
                                        <messages:ChatFileImagePreviewMessageView />
                                     </DataTemplate>
 
-                                    <DataTemplate x:DataType="messagesVMSessions:ChatSessionMessageViewModel">
+                                    <DataTemplate x:DataType="messagesVmSessions:ChatSessionMessageViewModel">
                                        <messages:ChatSessionMessageView />
                                     </DataTemplate>
 
-                                     <DataTemplate x:DataType="messagesVMVoices:ChatVoiceCallMessageViewModel">
+                                     <DataTemplate x:DataType="messagesVmVoices:ChatVoiceCallMessageViewModel">
                                        <messages:ChatVoiceCallMessageView />
                                     </DataTemplate>
                                 </designer:MultiDataTemplate>
@@ -680,7 +680,7 @@
             </DockPanel>
         </Border>
 
-        <!-- Drag and drop overlay --> 
+        <!-- Drag and drop overlay -->
 
         <Border
             Classes="drag"
@@ -694,7 +694,6 @@
                     VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
                     <Svg Path="/Assets/Icons/file-upload.svg"
                         Width="48" Height="48" />
-
                         <StackPanel VerticalAlignment="Center"
                                     Orientation="Horizontal">
                             <TextBlock MaxWidth="200" TextAlignment="Center" TextWrapping="Wrap">

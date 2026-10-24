@@ -2,7 +2,6 @@
 using MIN.Core.Messaging.Contracts.Enums;
 using MIN.Core.Messaging.Contracts.Messages;
 using MIN.Core.SubRooms.Contracts.Interfaces.Messages;
-using MIN.Voice.Services.Contacts.Enums;
 
 namespace MIN.Voice.Messaging;
 
@@ -29,15 +28,10 @@ public sealed class VoiceDataMessage : BaseMessage, IWithinSubRoom
     /// <summary>
     /// Порядковый номер
     /// </summary>
-    public long SequenceNumber { get; set; }
-
-    /// <summary>
-    /// Вид кодировки
-    /// </summary>
-    public VoiceCodecKind Codec { get; set; }
+    public long SequenceNumber { get; init; }
 
     /// <summary>
     /// Содержимое сообщения (звук)
     /// </summary>
-    public required byte[] Data { get; set; }
+    public required byte[] Data { get; init; }
 }

@@ -38,11 +38,6 @@ public interface IChatSessionService
        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Удалить сообщение сессии (останавливает сессию, если запущена)
-    /// </summary>
-    Task DeleteSessionMessageAsync(Guid roomId, SessionReadyMessage message, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Покинуть сессию
     /// </summary>
     Task SendSessionLeaveAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken = default);
