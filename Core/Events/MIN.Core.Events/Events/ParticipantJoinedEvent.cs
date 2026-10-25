@@ -20,5 +20,5 @@ public sealed record ParticipantJoinedEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Участник перезаходит в комнату (появляется в сети)
     /// </summary>
-    public bool IsRejoin { get; set; }
+    public bool IsRejoin { get; init; }
 }

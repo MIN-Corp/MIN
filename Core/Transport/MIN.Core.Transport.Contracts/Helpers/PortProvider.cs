@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using MIN.Core.Transport.Contracts.Enum;
 
 namespace MIN.Core.Transport.Contracts.Helpers;
 
@@ -8,38 +9,46 @@ namespace MIN.Core.Transport.Contracts.Helpers;
 /// </summary>
 public static class PortProvider
 {
-    private readonly static int minPort = 49152;
-    private readonly static int maxPort = 65535;
-    private readonly static int randomAttempts = 50;
-    private readonly static HashSet<int> reserved = [];
+    private const int MinPort = 49152;
+    private const int MaxPort = 65535;
+    private const int RandomAttempts = 50;
     private readonly static Random random = new();
+    private readonly static Dictionary<TransportType, HashSet<int>> reserved = new()
+    {
+        { TransportType.Tcp, [] },
+        { TransportType.Udp, [] },
+    };
 
     /// <summary>
     /// Получить свободный порт
     /// </summary>
-    public static int AllocatePort(ushort? preferredPort = 0, int? sequentialAttempts = 15)
+    public static int AllocatePort(TransportType type, ushort? preferredPort = 0, int? sequentialAttempts = 15)
     {
-        if (preferredPort > 1024 && preferredPort < ushort.MaxValue && preferredPort != null && sequentialAttempts != null)
+        if (preferredPort > 1024 && preferredPort < ushort.MaxValue && sequentialAttempts != null)
         {
             for (var i = 0; i < sequentialAttempts; i++)
             {
                 var port = preferredPort.Value + i;
-                if (!reserved.Contains(port) && IsPortFree(port))
+                if (reserved[type].Contains(port) || !IsPortFree(port, type))
                 {
-                    reserved.Add(port);
-                    return port;
+                    continue;
                 }
+
+                reserved[type].Add(port);
+                return port;
             }
         }
 
-        for (var i = 0; i < randomAttempts; i++)
+        for (var i = 0; i < RandomAttempts; i++)
         {
-            var port = random.Next(minPort, maxPort + 1);
-            if (!reserved.Contains(port) && IsPortFree(port))
+            var port = random.Next(MinPort, MaxPort + 1);
+            if (reserved[type].Contains(port) || !IsPortFree(port, type))
             {
-                reserved.Add(port);
-                return port;
+                continue;
             }
+
+            reserved[type].Add(port);
+            return port;
         }
 
         throw new InvalidOperationException("No free port in dynamic range");
@@ -48,16 +57,30 @@ public static class PortProvider
     /// <summary>
     /// Отпустить порт
     /// </summary>
-    public static void ReleasePort(int port) => reserved.Remove(port);
+    public static void ReleasePort(int port, TransportType type)
+        => reserved[type].Remove(port);
 
-    private static bool IsPortFree(int port)
+    private static bool IsPortFree(int port, TransportType type)
     {
         try
         {
-            using var listener = new TcpListener(IPAddress.Any, port);
-            listener.Start();
-            listener.Stop();
-            return true;
+            switch (type)
+            {
+                case TransportType.Tcp:
+                {
+                    using var listener = new TcpListener(IPAddress.Any, port);
+                    listener.Start();
+                    listener.Stop();
+                    return true;
+                }
+                case TransportType.Udp:
+                {
+                    using var listener = new UdpClient(new IPEndPoint(IPAddress.Any, port));
+                    return true;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
         }
         catch (SocketException)
         {

@@ -35,7 +35,7 @@
                     </Button>
 
                     <Button
-                        Command="{Binding CreateRoomUICommand}"
+                        Command="{Binding CreateRoomUiCommand}"
                         DockPanel.Dock="Left"
                         ToolTip.Tip="Создать комнату"
                         Classes="icon">
@@ -49,7 +49,7 @@
                             <TextBlock
                                 Foreground="{DynamicResource TextOnPrimary}"
                                 VerticalAlignment="Center"
-                                IsVisible="{Binding !isDiscovering}">
+                                IsVisible="{Binding !IsDiscovering}">
 
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Найти" />
@@ -67,7 +67,7 @@
                             <TextBlock
                                 Foreground="{DynamicResource TextOnPrimary}"
                                 VerticalAlignment="Center"
-                                IsVisible="{Binding isDiscovering}"
+                                IsVisible="{Binding IsDiscovering}"
                                 Text="Остановить поиск" />
 
                             <Svg
@@ -76,7 +76,7 @@
                                 Path="/Assets/Icons/loading.svg"
                                 Classes="primary rotating"
                                 VerticalAlignment="Center"
-                                IsVisible="{Binding isDiscovering}"/>
+                                IsVisible="{Binding IsDiscovering}"/>
                         </StackPanel>
 
                         <SplitButton.Flyout>
@@ -133,17 +133,17 @@
                     <TextBlock
                         Margin="6,0,0,0"
                         DockPanel.Dock="Right"
-                        IsVisible="{Binding isDiscovering}"
+                        IsVisible="{Binding IsDiscovering}"
                         Text="Поиск комнат..." />
 
                     <TextBlock
                         Margin="6,0,0,0"
                         DockPanel.Dock="Right"
-                        IsVisible="{Binding !isDiscovering}"
+                        IsVisible="{Binding !IsDiscovering}"
                         Text="Всего нашлось комнат: " />
 
                     <TextBlock
-                        IsVisible="{Binding !isDiscovering}"
+                        IsVisible="{Binding !IsDiscovering}"
                         Text="{Binding DiscoveredRooms.Count}"
                         DockPanel.Dock="Right" />
                 </StackPanel>

@@ -130,7 +130,7 @@ public class VoiceCallMonitor : IHostedService
         }
     }
 
-    private async Task EndAllCalls()
+    private void EndAllCalls()
     {
         var contexts = roomFactory.GetAllContexts();
         foreach (var context in contexts)
@@ -153,12 +153,14 @@ public class VoiceCallMonitor : IHostedService
         }
     }
 
-    async Task IHostedService.StopAsync(CancellationToken cancellationToken)
+    Task IHostedService.StopAsync(CancellationToken cancellationToken)
     {
-        await EndAllCalls();
+        EndAllCalls();
 
         audioCaptureService.Stop();
         voiceDataTransmitter.End();
         voicePlaybackService.Dispose();
+
+        return Task.CompletedTask;
     }
 }

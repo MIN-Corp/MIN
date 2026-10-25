@@ -35,36 +35,35 @@ public partial class ChatFileMessageViewModel : ChatFileBaseMessageViewModel
         bool isHostMessage,
         bool removeHeaders,
         IClipboard? clipboard,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(fileTransferFeatureCollection, dialogService, roomScope, fileMetadataMessage,
-            timePadding, localParticipant, isHostMessage, removeHeaders, clipboard, isAvaibleForNetwork)
+            timePadding, localParticipant, isHostMessage, removeHeaders, clipboard, isAvailableForNetwork)
     { }
 
     /// <inheritdoc />
     protected override void FillLabels()
     {
-        UniversalFileStatus = fileTransferFeatureCollection.FileHelperService
+        UniversalFileStatus = FileTransferFeatureCollection.FileHelperService
             .FormatFileSize(FileMetadataMessage.FileSize);
-        InteractionFileStatus = cachedFormat;
+        InteractionFileStatus = CachedFormat;
     }
+
     /// <inheritdoc />
     protected override void OnTransferProgressUpdated(string formattedReceived, string formattedTotal)
-    {
-        UniversalFileStatus = $"{formattedReceived} / {formattedTotal}";
-    }
+        => UniversalFileStatus = $"{formattedReceived} / {formattedTotal}";
 
     /// <inheritdoc />
     protected override void OnTransferFailed(string errorMessage)
-    {
-        UniversalFileStatus = $"Ошибка: {errorMessage}";
-    }
+        => UniversalFileStatus = $"Ошибка: {errorMessage}";
+
+    /// <inheritdoc />
+    protected override void OnTransferAssembling()
+        => UniversalFileStatus = "Сборка файла…";
 
     /// <inheritdoc />
     protected override void OnTransferCompleted()
-    {
-        UniversalFileStatus = fileTransferFeatureCollection.FileHelperService
+        => UniversalFileStatus = FileTransferFeatureCollection.FileHelperService
             .FormatFileSize(FileMetadataMessage.FileSize);
-    }
 
     [RelayCommand]
     private void InteractionMouseEnter()
@@ -76,20 +75,25 @@ public partial class ChatFileMessageViewModel : ChatFileBaseMessageViewModel
     [RelayCommand]
     private void InteractionMouseLeave()
     {
-        if (FileDownloadState != FileDownloadState.IsDownloading)
+        if (FileDownloadState is not (FileDownloadState.IsDownloading or FileDownloadState.Assembling))
         {
             FileDownloadState = FileDownloadState.None;
         }
-        InteractionFileStatus = cachedFormat;
+        InteractionFileStatus = CachedFormat;
     }
 
     [RelayCommand]
     private void InteractionClick()
     {
-        if (IsTransfering)
+        if (IsAssembling)
+        {
+            return;
+        }
+
+        if (IsTransferring)
         {
             InvokeCancelRequested();
-            IsTransfering = false;
+            IsTransferring = false;
             return;
         }
 

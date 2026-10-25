@@ -11,6 +11,7 @@ using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.ViewModels.Base;
+using MIN.Desktop.ViewModels.Windows;
 using MIN.DI.FeatureCollection;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
@@ -18,11 +19,12 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Модель чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel : ValidatingRoutableViewModelBase
 {
     private readonly ChatSideBarViewModel chatSideBarViewModel;
     private readonly DiscoveryViewModel discoveryViewModel;
     private readonly MainSideBarViewModel mainSideBarViewModel;
+    private readonly MainWindowViewModel mainWindowViewModel;
     private readonly IDialogService dialogService;
 
     private readonly IMinFeatureCollection featureCollection;
@@ -31,7 +33,6 @@ public partial class ChatViewModel : RoutableViewModelBase
     private readonly ParticipantInfo localParticipant = null!;
 
     private TaskCompletionSource? loadingTcs = new();
-    private Guid roomId;
     private Guid connectionId;
     private bool isInitialized;
     private Room room = null!;
@@ -48,7 +49,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     /// <summary>
     /// Идентификатор комнаты
     /// </summary>
-    public Guid RoomId => roomId;
+    public Guid RoomId { get; private set; }
 
     /// <summary>
     /// Имя комнаты
@@ -80,6 +81,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     public ChatViewModel(ChatSideBarViewModel chatSideBarViewModel,
         MainSideBarViewModel mainSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
+        MainWindowViewModel mainWindowViewModel,
         IMinFeatureCollection featureCollection,
         IRoomConnectionUiService roomConnectionUiService,
         IDialogService dialogService)
@@ -88,21 +90,24 @@ public partial class ChatViewModel : RoutableViewModelBase
         this.roomConnectionUiService = roomConnectionUiService;
         this.mainSideBarViewModel = mainSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
+        this.mainWindowViewModel = mainWindowViewModel;
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
-
-            OnNavigatedTo = ActionOnNavigatedTo;
-            OnNavigatedFrom = ActionOnNavigatedFrom;
-
-            InitializeUIActions();
+            return;
         }
+
+        localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
+
+        OnNavigatedTo = ActionOnNavigatedTo;
+        OnNavigatedFrom = ActionOnNavigatedFrom;
+
+        InitializeUiActions();
     }
 
-    private void InitializeUIActions()
+    private void InitializeUiActions()
     {
         InitializeLayoutStyles();
         InitializeObservableCollections();
@@ -117,6 +122,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         if (!hasScrolledHistory)
         {
+            await RestoreScrollOrGoBottomAsync();
             return;
         }
 
@@ -126,9 +132,12 @@ public partial class ChatViewModel : RoutableViewModelBase
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var lastHistory = context.Messages.GetRecentHistory().ToList();
 
+        RemoveLoadMoreLabel();
+        DisposeMessageCards();
+        Messages.Clear();
         await RenderMessages(lastHistory);
 
         if (lastHistory.Count > 0)
@@ -146,6 +155,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             ShowLoadMoreLabel();
         }
+
+        await RestoreScrollOrGoBottomAsync();
     }
 
     private void ActionOnNavigatedFrom(object? sender, EventArgs e)
@@ -160,7 +171,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     /// <inheritdoc />
-    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken = default)
+    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken)
     {
         if (loadingTcs != null)
         {
@@ -177,7 +188,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         foreach (var message in Messages)
         {
-            message.IsAvaibleForNetwork = value;
+            message.IsAvailableForNetwork = value;
         }
     }
 
@@ -216,7 +227,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         IsOnline = room.IsOnline;
         chatSideBarViewModel.IsOnline = IsOnline;
         IsAvaibleForNetwork = IsOnline || IsHost;
-        roomId = room.Id;
+        RoomId = room.Id;
         SubscribeToEvents(featureCollection.Core.EventBus);
 
         await UpdateChatFlow();
@@ -245,31 +256,33 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (IsHost)
         {
-            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomId);
+            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(RoomId);
             if (asForget)
             {
-                await featureCollection.Core.Lifecycle.ForgetHostingAsync(roomId);
+                await featureCollection.Core.Lifecycle.ForgetHostingAsync(RoomId);
             }
             else
             {
-                await featureCollection.Core.Lifecycle.StopHostingAsync(roomId);
+                await featureCollection.Core.Lifecycle.StopHostingAsync(RoomId);
             }
         }
         else
         {
             if (asForget)
             {
-                await featureCollection.Core.Lifecycle.ForgetRoomAsync(roomId, connectionId);
+                await featureCollection.Core.Lifecycle.ForgetRoomAsync(RoomId, connectionId);
             }
             else
             {
-                await featureCollection.Core.Lifecycle.DisconnectAsync(roomId, connectionId);
+                await featureCollection.Core.Lifecycle.DisconnectAsync(RoomId, connectionId);
             }
         }
     }
 
     private async Task Disconnect(bool asForget)
     {
+        ClearTypingStatus();
+
         if (asForget)
         {
             await DisposeAsync();

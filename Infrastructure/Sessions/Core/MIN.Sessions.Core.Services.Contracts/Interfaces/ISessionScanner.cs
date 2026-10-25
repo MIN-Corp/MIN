@@ -8,6 +8,11 @@ namespace MIN.Sessions.Core.Services.Contracts.Interfaces;
 public interface ISessionScanner
 {
     /// <summary>
+    /// Путь к папке установленных сессий
+    /// </summary>
+    string SessionsDirectory { get; }
+
+    /// <summary>
     /// Установленные сессии
     /// </summary>
     IReadOnlyDictionary<string, Session> DownloadedSessions { get; }
@@ -31,4 +36,20 @@ public interface ISessionScanner
     /// Загрузить картинку локальной установленной сессии
     /// </summary>
     byte[]? LoadThumbnail(string sessionId);
+
+    /// <summary>
+    /// Зарегистрировать кастомную сессию
+    /// </summary>
+    void RegisterAdHoc(Guid roomId, Session session);
+
+    /// <summary>
+    /// Отрегестрировать кастомную сессию
+    /// </summary>
+    void UnregisterAdHocForRoom(Guid roomId);
+
+    /// <summary>
+    /// Удалить сессию с диска
+    /// </summary>
+    /// <returns>false если сессия не нашлась</returns>
+    Task<bool> DeleteSessionAsync(string sessionId, CancellationToken cancellationToken = default);
 }

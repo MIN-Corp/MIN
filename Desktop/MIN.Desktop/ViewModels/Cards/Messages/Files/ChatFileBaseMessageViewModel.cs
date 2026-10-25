@@ -24,32 +24,32 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     /// <summary>
     /// Функциональность для обмена файлов
     /// </summary>
-    readonly protected IFileTransferFeatureCollection fileTransferFeatureCollection;
+    readonly protected IFileTransferFeatureCollection FileTransferFeatureCollection;
 
     /// <summary>
     /// Буфер обмена
     /// </summary>
-    readonly protected IClipboard? clipboard;
+    readonly protected IClipboard? Clipboard;
 
     /// <summary>
     /// Scope событий для комнаты
     /// </summary>
-    readonly protected IEventScope roomScope;
+    readonly protected IEventScope RoomScope;
 
     /// <summary>
     /// Локальный пользователь
     /// </summary>
-    readonly protected ParticipantInfo localParticipant;
+    readonly protected ParticipantInfo LocalParticipant;
 
     /// <summary>
-    /// Закешированный формат
+    /// Кешированный формат
     /// </summary>
-    readonly protected string cachedFormat;
+    readonly protected string CachedFormat;
 
     /// <summary>
     /// Подкиска на прогресс скачивание
     /// </summary>
-    protected IDisposable fileTransferProgressSubsciptionToken = null!;
+    protected IDisposable FileTransferProgressSubsciptionToken = null!;
 
     /// <summary>
     /// Сообщение файла
@@ -60,7 +60,10 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     public partial int DownloadProgress { get; set; }
 
     [ObservableProperty]
-    public partial bool IsTransfering { get; set; }
+    public partial bool IsTransferring { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsAssembling { get; set; }
 
     [ObservableProperty]
     public partial bool Downloaded { get; set; }
@@ -93,7 +96,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         bool isHostMessage,
         bool removeHeaders,
         IClipboard? clipboard,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(fileMetadataMessage,
             fileMetadataMessage,
             fileMetadataMessage,
@@ -103,23 +106,23 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             localParticipant.Id == fileMetadataMessage.Sender.Id,
             isHostMessage,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
-        this.fileTransferFeatureCollection = fileTransferFeatureCollection;
-        this.localParticipant = localParticipant;
-        this.clipboard = clipboard;
-        this.roomScope = roomScope;
+        FileTransferFeatureCollection = fileTransferFeatureCollection;
+        LocalParticipant = localParticipant;
+        Clipboard = clipboard;
+        RoomScope = roomScope;
         FileMetadataMessage = fileMetadataMessage;
 
-        cachedFormat = fileTransferFeatureCollection.FileHelperService
+        CachedFormat = fileTransferFeatureCollection.FileHelperService
             .GetFileType(fileMetadataMessage.FileName);
 
         Downloaded = !string.IsNullOrEmpty(fileMetadataMessage.FilePath) || fileMetadataMessage.AsDownloaded;
 
-        CantDownload = !isAvaibleForNetwork && !Downloaded;
+        CantDownload = !isAvailableForNetwork && !Downloaded;
 
-        IsAvaibleForNetworkChanged += ()
-            => CantDownload = !IsAvaibleForNetwork && !Downloaded;
+        IsAvailableForNetworkChanged += ()
+            => CantDownload = !IsAvailableForNetwork && !Downloaded;
 
         FillLabels();
 
@@ -143,6 +146,11 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     /// Передача прервалась
     /// </summary>
     protected virtual void OnTransferFailed(string errorMessage) { }
+
+    /// <summary>
+    /// Файл собирается
+    /// </summary>
+    protected virtual void OnTransferAssembling() { }
 
     /// <summary>
     /// Передача завершилась
@@ -169,6 +177,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     {
         Subscriptions.Add(roomScope.Subscribe<FileTransferStartedEvent>(OnFileTransferStarted));
         Subscriptions.Add(roomScope.Subscribe<FileTransferFailedEvent>(OnFileTransferFailed));
+        Subscriptions.Add(roomScope.Subscribe<FileTransferAssemblingEvent>(OnFileTransferAssembling));
         Subscriptions.Add(roomScope.Subscribe<FileTransferCompletedEvent>(OnFileTransferCompleted));
     }
 
@@ -179,9 +188,9 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             return Task.CompletedTask;
         }
 
-        IsTransfering = true;
+        IsTransferring = true;
 
-        fileTransferProgressSubsciptionToken = roomScope.Subscribe((FileTransferProgressEvent e, CancellationToken _) =>
+        FileTransferProgressSubsciptionToken = RoomScope.Subscribe((FileTransferProgressEvent e, CancellationToken _) =>
         {
             if (eventMessage.FileMetadataId != FileMetadataMessage.Id)
             {
@@ -191,32 +200,49 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
             var progress = 100 * e.BytesReceived / FileMetadataMessage.FileSize;
             DownloadProgress = (int)Math.Min(progress, 100);
             OnTransferProgressUpdated(
-                fileTransferFeatureCollection.FileHelperService.FormatFileSize(e.BytesReceived),
-                fileTransferFeatureCollection.FileHelperService.FormatFileSize(eventMessage.FileSize));
+                FileTransferFeatureCollection.FileHelperService.FormatFileSize(e.BytesReceived),
+                FileTransferFeatureCollection.FileHelperService.FormatFileSize(eventMessage.FileSize));
 
             return Task.CompletedTask;
         });
 
         UpdateDownloadState();
         OnTransferProgressUpdated("0",
-            fileTransferFeatureCollection.FileHelperService.FormatFileSize(eventMessage.FileSize));
+            FileTransferFeatureCollection.FileHelperService.FormatFileSize(eventMessage.FileSize));
         return Task.CompletedTask;
     }
 
     private Task OnFileTransferFailed(FileTransferFailedEvent eventMessage, CancellationToken cancellationToken)
     {
         if (eventMessage.FileMetadataId != FileMetadataMessage.Id
-            || eventMessage.SenderId != localParticipant.Id)
+            || eventMessage.SenderId != LocalParticipant.Id)
         {
             return Task.CompletedTask;
         }
 
-        IsTransfering = false;
+        IsTransferring = false;
+        IsAssembling = false;
 
         UpdateDownloadState();
         OnTransferFailed(eventMessage.ErrorMessage ?? string.Empty);
 
-        fileTransferProgressSubsciptionToken.Dispose();
+        FileTransferProgressSubsciptionToken.Dispose();
+        return Task.CompletedTask;
+    }
+
+    private Task OnFileTransferAssembling(FileTransferAssemblingEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.FileMetadataId != FileMetadataMessage.Id)
+        {
+            return Task.CompletedTask;
+        }
+
+        DownloadProgress = 100;
+        IsTransferring = false;
+        IsAssembling = true;
+
+        UpdateDownloadState();
+        OnTransferAssembling();
         return Task.CompletedTask;
     }
 
@@ -229,9 +255,10 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
 
         Downloaded = true;
         FileMetadataMessage.FilePath ??= eventMessage.FilePath;
-        fileTransferProgressSubsciptionToken?.Dispose();
+        FileTransferProgressSubsciptionToken.Dispose();
 
-        IsTransfering = false;
+        IsTransferring = false;
+        IsAssembling = false;
 
         UpdateDownloadState();
         OnTransferCompleted();
@@ -242,18 +269,20 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     /// Обновить состояния файла
     /// </summary>
     protected void UpdateDownloadState()
-    {
-        FileDownloadState = IsTransfering
-            ? FileDownloadState.IsDownloading : Downloaded
-            ? FileDownloadState.Downloaded : FileDownloadState.NotDownloaded;
-    }
+        => FileDownloadState = IsAssembling
+            ? FileDownloadState.Assembling
+            : IsTransferring
+                ? FileDownloadState.IsDownloading
+                : Downloaded
+                    ? FileDownloadState.Downloaded
+                    : FileDownloadState.NotDownloaded;
 
     [RelayCommand]
     private async Task CopyNameToClipboard()
     {
-        if (clipboard != null)
+        if (Clipboard != null)
         {
-            await clipboard.SetTextAsync(FileMetadataMessage.FileName);
+            await Clipboard.SetTextAsync(FileMetadataMessage.FileName);
             InAppNotifier.Info("Скопировано в буфер обмена");
         }
     }
@@ -265,7 +294,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         {
             InAppNotifier.Warning("Файл не нашёлся");
             Downloaded = false;
-            CantDownload = !IsAvaibleForNetwork && !Downloaded;
+            CantDownload = !IsAvailableForNetwork && !Downloaded;
             return Task.CompletedTask;
         }
 

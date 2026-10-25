@@ -1,7 +1,7 @@
 using MIN.Desktop.ViewModels.Pages;
 using MIN.Desktop.Views.Base;
 
-namespace MIN.Desktop.Views.Left;
+namespace MIN.Desktop.Views.Views.Left;
 
 /// <summary>
 /// Страница боковой панели

@@ -7,7 +7,6 @@ using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Enums;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Sessions.Core.Events;
-using MIN.Sessions.Core.Messaging.Ipc;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
 using MIN.Sessions.Core.Services.Contracts.Interfaces;
 
@@ -15,18 +14,18 @@ namespace MIN.Sessions.Core.Handlers;
 
 internal sealed class SessionParticipantJoinedHandler : BaseHandler
 {
-    private readonly ISessionProcessBridge sessionProcessBridge;
+    private readonly ISessionInstanceManager sessionInstanceManager;
     private readonly IMessageRouter messageRouter;
 
     /// <summary>
     /// Инициализирует новый экземлпяр <see cref="SessionParticipantJoinedHandler"/>
     /// </summary>
-    public SessionParticipantJoinedHandler(ISessionProcessBridge sessionProcessBridge,
+    public SessionParticipantJoinedHandler(ISessionInstanceManager sessionInstanceManager,
         IMessageRouter messageRouter,
         ILoggerProvider logger) : base(logger)
     {
         this.messageRouter = messageRouter;
-        this.sessionProcessBridge = sessionProcessBridge;
+        this.sessionInstanceManager = sessionInstanceManager;
     }
 
     public override IEnumerable<MessageTypeTag> HandledTypes => [MessageTypeTag.SessionParticipantJoined];
@@ -64,12 +63,11 @@ internal sealed class SessionParticipantJoinedHandler : BaseHandler
             }
         }
 
-        var processContexts = sessionProcessBridge.GetConnections(roomId, subRoomId);
+        var sessionInstances = sessionInstanceManager.GetInstances(roomId, subRoomId);
 
-        foreach (var processContext in processContexts)
+        foreach (var sessionInstance in sessionInstances)
         {
-            await sessionProcessBridge.SendIpcMessage(new ParticipantConnectedMessage(participant.Id.ToString(),
-                participant.Name), processContext, message.SenderId, context.CancellationToken);
+            sessionInstance.NotifyParticipantJoined(participant);
         }
 
         var existingSessionReadyMessageId = context.RoomContext.Messages.GetHistory()

@@ -61,7 +61,9 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
         => participantByConnectionId.TryGetValue(connectionId, out var p) ? p.Id : throw new ConnectionNotRegistredException(connectionId);
 
     Guid IParticipantConnectionRegistry.GetConnectionIdFromParticipantId(Guid participantId)
-        => connectionIdByParticipantId.TryGetValue(participantId, out var connectionId) ? connectionId : throw new ParticipantNotRegistredException(connectionId);
+        => connectionIdByParticipantId.TryGetValue(participantId, out var connectionId)
+        ? connectionId
+        : throw new ParticipantNotRegistredException(participantId);
 
     bool IParticipantConnectionRegistry.TryGetConnectionIdFromParticipantId(Guid participantId, out Guid connectionId)
         => connectionIdByParticipantId.TryGetValue(participantId, out connectionId);

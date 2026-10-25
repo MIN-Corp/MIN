@@ -15,5 +15,5 @@ public sealed record ChatHistoryClearedEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Сообщение удаления истории чата
     /// </summary>
-    public required ChatHistoryClearMessage Message { get; set; }
+    public required ChatHistoryClearMessage Message { get; init; }
 }

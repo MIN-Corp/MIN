@@ -49,7 +49,7 @@ public abstract partial class BaseReplyableChatMessageViewModel : BaseChatMessag
        bool isLocal,
        bool isHost,
        bool removeHeaders,
-       bool isAvaibleForNetwork)
+       bool isAvailableForNetwork)
         : base(message,
             dialogService,
             name,
@@ -57,7 +57,7 @@ public abstract partial class BaseReplyableChatMessageViewModel : BaseChatMessag
             isLocal,
             isHost,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
         ReplyToDescription = replyable?.ReplyToMessageDescription;
         ReplyToMessageId = replyable?.ReplyToMessageId;

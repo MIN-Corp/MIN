@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 using MIN.Sessions.Core.Services.Contracts.Models;
 
 namespace MIN.Desktop.ViewModels.Cards;
@@ -25,8 +26,19 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     /// <summary>
     /// Сессия
     /// </summary>
+    public Session? Session { get; set; }
+
+    /// <summary>
+    /// Имя сессии
+    /// </summary>
     [ObservableProperty]
-    public partial Session Session { get; set; }
+    public partial string SessionName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Описание сессии
+    /// </summary>
+    [ObservableProperty]
+    public partial string SessionDescription { get; set; } = string.Empty;
 
     /// <summary>
     /// Версия сессии
@@ -51,6 +63,28 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     /// </summary>
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Является ли карточка - созданием туннеля
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsCreateTunnelCard { get; set; }
+
+    /// <summary>
+    /// Является ли сессия туннельной
+    /// </summary>
+    public bool IsTunnelSession
+        => Session?.Kind == SessionKind.PortTunnel;
+
+    /// <summary>
+    /// Событие запроса удаления сессии
+    /// </summary>
+    public event Func<Task>? OnDeleteRequested;
+
+    /// <summary>
+    /// Событие запроса редактирования сессии
+    /// </summary>
+    public event Func<Task>? OnEditRequested;
 
     /// <summary>
     /// Изображение сессии
@@ -78,17 +112,31 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="DownloadedSessionViewModel"/>
     /// </summary>
-    public DownloadedSessionViewModel(Session session, IClipboard? clipboard)
+    public DownloadedSessionViewModel(Session? session, IClipboard? clipboard, bool isCreateTunnelCard)
     {
         Session = session;
         this.clipboard = clipboard;
+        IsCreateTunnelCard = isCreateTunnelCard;
 
         FillLabels();
     }
 
     private void FillLabels()
     {
-        DownloadLink = Session.DownloadLink;
+        SessionName = IsCreateTunnelCard
+            ? "Cвоя сессия"
+            : Session!.Name;
+
+        SessionDescription = IsCreateTunnelCard
+            ? "Укажите порт к вашей программе/игре, и участники получат к ней доступ в виде сессии!"
+            : Session!.Description;
+
+        if (IsCreateTunnelCard)
+        {
+            return;
+        }
+
+        DownloadLink = Session!.DownloadLink;
         Version = $"Версия: {Session.Version}";
         MaximumParticipantInfo = "Максимум участников: " + (Session.MaximumParticipants.HasValue
             ? Session.MaximumParticipants.Value
@@ -140,18 +188,31 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     [RelayCommand]
     private async Task CopyLink()
     {
-        if (clipboard == null)
+        if (clipboard == null || IsCreateTunnelCard)
         {
             return;
         }
 
         try
         {
-            await clipboard.SetTextAsync(Session.DownloadLink);
+            await clipboard.SetTextAsync(Session!.DownloadLink);
             DownloadLink = "Скопировано!";
         }
         catch { }
     }
+
+
+    /// <summary>
+    /// Редактировать сессию
+    /// </summary>
+    [RelayCommand]
+    private Task Edit() => OnEditRequested?.Invoke() ?? Task.CompletedTask;
+
+    /// <summary>
+    /// Удалить сессию
+    /// </summary>
+    [RelayCommand]
+    private Task Delete() => OnDeleteRequested?.Invoke() ?? Task.CompletedTask;
 
     /// <inheritdoc cref="IDisposable.Dispose"/>
     public override void Dispose()

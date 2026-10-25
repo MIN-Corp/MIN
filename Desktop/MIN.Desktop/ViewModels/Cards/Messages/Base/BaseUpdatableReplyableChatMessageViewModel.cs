@@ -2,13 +2,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.ViewModels.Cards.Messages.Interfaces;
 
 namespace MIN.Desktop.ViewModels.Cards.Messages.Base;
 
 /// <summary>
 /// Базовая view модель текстового сообщения, способное отредактироваться и отвечено
 /// </summary>
-public abstract partial class BaseUpdateableReplyableChatMessageViewModel : BaseReplyableChatMessageViewModel
+public abstract partial class BaseUpdateableReplyableChatMessageViewModel : BaseReplyableChatMessageViewModel, IUpdateableChatMessageViewModel
 {
     /// <summary>
     /// Сообщение уже обновлено
@@ -33,7 +34,7 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
         bool isLocal,
         bool isHost,
         bool removeHeaders,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(message,
             replyable,
             dialogService,
@@ -42,7 +43,7 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
             isLocal,
             isHost,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
         IsUpdated = updateableMessage.IsUpdated;
     }
@@ -53,6 +54,10 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
     public virtual void Update(IMessage newMessage)
     {
         Message = newMessage;
+        if (newMessage is IAuthoredMessage authoredMessage)
+        {
+            SenderName = authoredMessage.SenderName;
+        }
         if (newMessage is IReplyable newReplyable)
         {
             ReplyToDescription = newReplyable.ReplyToMessageDescription;

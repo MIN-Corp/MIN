@@ -44,12 +44,26 @@ public sealed class MessageStream : IDisposable
     /// <summary>
     /// Ожидаемое количество пакетов
     /// </summary>
-    public int ExpectedChunks { get; }
+    private int ExpectedChunks { get; }
 
     /// <summary>
     /// Уже получено пакетов
     /// </summary>
-    public int GottenChunks { get; private set; }
+    private int GottenChunks { get; set; }
+
+    /// <summary>
+    /// Сколько полезных байт уже записано
+    /// </summary>
+    public long TotalDataSize
+    {
+        get
+        {
+            lock (lockObj)
+            {
+                return totalDataSize;
+            }
+        }
+    }
 
     /// <summary>
     /// Время создания потока
@@ -64,7 +78,7 @@ public sealed class MessageStream : IDisposable
     /// <summary>
     /// Завершён ли поток
     /// </summary>
-    public bool IsComplete { get; private set; }
+    private bool IsComplete { get; set; }
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="MessageStream"/>
@@ -106,12 +120,10 @@ public sealed class MessageStream : IDisposable
                 return null;
             }
 
-            if (receivedIndices.Contains(chunk.Index))
+            if (!receivedIndices.Add(chunk.Index))
             {
                 return null;
             }
-
-            receivedIndices.Add(chunk.Index);
 
             var offset = chunk.Index * StreamingConstants.ChunkDataSize;
             if (IsRawPayload && fileStream != null)
@@ -129,27 +141,28 @@ public sealed class MessageStream : IDisposable
             LastChunkReceivedAt = DateTime.UtcNow;
             GottenChunks++;
 
-            if (chunk.Flags.HasFlag(StreamChunkFlags.End))
+            if (!chunk.Flags.HasFlag(StreamChunkFlags.End))
             {
-                if (chunk.Index != ExpectedChunks - 1)
-                {
-                    throw new InvalidOperationException(
-                        $"Поток {Id} завершён с неверным индексом. Ожидался {ExpectedChunks - 1}, получен {chunk.Index}");
-                }
+                return null;
+            }
 
-                IsComplete = true;
+            if (chunk.Index != ExpectedChunks - 1)
+            {
+                throw new InvalidOperationException(
+                    $"Поток {Id} завершён с неверным индексом. Ожидался {ExpectedChunks - 1}, получен {chunk.Index}");
+            }
 
-                if (IsRawPayload && fileStream != null)
-                {
-                    fileStream.SetLength(totalDataSize);
-                    fileStream?.Dispose();
-                    return Array.Empty<byte>();
-                }
+            IsComplete = true;
 
+            if (!IsRawPayload || fileStream == null)
+            {
                 return memoryBuffer![..(int)totalDataSize].ToArray();
             }
 
-            return null;
+            fileStream.SetLength(totalDataSize);
+            fileStream?.Dispose();
+            return [];
+
         }
     }
 

@@ -35,6 +35,7 @@ public sealed class ParticipantStore : IParticipantStore
             var index = participants.FindIndex(p => p.Id == id);
             if (index >= 0)
             {
+                participant.UpdatedAt = DateTime.Now;
                 participants[index] = participant;
             }
         }

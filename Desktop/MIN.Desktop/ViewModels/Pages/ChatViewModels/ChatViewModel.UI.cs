@@ -4,12 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Collections;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Models;
-using MIN.Desktop.ViewModels.Base;
+using MIN.Desktop.Contracts.Models.Statuses;
 using MIN.Desktop.ViewModels.Cards;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
@@ -17,7 +18,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private readonly AvaloniaList<IDescribableStatus> currentStatuses = [];
     private readonly List<ParticipantInfo> currentTypingParticipants = [];
@@ -47,7 +48,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     partial void OnIsAtBottomChanged(bool value)
     {
-        if (value == true)
+        if (value)
         {
             MissedMessagesCount = 0;
         }
@@ -60,7 +61,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     public partial int MissedMessagesCount { get; set; }
 
     /// <summary>
-    /// Показать приложенные файлаы
+    /// Показать приложенные файлы
     /// </summary>
     public bool SomeFilesAttached => AttachedFiles.Count > 0;
 
@@ -83,7 +84,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private void AddStatus(IDescribableStatus status)
     {
         currentStatuses.Add(status);
-        StatusContent = string.Join(", ", currentStatuses.Select(x => x.GetDescription()));
+        RefreshStatusContent();
     }
 
     private void RemoveStatus(Guid statusId)
@@ -94,10 +95,74 @@ public partial class ChatViewModel : RoutableViewModelBase
             currentStatuses.Remove(foundStatus);
         }
 
-        if (currentStatuses.Count != 0)
+        RefreshStatusContent();
+    }
+
+    private void RefreshStatusContent()
+        => StatusContent = string.Join(", ", currentStatuses.Select(x => x.GetDescription()));
+
+    private void UpdateTypingStatus()
+    {
+        var oldStatus = currentStatuses.FirstOrDefault(x => x.Id == currentTypingParticipantsStatusId);
+        if (oldStatus == null)
         {
-            StatusContent = string.Join(", ", currentStatuses.Select(x => x.GetDescription()));
+            return;
         }
+
+        var index = currentStatuses.IndexOf(oldStatus);
+        currentStatuses[index] = new ParticipantTypingStatus(
+            currentTypingParticipantsStatusId,
+            currentTypingParticipants.Select(x => x.Name).ToList());
+        RefreshStatusContent();
+    }
+
+    private void AddTypingParticipant(ParticipantInfo participant)
+    {
+        if (currentTypingParticipants.Contains(participant))
+        {
+            return;
+        }
+
+        if (currentTypingParticipants.Count == 0)
+        {
+            currentTypingParticipantsStatusId = Guid.NewGuid();
+        }
+
+        currentTypingParticipants.Add(participant);
+
+        if (currentTypingParticipants.Count == 1)
+        {
+            AddStatus(new ParticipantTypingStatus(
+                currentTypingParticipantsStatusId,
+                currentTypingParticipants.Select(x => x.Name).ToList()));
+        }
+        else
+        {
+            UpdateTypingStatus();
+        }
+    }
+
+    private void RemoveTypingParticipant(ParticipantInfo participant)
+    {
+        if (!currentTypingParticipants.Remove(participant))
+        {
+            return;
+        }
+
+        if (currentTypingParticipants.Count == 0)
+        {
+            RemoveStatus(currentTypingParticipantsStatusId);
+        }
+        else
+        {
+            UpdateTypingStatus();
+        }
+    }
+
+    private void ClearTypingStatus()
+    {
+        currentTypingParticipants.Clear();
+        RemoveStatus(currentTypingParticipantsStatusId);
     }
 
     private void UploadFile(string filePath)
@@ -112,11 +177,16 @@ public partial class ChatViewModel : RoutableViewModelBase
     }
 
     [RelayCommand]
-    private async Task ScrollToBottom()
+    private Task ScrollToBottomAsync()
     {
-        AutoScrollBottom = true;
-        await Task.Yield();
-        AutoScrollBottom = false;
+        Dispatcher.UIThread.Post(async void () =>
+        {
+            AutoScrollBottom = true;
+            await Task.Yield();
+            AutoScrollBottom = false;
+        });
+
+        return Task.CompletedTask;
     }
 
     #endregion

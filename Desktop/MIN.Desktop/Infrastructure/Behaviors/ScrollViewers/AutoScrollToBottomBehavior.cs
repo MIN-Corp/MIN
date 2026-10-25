@@ -10,7 +10,7 @@ namespace MIN.Desktop.Infrastructure.Behaviors.ScrollViewers;
 /// </summary>
 public class AutoScrollToBottomBehavior : StyledElementBehavior<ScrollViewer>
 {
-    private const int ScrollMaxAttempts = 3;
+    private const int ScrollMaxAttempts = 5;
 
     /// <summary>
     /// Авто скролл вверх

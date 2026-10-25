@@ -41,20 +41,18 @@ public class TcpTransport : ITransport, IAsyncDisposable
     /// <inheritdoc />
     public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
-        var connectionId = serverConnectionId != null
-            ? serverConnectionId.Value
-            : Guid.NewGuid();
+        var connectionId = serverConnectionId ?? Guid.NewGuid();
 
-        var port = PortProvider.AllocatePort(prefferedPort, sequentialAttempts);
+        var port = PortProvider.AllocatePort(TransportType.Tcp, prefferedPort, sequentialAttempts);
         var server = new TcpSocketServer(logger, port);
 
-        server.OnMessageReceived += (TcpSocketServer server, (TcpSocketConnection conn, byte[] msg) eventArgs) =>
+        server.OnMessageReceived += (TcpSocketServer _, (TcpSocketConnection conn, byte[] msg) eventArgs) =>
         {
             var args = new RawMessageReceivedEventArgs(eventArgs.msg, eventArgs.conn.Id, connectionId);
             RawMessageReceived?.Invoke(this, args);
         };
 
-        server.OnConnectionEstablished += (s, conn) =>
+        server.OnConnectionEstablished += (_, conn) =>
         {
             var args = new ConnectionStateChangedEventArgs(conn.Id, true, serverConnectionId: connectionId)
             {
@@ -63,7 +61,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             ConnectionStateChanged?.Invoke(this, args);
         };
 
-        server.ConnectionDisconnected += (TcpSocketServer server, (TcpSocketConnection conn, DisconnectReason reason) eventArgs) =>
+        server.ConnectionDisconnected += (TcpSocketServer _, (TcpSocketConnection conn, DisconnectReason reason) eventArgs) =>
         {
             var args = new ConnectionStateChangedEventArgs(eventArgs.conn.Id, false, eventArgs.reason, connectionId);
             ConnectionStateChanged?.Invoke(this, args);
@@ -81,7 +79,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
         if (servers.TryRemove(connectionId, out var server))
         {
             await server.DisposeAsync();
-            PortProvider.ReleasePort(server.Port);
+            PortProvider.ReleasePort(server.Port, TransportType.Tcp);
         }
     }
 
@@ -105,7 +103,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             ConnectionStateChanged?.Invoke(this, args);
         };
 
-        var connectedConnectionId = await client.ConnectAsync(tcpEp.IPAddress, tcpEp.Port, connectionId, cancellationToken);
+        var connectedConnectionId = await client.ConnectAsync(tcpEp.IpAddress, tcpEp.Port, connectionId, cancellationToken);
         clients.TryAdd(connectedConnectionId, client);
 
         var connectedArgs = new ConnectionStateChangedEventArgs(connectedConnectionId, true);
@@ -160,7 +158,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
         if ((oldNetworkOptions == null && networkOptions.EnablePortForwarding)
             || (oldNetworkOptions.HasValue && networkOptions.EnablePortForwarding && !oldNetworkOptions.Value.EnablePortForwarding))
         {
-            ResultCodes? result = ResultCodes.UNKNOWN_ERROR;
+            ResultCodes? result = ResultCodes.UnknownError;
             try
             {
                 result = await PortForwardingHelper.MapPortAsync(server.Port, Protocol.Tcp, cancellationToken, $"Room {server.Port}");
@@ -172,16 +170,16 @@ public class TcpTransport : ITransport, IAsyncDisposable
 
             switch (result)
             {
-                case ResultCodes.SUCCESS:
+                case ResultCodes.Success:
                     logger.Log($"Порт проброшен. Публичный порт: {server.Port}");
                     break;
 
-                case ResultCodes.CONFLICT_IN_MAPPING_ENTRY:
+                case ResultCodes.ConflictInMappingEntry:
                     var conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
                     logger.Log(conflictMessage, LogLevel.Error);
                     throw new InvalidOperationException(conflictMessage);
 
-                case ResultCodes.UNKNOWN_ERROR:
+                case ResultCodes.UnknownError:
                     var message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
                     logger.Log(message, LogLevel.Error);
                     throw new InvalidOperationException(message);
@@ -215,7 +213,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             endpoints.Add(new TcpEndpoint
             {
                 Origin = ip.Origin,
-                IPAddress = ip.Address.ToString(),
+                IpAddress = ip.Address.ToString(),
                 NetworkName = ip.NetworkName,
                 Port = server.Port
             });

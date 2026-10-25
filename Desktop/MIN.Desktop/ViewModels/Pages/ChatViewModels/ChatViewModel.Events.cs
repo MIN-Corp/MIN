@@ -14,7 +14,6 @@ using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Models.Statuses;
 using MIN.Desktop.Infrastructure.Events;
 using MIN.Desktop.Infrastructure.Services;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.FileTransfer.Events;
 using MIN.FileTransfer.Services.Contracts.Models.Enums;
@@ -26,14 +25,14 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Модель чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private IEventScope roomScope = null!;
     private IDisposable errorToken = null!;
 
     private void SubscribeToEvents(IEventBus eventBus)
     {
-        roomScope = eventBus.CreateScope(roomId);
+        roomScope = eventBus.CreateScope(RoomId);
 
         // Text
         roomScope.Subscribe<ChatTextMessageReceivedEvent>(OnChatTextMessageReceived);
@@ -75,7 +74,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     private async Task PublishNewDescribable(Guid id, IDescribable describable, CancellationToken cancellationToken)
         => await featureCollection.Core.EventBus.PublishAsync(new DescribableMessageReceivedEvent()
         {
-            RoomId = roomId,
+            RoomId = RoomId,
             MessageId = id,
             DescribableMessage = describable
         }, cancellationToken);
@@ -241,6 +240,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             await AddToChatFlowAndNotify(eventMessage.Message, cancellationToken);
         }
 
+        RemoveTypingParticipant(eventMessage.Message.Participant);
         chatSideBarViewModel.UpdateParticipantFlow(room.CurrentParticipants);
     }
 
@@ -270,6 +270,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         hasScrolledHistory = true;
 
         RemoveLoadMoreLabel();
+        maxRenderedMessages += StoreConstants.MessagesPageSize;
         await RenderMessages(e.Messages, appendOnTop: true);
 
         if (e.Messages.Count > 0)
@@ -279,7 +280,7 @@ public partial class ChatViewModel : RoutableViewModelBase
             oldestLoadedMessageId = oldest.Id;
         }
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(roomId);
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var moreInMemory = context.Messages
             .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
             .Any();
@@ -301,6 +302,8 @@ public partial class ChatViewModel : RoutableViewModelBase
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
         hasScrolledHistory = false;
+        seenMessageIds.Clear();
+        UpdateScrollAnchor(null, 0);
 
         await SendSystemMessage(new SystemTextMessage()
         {
@@ -330,40 +333,15 @@ public partial class ChatViewModel : RoutableViewModelBase
             chatSideBarViewModel.ResortOnlineParticipants();
         }
 
-        if (currentTypingParticipants.Contains(eventMessage.Participant) && eventMessage.Status != OnlineStatus.Typing)
+        if (eventMessage.Status == OnlineStatus.Typing)
         {
-            if (currentTypingParticipants.Remove(eventMessage.Participant) && currentTypingParticipants.Count == 0)
-            {
-                RemoveStatus(currentTypingParticipantsStatusId);
-            }
-
-            return Task.CompletedTask;
+            AddTypingParticipant(eventMessage.Participant);
+        }
+        else
+        {
+            RemoveTypingParticipant(eventMessage.Participant);
         }
 
-        if (eventMessage.Status != OnlineStatus.Typing)
-        {
-            return Task.CompletedTask;
-        }
-
-        if (currentTypingParticipants.Count == 0)
-        {
-            currentTypingParticipantsStatusId = Guid.NewGuid();
-        }
-
-        currentTypingParticipants.Add(eventMessage.Participant);
-
-        if (currentTypingParticipants.Count > 1)
-        {
-            var existing = currentStatuses.FirstOrDefault(x => x.Id == currentTypingParticipantsStatusId);
-            if (existing is ParticipantTypingStatus typingStatus)
-            {
-                typingStatus.ParticipantNames = currentTypingParticipants.Select(x => x.Name).ToList();
-            }
-        }
-        else if (currentTypingParticipants.Count == 1)
-        {
-            AddStatus(new ParticipantTypingStatus(currentTypingParticipantsStatusId, currentTypingParticipants.Select(x => x.Name).ToList()));
-        }
         return Task.CompletedTask;
     }
 
@@ -373,7 +351,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         return Task.CompletedTask;
     }
 
-    private async Task OnRoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnRoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
         IsOnline = false;
         chatSideBarViewModel.IsOnline = false;
@@ -383,13 +361,15 @@ public partial class ChatViewModel : RoutableViewModelBase
             NotifyIfNeeded(eventMessage.Reason);
             InAppNotifier.Info(eventMessage.Reason);
         }
+
+        return Task.CompletedTask;
     }
 
     #endregion
 
     private async Task OnErrorOccured(ErrorOccurredEvent e, CancellationToken cancellationToken)
     {
-        if (e.NeedToDisconnect && e.RoomId == roomId)
+        if (e.NeedToDisconnect && e.RoomId == RoomId)
         {
             IsOnline = false;
             chatSideBarViewModel.IsOnline = false;

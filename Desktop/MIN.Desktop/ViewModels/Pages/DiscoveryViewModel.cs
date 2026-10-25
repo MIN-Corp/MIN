@@ -57,7 +57,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// Идёт ли сейчас процесс обнаружения
     /// </summary>
     [ObservableProperty]
-    public partial bool isDiscovering { get; set; }
+    public partial bool IsDiscovering { get; set; }
 
     /// <summary>
     /// Выбранный метод
@@ -138,7 +138,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// Обработчик создания комнаты
     /// </summary>
     [RelayCommand]
-    public async Task CreateRoomUI() => await CreateRoom();
+    public async Task CreateRoomUi() => await CreateRoom();
 
     private async Task CreateRoom(RoomInfo? loopRoom = null, NetworkOptions? loopNetworkOptions = null)
     {
@@ -211,7 +211,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     [RelayCommand]
     public void DiscoverRooms()
     {
-        if (isDiscovering)
+        if (IsDiscovering)
         {
             discoveryCts?.Cancel();
         }
@@ -223,7 +223,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
 
     private async Task PerformDiscovery()
     {
-        isDiscovering = true;
+        IsDiscovering = true;
         DiscoveredRooms.Clear();
         discoveryCts = CancellationTokenSource.CreateLinkedTokenSource(lifeTimeCts.Token);
 
@@ -238,7 +238,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
         }
         finally
         {
-            isDiscovering = false;
+            IsDiscovering = false;
         }
     }
 

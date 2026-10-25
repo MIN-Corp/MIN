@@ -118,7 +118,7 @@ public sealed class StreamManager : IStreamManager, IDisposable
 
                 // Secure because of message assembling
                 await transport.SendAsync(encrypted, recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
-                sentLength += encrypted.LongLength;
+                sentLength += chunkLength;
                 ChunkSended?.Invoke(new ChunkSendedEventArgs()
                 {
                     RoomId = roomId,
@@ -228,7 +228,7 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 // Secure because of message assembling
                 await transport.SendAsync(encrypted, recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
                 chunkIndex++;
-                sentLength += encrypted.LongLength;
+                sentLength += bytesRead;
                 ChunkSended?.Invoke(new ChunkSendedEventArgs()
                 {
                     RoomId = roomId,
@@ -274,14 +274,14 @@ public sealed class StreamManager : IStreamManager, IDisposable
     {
         foreach (var key in pendingChunks.Keys.Where(x => x.StreamId == streamId).ToList())
         {
-            pendingChunks.TryRemove(key, out var pendingChunk);
+            pendingChunks.TryRemove(key, out _);
         }
 
         foreach (var key in ackTimers.Keys.Where(x => x.StreamId == streamId).ToList())
         {
             if (ackTimers.TryRemove(key, out var timer))
             {
-                timer?.Dispose();
+                timer.Dispose();
             }
         }
     }

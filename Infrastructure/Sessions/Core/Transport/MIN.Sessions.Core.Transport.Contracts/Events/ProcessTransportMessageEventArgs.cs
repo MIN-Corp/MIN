@@ -10,7 +10,7 @@ public sealed class ProcessTransportMessageEventArgs : EventArgs
     /// <summary>
     /// Контекст общения с приложением
     /// </summary>
-    public ProcessContext Context { get; init; }
+    public SessionInstanceContext Context { get; init; }
 
     /// <summary>
     /// Полученные данные

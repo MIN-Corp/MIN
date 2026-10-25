@@ -1,9 +1,9 @@
 ﻿namespace MIN.Sessions.Core.Transport.Contracts.Enums;
 
 /// <summary>
-/// Тип приложения сессии
+/// Роль экземпляра сессии
 /// </summary>
-public enum SessionProcessRole
+public enum SessionInstanceRole
 {
     /// <summary>
     /// Клиент

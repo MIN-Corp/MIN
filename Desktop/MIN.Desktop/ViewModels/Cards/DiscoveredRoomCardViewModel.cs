@@ -106,7 +106,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
     public void JoinRoom()
     {
         IsConnecting = true;
-        Clicked?.Invoke(AddressOrigin.LAN);
+        Clicked?.Invoke(AddressOrigin.Lan);
     }
 
     private void RenderConnectionAddreses(IEnumerable<IEndpoint> endpoints)

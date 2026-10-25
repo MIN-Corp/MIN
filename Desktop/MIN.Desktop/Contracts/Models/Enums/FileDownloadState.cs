@@ -21,6 +21,11 @@ public enum FileDownloadState
     NotDownloaded,
 
     /// <summary>
+    /// Собирается
+    /// </summary>
+    Assembling,
+
+    /// <summary>
     /// Без состояния
     /// </summary>
     /// <remarks>

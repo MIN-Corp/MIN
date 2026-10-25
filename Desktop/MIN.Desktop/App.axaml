@@ -15,6 +15,7 @@
                 <ResourceInclude Source="/Contracts/Schemes/SizeScheme.axaml"/>
             </ResourceDictionary.MergedDictionaries>
             <converters:AndMultiConverter x:Key="AndMultiConverter" />
+            <converters:OrMultiConverter x:Key="OrMultiConverter" />
         </ResourceDictionary>
 
     </Application.Resources>

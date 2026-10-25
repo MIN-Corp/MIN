@@ -27,7 +27,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
     [NotifyDataErrorInfo]
     [Required(ErrorMessage = "Придумайте имя для комнаты")]
-    [RoomName]
+    [FileName]
     [NotEndsWith(".")]
     public partial string Name { get; set; } = "";
 
@@ -155,7 +155,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
 
         Room.Name = Name;
 
-        if (CollegePCNameParser.TryParseComputerName(Environment.MachineName, out var roomNumber, out var computerNumber))
+        if (CollegePcNameParser.TryParseComputerName(Environment.MachineName, out var roomNumber, out var computerNumber))
         {
             Room.Cabinet = roomNumber.ToString();
             Room.PcNumber = computerNumber;

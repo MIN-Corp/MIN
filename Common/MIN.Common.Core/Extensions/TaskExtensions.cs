@@ -1,7 +1,7 @@
 ﻿namespace MIN.Common.Core.Extensions;
 
 /// <summary>
-/// Методы расширения для тасков
+/// Методы расширения для Task
 /// </summary>
 public static class TaskExtensions
 {
@@ -19,6 +19,8 @@ public static class TaskExtensions
         where TException : Exception
         => task.ContinueWith(x =>
         {
+            ArgumentNullException.ThrowIfNull(x);
+
             if (x.Result)
             {
                 throw exception.Invoke();

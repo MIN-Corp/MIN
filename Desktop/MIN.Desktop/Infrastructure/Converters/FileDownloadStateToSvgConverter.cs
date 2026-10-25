@@ -24,6 +24,7 @@ public class FileDownloadStateToSvgConverter : Converter<FileDownloadStateToSvgC
         {
             FileDownloadState.IsDownloading => "close.svg",
             FileDownloadState.Downloaded => "file.svg",
+            FileDownloadState.Assembling => "file.svg",
             FileDownloadState.NotDownloaded => "download.svg",
             _ => string.Empty
         };

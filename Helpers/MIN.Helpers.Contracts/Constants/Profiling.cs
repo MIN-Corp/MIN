@@ -10,7 +10,7 @@ public static class Profiling
     /// </summary>
     public readonly static bool IsEnabled =
 #if DEBUG
-        true;
+        false;
 #else
         false;
 #endif

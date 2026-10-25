@@ -11,13 +11,13 @@ namespace MIN.Core.Entities;
 public class Room : IRoomData
 {
     /// <inheritdoc />
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     /// <inheritdoc />
     public string Name { get; set; } = string.Empty;
 
     /// <inheritdoc />
-    public string Cabinet { get; set; } = string.Empty;
+    public string Cabinet { get; init; } = string.Empty;
 
     /// <inheritdoc />
     public int PcNumber { get; set; }
@@ -37,7 +37,9 @@ public class Room : IRoomData
     /// <inheritdoc />
     public DateTime CreatedAt { get; set; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Список адресов для подключения
+    /// </summary>
     public IEnumerable<IEndpoint> ConnectionAddresses { get; set; } = [];
 
     /// <summary>
@@ -45,14 +47,14 @@ public class Room : IRoomData
     /// </summary>
     /// <remarks>
     /// Для новых участников всегда будет пустым,
-    /// Нужен для сохранения комнаты на будующее
+    /// Нужен для сохранения комнаты на будущее
     /// </remarks>
     public LocalRoomSettings LocalRoomSettings { get; set; } = new();
 
     /// <summary>
     /// Хост комнаты
     /// </summary>
-    public ParticipantInfo HostParticipant { get; set; } = null!;
+    public ParticipantInfo HostParticipant { get; init; } = null!;
 
     /// <summary>
     /// Текущие участников комнаты

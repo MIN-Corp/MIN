@@ -8,7 +8,7 @@ namespace MIN.Chat.Messaging;
 /// <summary>
 /// Текстовое сообщение чата, отправляемое участником в комнату
 /// </summary>
-public sealed class ChatTextMessage : BaseContentMessage, IDescribable, IReplyable
+public sealed class ChatTextMessage : BaseContentMessage, IDescribable, IReplyable, IAuthoredMessage
 {
     private readonly static int descriptionLength = 100;
 
@@ -21,9 +21,7 @@ public sealed class ChatTextMessage : BaseContentMessage, IDescribable, IReplyab
     /// <inheritdoc />
     public override bool RequiresLocalDuplication => true;
 
-    /// <summary>
-    /// Отправитель сообщения
-    /// </summary>
+    /// <inheritdoc />
     public string SenderName { get; set; } = null!;
 
     /// <inheritdoc />

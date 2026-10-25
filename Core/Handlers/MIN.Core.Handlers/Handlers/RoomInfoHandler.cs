@@ -58,6 +58,7 @@ internal sealed class RoomInfoHandler : BaseHandler
 
                     return HandlerResult.WithResponse(new RoomSyncRequestMessage()
                     {
+                        LocalParticipant = context.RoomContext.Participants.GetParticipantById(context.SelfId),
                         MessagesAfterMessageId = lastMessage.Id,
                         MessagesAfterTimestamp = lastMessage.Timestamp,
                     });

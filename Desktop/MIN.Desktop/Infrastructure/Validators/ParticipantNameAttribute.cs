@@ -9,7 +9,7 @@ namespace MIN.Desktop.Infrastructure.Validators;
 /// </summary>
 public sealed class ParticipantNameAttribute : TypedValidationAttribute<string>
 {
-    private const int MAX_PARTICIPANT_NAME = 70;
+    private const int MaxParticipantName = 70;
 
     readonly static internal char[] InvalidPathCharacters = Path.GetInvalidFileNameChars();
 
@@ -20,9 +20,9 @@ public sealed class ParticipantNameAttribute : TypedValidationAttribute<string>
         {
             return ValidationResult.Success;
         }
-        if (value.Length > MAX_PARTICIPANT_NAME)
+        if (value.Length > MaxParticipantName)
         {
-            return new ValidationResult($"{context.DisplayName} не может быть больше {MAX_PARTICIPANT_NAME} символов");
+            return new ValidationResult($"{context.DisplayName} не может быть больше {MaxParticipantName} символов");
         }
         var indexOfAny = value.IndexOfAny(InvalidPathCharacters);
         if (indexOfAny > -1)

@@ -6,7 +6,7 @@ namespace MIN.Core.Events.Events;
 
 /// <summary>
 /// Событие, возникающее при покидании участником комнаты
-/// (с ним нельзя будет связяться, но может считаться в списке если он вышел непреднамеренно)
+/// (с ним нельзя будет связаться, но может считаться в списке если он вышел непреднамеренно)
 /// </summary>
 public sealed record ParticipantLeftEvent : BaseEvent, IRoomScopedEvent
 {

@@ -3,7 +3,7 @@
 namespace MIN.Core.Events.Contracts.Interfaces;
 
 /// <summary>
-/// Шина событий для внутрипроцессной коммуникации
+/// Шина событий для внутри процессной коммуникации
 /// </summary>
 public interface IEventBus
 {

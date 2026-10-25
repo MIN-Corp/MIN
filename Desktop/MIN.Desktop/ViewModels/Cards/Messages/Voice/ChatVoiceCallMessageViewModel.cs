@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Events.Contracts.Interfaces;
+using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Desktop.ViewModels.Cards.Messages.Base;
 using MIN.Voice.Events;
 using MIN.Voice.Messaging;
@@ -71,7 +72,7 @@ public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageVi
         Thickness timePadding,
         bool isHostMessage,
         bool removeHeaders,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(voiceCallStartedMessage,
             voiceCallStartedMessage,
             null,
@@ -80,7 +81,7 @@ public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageVi
             localParticipant.Id == voiceCallStartedMessage.SenderId,
             isHostMessage,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
         AsEnded = voiceCallStartedMessage.IsEnded;
         AsJoined = localParticipant.Id == voiceCallStartedMessage.SenderId && !AsEnded;
@@ -120,6 +121,16 @@ public partial class ChatVoiceCallMessageViewModel : BaseUpdateableChatMessageVi
         AsRejected = false;
         AsJoined = true;
         return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public override void Update(IMessage newMessage)
+    {
+        base.Update(newMessage);
+        if (newMessage is IDescribable describable)
+        {
+            Description = describable.GetDescription();
+        }
     }
 
     [RelayCommand]

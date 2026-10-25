@@ -63,12 +63,12 @@ public class ChannelTransport : ITransport, IAsyncDisposable
         }
     }
 
-    async Task<Guid> ITransport.StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
+    async Task<Guid> ITransport.StartHostingAsync(Guid? serverConnectionId, ushort? preferredPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         // Один id сервера на комнату для обеих ног
         var connectionId = serverConnectionId ?? Guid.NewGuid();
-        await secureTransport.StartHostingAsync(connectionId, prefferedPort, sequentialAttempts, cancellationToken);
-        await fastTransport.StartHostingAsync(connectionId, cancellationToken);
+        await secureTransport.StartHostingAsync(connectionId, preferredPort, sequentialAttempts, cancellationToken);
+        await fastTransport.StartHostingAsync(connectionId, preferredPort, sequentialAttempts, cancellationToken);
         return connectionId;
     }
 
@@ -99,7 +99,7 @@ public class ChannelTransport : ITransport, IAsyncDisposable
         {
             try
             {
-                await fastTransport.SendAsync(data, recipientConnectionId, serverConnectionId, MessageChannel.Fast, cancellationToken);
+                await fastTransport.SendAsync(data, recipientConnectionId, serverConnectionId, cancellationToken);
                 return;
             }
             catch (OperationCanceledException)
@@ -117,11 +117,13 @@ public class ChannelTransport : ITransport, IAsyncDisposable
 
     async Task ITransport.BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
     {
+        var excludeConnectionsArray = excludeConnections as Guid[] ?? excludeConnections?.ToArray();
+
         if (channel == MessageChannel.Fast)
         {
             try
             {
-                await fastTransport.BroadcastAsync(data, connectionId, excludeConnections, MessageChannel.Fast, cancellationToken);
+                await fastTransport.BroadcastAsync(data, connectionId, excludeConnectionsArray, cancellationToken);
                 return;
             }
             catch (Exception ex)
@@ -130,7 +132,7 @@ public class ChannelTransport : ITransport, IAsyncDisposable
             }
         }
 
-        await secureTransport.BroadcastAsync(data, connectionId, excludeConnections, MessageChannel.Secure, cancellationToken);
+        await secureTransport.BroadcastAsync(data, connectionId, excludeConnectionsArray, MessageChannel.Secure, cancellationToken);
     }
 
     async Task<IEnumerable<IEndpoint>> ITransport.SetUpEndpoints(Guid connectionId, NetworkOptions networkOptions, NetworkOptions? oldNetworkOptions, CancellationToken cancellationToken)

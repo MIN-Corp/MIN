@@ -57,7 +57,7 @@ public sealed class UdpDiscoveryService : IDiscoveryService, IAsyncDisposable
     {
         var roomId = room.Id;
 
-        var lan = endpoints.FirstOrDefault(x => x.Origin == AddressOrigin.LAN && x.Type == TransportType.Tcp)
+        var lan = endpoints.FirstOrDefault(x => x.Origin == AddressOrigin.Lan && x.Type == TransportType.Tcp)
             ?? throw new OverflowException("должен быть указан LAN для локального обнаружения");
 
         var bytes = JsonSerializer.SerializeToUtf8Bytes(
@@ -170,7 +170,7 @@ public sealed class UdpDiscoveryService : IDiscoveryService, IAsyncDisposable
                 discoveryResponse.RoomDiscoveryInfos.Add(new RoomDiscoveryInfo()
                 {
                     Room = new RoomInfo(room),
-                    Endpoints = room.ConnectionAddresses.Where(x => x.Origin == AddressOrigin.LAN && x.Type == TransportType.Tcp), // Должен быть, так как был настроен на это
+                    Endpoints = room.ConnectionAddresses.Where(x => x.Origin == AddressOrigin.Lan && x.Type == TransportType.Tcp), // Должен быть, так как был настроен на это
                 });
             }
 

@@ -13,6 +13,11 @@ public interface IIdentityService
     IParticipantData SelfParticipant { get; }
 
     /// <summary>
+    /// Сменилась личность участника
+    /// </summary>
+    Func<IParticipantData, Task>? SelfParticipantSaved { get; set; }
+
+    /// <summary>
     /// Установить и сохранить данные пользователя
     /// </summary>
     Task SaveParticipant(IParticipantData participantData);

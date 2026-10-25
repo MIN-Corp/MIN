@@ -8,7 +8,7 @@ public static class CryptographyConstants
     /// <summary>
     /// Размер IV (в байтах)
     /// </summary>
-    public const int IVSize = 12;
+    public const int IvSize = 12;
 
     /// <summary>
     /// Размер Тэга аутентификации (в байтах)

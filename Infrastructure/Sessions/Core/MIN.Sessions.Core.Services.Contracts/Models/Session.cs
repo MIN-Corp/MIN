@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using MIN.Sessions.Core.Services.Contracts.Enums;
 
 namespace MIN.Sessions.Core.Services.Contracts.Models;
 
@@ -38,17 +39,17 @@ public class Session
     /// <summary>
     /// Название программы сервера сессии
     /// </summary>
-    public required string ServerExecutableFileName { get; set; }
+    public string ServerExecutableFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// Название программы клиента сессии
     /// </summary>
-    public required string ClientExecutableFileName { get; set; }
+    public string ClientExecutableFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// Ссылка на скачивание сессии
     /// </summary>
-    public required string DownloadLink { get; set; }
+    public string DownloadLink { get; set; } = string.Empty;
 
     /// <summary>
     /// Название файла обложки сессии
@@ -63,6 +64,16 @@ public class Session
     /// </summary>
     [JsonIgnore]
     public string SessionDirectory { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Вид сессии
+    /// </summary>
+    public SessionKind Kind { get; set; } = SessionKind.Process;
+
+    /// <summary>
+    /// Порт, на котором слушает игровой сервер хоста (для сессий вида PortTunnel)
+    /// </summary>
+    public int? TunnelPort { get; set; }
 
     /// <summary>
     /// Получить путь к программе сервера сессии

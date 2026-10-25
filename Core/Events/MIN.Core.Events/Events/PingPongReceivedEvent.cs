@@ -15,7 +15,7 @@ public sealed record PingPongReceivedEvent : BaseEvent, IRoomScopedEvent
     /// <summary>
     /// Роль получения сообщения
     /// </summary>
-    public Role Role { get; set; }
+    public Role Role { get; init; }
 
     /// <summary>
     /// Идентификатор соединения

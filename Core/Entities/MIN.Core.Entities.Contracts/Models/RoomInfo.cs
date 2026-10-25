@@ -8,7 +8,7 @@ namespace MIN.Core.Entities.Contracts.Models;
 public record RoomInfo : IRoomData
 {
     /// <inheritdoc />
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     /// <inheritdoc />
     public string Name { get; set; } = string.Empty;
@@ -23,13 +23,13 @@ public record RoomInfo : IRoomData
     public int ParticipantCount { get; set; }
 
     /// <inheritdoc />
-    public int TotalMessageCount { get; set; }
+    public int TotalMessageCount { get; init; }
 
     /// <inheritdoc />
     public int MaximumParticipants { get; set; }
 
     /// <inheritdoc />
-    public bool IsOnline { get; set; } = true;
+    public bool IsOnline { get; init; } = true;
 
     /// <inheritdoc />
     public ParticipantInfo HostParticipant { get; set; } = null!;

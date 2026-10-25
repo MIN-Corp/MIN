@@ -1,4 +1,5 @@
-﻿using MIN.Core.Messaging.Contracts;
+﻿using MIN.Core.Entities;
+using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Messages;
 
 namespace MIN.Core.Messaging.Stateless.RoomRelated.Sync;
@@ -13,6 +14,11 @@ public sealed class RoomSyncRequestMessage : BaseMessage
 
     /// <inheritdoc />
     public override bool IsPublic => false;
+
+    /// <summary>
+    /// Локальный участник (в случае смены имени оффлайн)
+    /// </summary>
+    public required Participant LocalParticipant { get; set; }
 
     /// <summary>
     /// Последнее сообщение

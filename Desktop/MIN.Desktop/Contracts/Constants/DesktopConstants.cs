@@ -11,7 +11,7 @@ public static class DesktopConstants
     public const int MaximumParticipantsInRoom = 20;
 
     /// <summary>
-    /// Не распознаный компьютер
+    /// Не распознанный компьютер
     /// </summary>
     public const string UndefinedPcName = "ХЗ";
 
@@ -28,4 +28,9 @@ public static class DesktopConstants
 #else
     public const bool MinimizeToTrayEnabled = true;
 #endif
+
+    /// <summary>
+    /// Максимальное количество символов в одном отправленном сообщении
+    /// </summary>
+    public const int MaximumAvailableTextMessageSize = 10_000;
 }

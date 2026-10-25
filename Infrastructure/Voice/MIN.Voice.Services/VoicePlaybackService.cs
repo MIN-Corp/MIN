@@ -110,7 +110,7 @@ public class VoicePlaybackService : IVoicePlaybackService
             {
                 var channel = new ParticipantChannel(codec, context, appVolume);
 
-                void volumeHandler(object? _, PropertyChangedEventArgs e)
+                void VolumeHandler(object? _, PropertyChangedEventArgs e)
                 {
                     if (e.PropertyName == nameof(Settings.OutputDeviceVolume))
                     {
@@ -118,9 +118,9 @@ public class VoicePlaybackService : IVoicePlaybackService
                         channel.ChangeVolume(appVolume, channel.SpecificVolume);
                     }
                 }
-                settings.PropertyChanged += volumeHandler;
+                settings.PropertyChanged += VolumeHandler;
 
-                channels[participantId] = new ParticipantVoiceEntry(channel, volumeHandler);
+                channels[participantId] = new ParticipantVoiceEntry(channel, VolumeHandler);
             }
             catch (Exception ex)
             {

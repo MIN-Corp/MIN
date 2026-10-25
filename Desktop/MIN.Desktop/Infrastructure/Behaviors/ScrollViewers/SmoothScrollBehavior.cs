@@ -38,7 +38,7 @@ public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
         Page
     }
 
-    private const double ANIMATION_DURATION = 170; // длительность анимации в мс
+    private const double AnimationDuration = 170; // длительность анимации в мс
 
     /// <summary>
     /// Свойство шагов прокрутки ползунка
@@ -213,7 +213,7 @@ public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
         {
             // Calculate elapsed time and progress of the current animation
             var elapsedTime = (currentTime - animationStartTime).TotalMilliseconds;
-            var progress = double.Min(elapsedTime / ANIMATION_DURATION, 1.0);
+            var progress = double.Min(elapsedTime / AnimationDuration, 1.0);
 
             // Use easing for the current progress
             SineEaseOut? easing = new();
@@ -261,14 +261,14 @@ public class SmoothScrollBehavior : StyledElementBehavior<ScrollViewer>
 
             var elapsedTime = (DateTime.Now - animationStartTime).TotalMilliseconds;
 
-            if (elapsedTime >= ANIMATION_DURATION)
+            if (elapsedTime >= AnimationDuration)
             {
                 AssociatedObject!.Offset = new Vector(AssociatedObject!.Offset.X, targetOffset);
                 isAnimating = false;
                 break;
             }
 
-            var progress = elapsedTime / ANIMATION_DURATION;
+            var progress = elapsedTime / AnimationDuration;
             SineEaseOut? easing = new();
             var easedProgress = easing.Ease(progress);
             var currentOffset = startOffset + easedProgress * (targetOffset - startOffset);

@@ -16,9 +16,10 @@ public abstract class BaseHandler : IMessageHandler
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="BaseHandler"/>
     /// </summary>
-    public BaseHandler(ILoggerProvider logger)
+    protected BaseHandler(ILoggerProvider logger)
     {
         this.logger = logger;
+        Priority = 0;
     }
 
     /// <inheritdoc />

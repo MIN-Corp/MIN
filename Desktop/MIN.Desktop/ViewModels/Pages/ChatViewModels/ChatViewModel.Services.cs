@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Common.Core.Contracts.Interfaces;
@@ -13,10 +14,11 @@ using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Models;
+using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.Infrastructure.Services;
-using MIN.Desktop.ViewModels.Base;
+using MIN.Desktop.Infrastructure.Validators;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.FileTransfer.Messaging;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -27,7 +29,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// <summary>
 /// Методы использования сервисов для чата
 /// </summary>
-public partial class ChatViewModel : RoutableViewModelBase
+public partial class ChatViewModel
 {
     private readonly Window parentWindow = MainWindowViewModel.GetWindow()!;
     private CancellationTokenSource? createRoomCts;
@@ -53,11 +55,25 @@ public partial class ChatViewModel : RoutableViewModelBase
     public partial string? ReplyToPreview { get; set; }
 
     /// <summary>
+    /// Максимальное количество символов для отправки
+    /// </summary>
+    [ObservableProperty]
+    public partial int MaxMessageLength { get; set; } = DesktopConstants.MaximumAvailableTextMessageSize;
+
+    /// <summary>
     /// Отправляемое сообщение в textBox
     /// </summary>
     [ObservableProperty]
+    [NotifyDataErrorInfo]
+    [MaxTextLength]
     [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
     public partial string SendingMessage { get; set; } = string.Empty;
+
+    partial void OnMaxMessageLengthChanged(int value)
+    {
+        ValidateAllProperties();
+        SendMessageCommand.NotifyCanExecuteChanged();
+    }
 
     private void InitializeNotifications()
     {
@@ -67,6 +83,10 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private void OnNotificationClick()
     {
+        if (isParentWindowClosed || !parentWindow.IsVisible)
+        {
+            Dispatcher.UIThread.Post(App.RequestShowMainWindow);
+        }
         if (parentWindow.WindowState == WindowState.Minimized)
         {
             parentWindow.WindowState = WindowState.Normal;
@@ -114,7 +134,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
     private async Task OnDownloadRequested(FileMetadataMessage fileMetadata)
     {
-        await featureCollection.Chat.ChatFileService.RequestFileDownloadAsync(roomId,
+        await featureCollection.Chat.ChatFileService.RequestFileDownloadAsync(RoomId,
             fileMetadata,
             roomCts.Token
         );
@@ -124,7 +144,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         try
         {
-            await featureCollection.Chat.ChatSessionService.SendSessionJoinRequest(roomId,
+            await featureCollection.Chat.ChatSessionService.SendSessionJoinRequest(RoomId,
                 sessionReadyMessage,
                 roomCts.Token
             );
@@ -139,7 +159,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         try
         {
-            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(roomId, subRoomId, roomCts.Token);
+            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(RoomId, subRoomId, roomCts.Token);
         }
         catch (DirectoryNotFoundException e)
         {
@@ -151,7 +171,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (activeVoiceChatSubroomId != null)
         {
-            await featureCollection.Voice.MuteService.MuteSelf(roomId, activeVoiceChatSubroomId.Value, roomCts.Token);
+            await featureCollection.Voice.MuteService.MuteSelf(RoomId, activeVoiceChatSubroomId.Value, roomCts.Token);
         }
     }
 
@@ -159,7 +179,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         if (activeVoiceChatSubroomId != null)
         {
-            await featureCollection.Voice.MuteService.UnmuteSelf(roomId, activeVoiceChatSubroomId.Value, roomCts.Token);
+            await featureCollection.Voice.MuteService.UnmuteSelf(RoomId, activeVoiceChatSubroomId.Value, roomCts.Token);
         }
     }
 
@@ -173,13 +193,13 @@ public partial class ChatViewModel : RoutableViewModelBase
         => featureCollection.Voice.VoicePlayback.ChangeParticipantVolume(participantId, volume);
 
     private async Task OnVoiceCallLeaveRequested(int subRoomId)
-        => await featureCollection.Chat.ChatVoiceService.LeaveCallAsync(roomId, subRoomId, roomCts.Token);
+        => await featureCollection.Chat.ChatVoiceService.LeaveCallAsync(RoomId, subRoomId, roomCts.Token);
 
     private async Task RequestVoiceCallStateAsync()
-        => await featureCollection.Chat.ChatVoiceService.RequestCallStateAsync(roomId, roomCts.Token);
+        => await featureCollection.Chat.ChatVoiceService.RequestCallStateAsync(RoomId, roomCts.Token);
 
     private async Task OnCancelRequested(FileMetadataMessage fileMetadata)
-        => await featureCollection.Chat.ChatFileService.CancelFileDownloadAsync(roomId,
+        => await featureCollection.Chat.ChatFileService.CancelFileDownloadAsync(RoomId,
             fileMetadata,
             roomCts.Token);
 
@@ -187,7 +207,7 @@ public partial class ChatViewModel : RoutableViewModelBase
     {
         try
         {
-            await featureCollection.Chat.ChatMessageService.ClearMessageHistoryAsync(roomId, roomCts.Token);
+            await featureCollection.Chat.ChatMessageService.ClearMessageHistoryAsync(RoomId, roomCts.Token);
         }
         catch (Exception ex)
         {
@@ -195,45 +215,56 @@ public partial class ChatViewModel : RoutableViewModelBase
         }
     }
 
-    private bool IsMessageValid() => !string.IsNullOrWhiteSpace(SendingMessage) || SomeFilesAttached;
+    private bool IsMessageValid()
+        => (!string.IsNullOrWhiteSpace(SendingMessage) || SomeFilesAttached) && (SendingMessage.Length <= MaxMessageLength);
 
     private async Task SendSelfStatusChangedMessage(OnlineStatus newStatus)
     {
 #if DEBUG
         try
         {
-            await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(roomId,
+            await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(RoomId,
                 newStatus,
                 roomCts.Token
             );
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
 
         await Task.CompletedTask;
-        return;
 #else
         try
         {
-            await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(roomId,
+            await featureCollection.Chat.ChatStatusService.SendSelfOnlineStatusChangedAsync(RoomId,
                 newStatus,
                 roomCts.Token
             );
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
 #endif
     }
 
     private async Task SendSessionStartMessage(Session session)
-        => await featureCollection.Chat.ChatSessionService.SendSessionHostRequestAsync(roomId, session, roomCts.Token);
+        => await featureCollection.Chat.ChatSessionService.SendSessionHostRequestAsync(RoomId, session, roomCts.Token);
+
+    private async Task SendTunnelSessionStartMessage(string name, int gamePort,
+       int? maximumParticipants, string? version, byte[]? thumbnailData)
+        => await featureCollection.Chat.ChatSessionService.HostTunnelSessionAsync(RoomId, name, gamePort,
+            maximumParticipants, version, thumbnailData, roomCts.Token);
 
     private async Task SendVoiceCallStartMessage()
-        => await featureCollection.Chat.ChatVoiceService.StartCallAsync(roomId, roomCts.Token);
+        => await featureCollection.Chat.ChatVoiceService.StartCallAsync(RoomId, roomCts.Token);
 
     private async Task OnMessageDeleteRequested(Guid id)
-        => await featureCollection.Chat.ChatMessageService.DeleteMessageAsync(roomId, id, roomCts.Token);
+        => await featureCollection.Chat.ChatMessageService.DeleteMessageAsync(RoomId, id, roomCts.Token);
 
     private async Task OnMessageEditRequested(Guid id, string newContent)
-        => await featureCollection.Chat.ChatMessageService.EditTextMessageAsync(roomId, id, newContent, roomCts.Token);
+        => await featureCollection.Chat.ChatMessageService.EditTextMessageAsync(RoomId, id, newContent, roomCts.Token);
 
     [RelayCommand(CanExecute = nameof(IsMessageValid))]
     private async Task SendMessage()
@@ -242,7 +273,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         {
             if (!string.IsNullOrWhiteSpace(SendingMessage) && AttachedFiles.Count == 0)
             {
-                await featureCollection.Chat.ChatTextService.SendTextMessageAsync(roomId,
+                await featureCollection.Chat.ChatTextService.SendTextMessageAsync(RoomId,
                     SendingMessage.Trim(),
                     chatSideBarViewModel.PrivateChatParticipantId,
                     replyToPreviewId,
@@ -252,32 +283,32 @@ public partial class ChatViewModel : RoutableViewModelBase
 
             var lastFile = AttachedFiles.LastOrDefault();
 
-            foreach (var fileAttachement in AttachedFiles)
+            foreach (var fileAttachment in AttachedFiles)
             {
-                if (featureCollection.FileTransfer.FileHelperService.IsFileImage(fileAttachement.File.FileName))
+                if (featureCollection.FileTransfer.FileHelperService.IsFileImage(fileAttachment.File.FileName))
                 {
                     try
                     {
-                        using var bitmap = new Bitmap(fileAttachement.File.FilePath);
+                        using var bitmap = new Bitmap(fileAttachment.File.FilePath);
                     }
                     catch
                     {
                         try
                         {
-                            using var bitmap = ImageHelper.SvgToBitmap(fileAttachement.File.FilePath);
+                            using var bitmap = ImageHelper.SvgToBitmap(fileAttachment.File.FilePath);
                         }
                         catch (ArgumentException ex)
                         {
-                            InAppNotifier.Error($"Не удалось загрузить файл {fileAttachement.File.FileName}: {ex.Message}");
+                            InAppNotifier.Error($"Не удалось загрузить файл {fileAttachment.File.FileName}: {ex.Message}");
                             return;
                         }
                     }
                 }
 
-                await featureCollection.Chat.ChatFileService.SendFileAsync(roomId,
-                   fileAttachement == lastFile ? SendingMessage : string.Empty,
-                   fileAttachement.File.FileName,
-                   fileAttachement.File.FilePath,
+                await featureCollection.Chat.ChatFileService.SendFileAsync(RoomId,
+                    fileAttachment == lastFile ? SendingMessage : string.Empty,
+                   fileAttachment.File.FileName,
+                   fileAttachment.File.FilePath,
                    chatSideBarViewModel.PrivateChatParticipantId,
                    replyToPreviewId,
                    roomCts.Token
@@ -317,7 +348,7 @@ public partial class ChatViewModel : RoutableViewModelBase
         var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
         {
             Cts = reconnectRoomCts,
-            ExpectedRoomId = roomId,
+            ExpectedRoomId = RoomId,
             Endpoint = chosenEndpoint,
             ShowLoadingDialog = false,
             OnRoomReady = async (room, connectionId) =>
@@ -344,8 +375,12 @@ public partial class ChatViewModel : RoutableViewModelBase
                     await Disconnect(asForget: true);
                     await discoveryViewModel.OnRoomJoin(chosenEndpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
                     break;
-                default:
+                case RoomMismatchChoice.None:
+                case RoomMismatchChoice.Cancel:
+                case null:
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -409,7 +444,7 @@ public partial class ChatViewModel : RoutableViewModelBase
 
         if (hostResult.Failure != null)
         {
-            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(roomId);
+            await featureCollection.Discovery.DiscoveryService.StopDiscoveryAsync(RoomId);
             InAppNotifier.Info(hostResult.ErrorMessage ?? "Не удалось захостить комнату");
         }
 

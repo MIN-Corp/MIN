@@ -54,7 +54,7 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseUpdateab
         bool isLocal,
         bool isHost,
         bool removeHeaders,
-        bool isAvaibleForNetwork)
+        bool isAvailableForNetwork)
         : base(message,
             contentEditable,
             replyable,
@@ -64,7 +64,7 @@ public abstract partial class BaseTextContentChatMessageViewModel : BaseUpdateab
             isLocal,
             isHost,
             removeHeaders,
-            isAvaibleForNetwork)
+            isAvailableForNetwork)
     {
         Content = contentEditable.Content;
     }
