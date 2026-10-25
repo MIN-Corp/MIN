@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Models;
+using MIN.Desktop.Contracts.Models.Statuses;
 using MIN.Desktop.ViewModels.Cards;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
@@ -83,7 +84,7 @@ public partial class ChatViewModel
     private void AddStatus(IDescribableStatus status)
     {
         currentStatuses.Add(status);
-        StatusContent = string.Join(", ", currentStatuses.Select(x => x.GetDescription()));
+        RefreshStatusContent();
     }
 
     private void RemoveStatus(Guid statusId)
@@ -94,10 +95,74 @@ public partial class ChatViewModel
             currentStatuses.Remove(foundStatus);
         }
 
-        if (currentStatuses.Count != 0)
+        RefreshStatusContent();
+    }
+
+    private void RefreshStatusContent()
+        => StatusContent = string.Join(", ", currentStatuses.Select(x => x.GetDescription()));
+
+    private void UpdateTypingStatus()
+    {
+        var oldStatus = currentStatuses.FirstOrDefault(x => x.Id == currentTypingParticipantsStatusId);
+        if (oldStatus == null)
         {
-            StatusContent = string.Join(", ", currentStatuses.Select(x => x.GetDescription()));
+            return;
         }
+
+        var index = currentStatuses.IndexOf(oldStatus);
+        currentStatuses[index] = new ParticipantTypingStatus(
+            currentTypingParticipantsStatusId,
+            currentTypingParticipants.Select(x => x.Name).ToList());
+        RefreshStatusContent();
+    }
+
+    private void AddTypingParticipant(ParticipantInfo participant)
+    {
+        if (currentTypingParticipants.Contains(participant))
+        {
+            return;
+        }
+
+        if (currentTypingParticipants.Count == 0)
+        {
+            currentTypingParticipantsStatusId = Guid.NewGuid();
+        }
+
+        currentTypingParticipants.Add(participant);
+
+        if (currentTypingParticipants.Count == 1)
+        {
+            AddStatus(new ParticipantTypingStatus(
+                currentTypingParticipantsStatusId,
+                currentTypingParticipants.Select(x => x.Name).ToList()));
+        }
+        else
+        {
+            UpdateTypingStatus();
+        }
+    }
+
+    private void RemoveTypingParticipant(ParticipantInfo participant)
+    {
+        if (!currentTypingParticipants.Remove(participant))
+        {
+            return;
+        }
+
+        if (currentTypingParticipants.Count == 0)
+        {
+            RemoveStatus(currentTypingParticipantsStatusId);
+        }
+        else
+        {
+            UpdateTypingStatus();
+        }
+    }
+
+    private void ClearTypingStatus()
+    {
+        currentTypingParticipants.Clear();
+        RemoveStatus(currentTypingParticipantsStatusId);
     }
 
     private void UploadFile(string filePath)

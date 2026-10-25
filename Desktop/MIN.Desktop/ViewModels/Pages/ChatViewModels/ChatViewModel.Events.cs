@@ -240,6 +240,7 @@ public partial class ChatViewModel
             await AddToChatFlowAndNotify(eventMessage.Message, cancellationToken);
         }
 
+        RemoveTypingParticipant(eventMessage.Message.Participant);
         chatSideBarViewModel.UpdateParticipantFlow(room.CurrentParticipants);
     }
 
@@ -332,40 +333,15 @@ public partial class ChatViewModel
             chatSideBarViewModel.ResortOnlineParticipants();
         }
 
-        if (currentTypingParticipants.Contains(eventMessage.Participant) && eventMessage.Status != OnlineStatus.Typing)
+        if (eventMessage.Status == OnlineStatus.Typing)
         {
-            if (currentTypingParticipants.Remove(eventMessage.Participant) && currentTypingParticipants.Count == 0)
-            {
-                RemoveStatus(currentTypingParticipantsStatusId);
-            }
-
-            return Task.CompletedTask;
+            AddTypingParticipant(eventMessage.Participant);
+        }
+        else
+        {
+            RemoveTypingParticipant(eventMessage.Participant);
         }
 
-        if (eventMessage.Status != OnlineStatus.Typing)
-        {
-            return Task.CompletedTask;
-        }
-
-        if (currentTypingParticipants.Count == 0)
-        {
-            currentTypingParticipantsStatusId = Guid.NewGuid();
-        }
-
-        currentTypingParticipants.Add(eventMessage.Participant);
-
-        if (currentTypingParticipants.Count > 1)
-        {
-            var existing = currentStatuses.FirstOrDefault(x => x.Id == currentTypingParticipantsStatusId);
-            if (existing is ParticipantTypingStatus typingStatus)
-            {
-                typingStatus.ParticipantNames = currentTypingParticipants.Select(x => x.Name).ToList();
-            }
-        }
-        else if (currentTypingParticipants.Count == 1)
-        {
-            AddStatus(new ParticipantTypingStatus(currentTypingParticipantsStatusId, currentTypingParticipants.Select(x => x.Name).ToList()));
-        }
         return Task.CompletedTask;
     }
 

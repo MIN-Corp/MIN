@@ -568,7 +568,7 @@
                     Opacity="{Binding !IsOnline,
                         Converter={converters:BoolToOpacityConverter}}">
 
-                     <StackPanel Orientation="Horizontal"
+                    <StackPanel Orientation="Horizontal"
                                 Spacing="8">
                         <TextBlock IsVisible="{Binding !IsRehosting}"
                                 VerticalAlignment="Center"
@@ -576,10 +576,10 @@
                         <TextBlock IsVisible="{Binding IsRehosting}"
                                 VerticalAlignment="Center"
                                 Text="Отмена" />
-                         <Svg IsVisible="{Binding IsRehosting}"
-                            Path="/Assets/Icons/loading.svg"
-                            Height="21"
-                            Classes="rotating" />
+                        <Svg IsVisible="{Binding IsRehosting}"
+                             Path="/Assets/Icons/loading.svg"
+                             Height="21"
+                             Classes="rotating" />
                     </StackPanel>
 
                     <Button.Transitions>

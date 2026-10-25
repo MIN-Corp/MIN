@@ -18,6 +18,7 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
     private const double AnchorTolerance = 0.5;
 
     private ChatViewModel? chatVm;
+    private bool wasAtBottom = true;
     private BaseChatMessageViewModel? prependAnchorCard;
     private double prependAnchorSubOffset;
 
@@ -146,6 +147,20 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
             return;
         }
 
+        if (e.ViewportDelta.Y < 0 && wasAtBottom)
+        {
+            chatVm.IsAtBottom = true;
+            chatVm.UpdateScrollAnchor(null, 0);
+            wasAtBottom = true;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                var max = Math.Max(0, MessagesScroller.Extent.Height - MessagesScroller.Viewport.Height);
+                MessagesScroller.Offset = MessagesScroller.Offset.WithY(max);
+            }, DispatcherPriority.Loaded);
+            return;
+        }
+
         var sv = MessagesScroller;
         var threshold = BottomThresholdPercent * sv.Viewport.Height;
         threshold = Math.Min(threshold, sv.Viewport.Height * 0.5);
@@ -164,6 +179,8 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
             var (card, subOffset) = FindTopVisibleCard();
             chatVm.UpdateScrollAnchor(card, subOffset);
         }
+
+        wasAtBottom = atBottom;
     }
 
     private (BaseChatMessageViewModel? card, double subOffset) FindTopVisibleCard()

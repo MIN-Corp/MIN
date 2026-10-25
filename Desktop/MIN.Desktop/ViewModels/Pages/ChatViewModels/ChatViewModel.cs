@@ -171,7 +171,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     }
 
     /// <inheritdoc />
-    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken = default)
+    public override async Task ViewContentLoadAsync(CancellationToken cancellationToken)
     {
         if (loadingTcs != null)
         {
@@ -281,6 +281,8 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
     private async Task Disconnect(bool asForget)
     {
+        ClearTypingStatus();
+
         if (asForget)
         {
             await DisposeAsync();

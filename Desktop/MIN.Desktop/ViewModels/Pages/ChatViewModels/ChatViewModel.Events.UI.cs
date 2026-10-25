@@ -387,6 +387,7 @@ public partial class ChatViewModel
     {
         typingTimer?.Dispose();
         typingTimer = null;
+        ClearTypingStatus();
 
         VoiceChatParticipants.Clear();
         IsMuted = false;
