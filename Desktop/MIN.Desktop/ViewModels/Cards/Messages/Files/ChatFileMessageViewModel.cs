@@ -47,24 +47,23 @@ public partial class ChatFileMessageViewModel : ChatFileBaseMessageViewModel
             .FormatFileSize(FileMetadataMessage.FileSize);
         InteractionFileStatus = CachedFormat;
     }
+
     /// <inheritdoc />
     protected override void OnTransferProgressUpdated(string formattedReceived, string formattedTotal)
-    {
-        UniversalFileStatus = $"{formattedReceived} / {formattedTotal}";
-    }
+        => UniversalFileStatus = $"{formattedReceived} / {formattedTotal}";
 
     /// <inheritdoc />
     protected override void OnTransferFailed(string errorMessage)
-    {
-        UniversalFileStatus = $"Ошибка: {errorMessage}";
-    }
+        => UniversalFileStatus = $"Ошибка: {errorMessage}";
+
+    /// <inheritdoc />
+    protected override void OnTransferAssembling()
+        => UniversalFileStatus = "Сборка файла…";
 
     /// <inheritdoc />
     protected override void OnTransferCompleted()
-    {
-        UniversalFileStatus = FileTransferFeatureCollection.FileHelperService
+        => UniversalFileStatus = FileTransferFeatureCollection.FileHelperService
             .FormatFileSize(FileMetadataMessage.FileSize);
-    }
 
     [RelayCommand]
     private void InteractionMouseEnter()
@@ -76,7 +75,7 @@ public partial class ChatFileMessageViewModel : ChatFileBaseMessageViewModel
     [RelayCommand]
     private void InteractionMouseLeave()
     {
-        if (FileDownloadState != FileDownloadState.IsDownloading)
+        if (FileDownloadState is not (FileDownloadState.IsDownloading or FileDownloadState.Assembling))
         {
             FileDownloadState = FileDownloadState.None;
         }
@@ -86,6 +85,11 @@ public partial class ChatFileMessageViewModel : ChatFileBaseMessageViewModel
     [RelayCommand]
     private void InteractionClick()
     {
+        if (IsAssembling)
+        {
+            return;
+        }
+
         if (IsTransferring)
         {
             InvokeCancelRequested();

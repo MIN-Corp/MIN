@@ -154,6 +154,13 @@ public sealed class FileTransferService : IFileTransferService, IDisposable
             await using var ms = new MemoryStream(data);
             var finalFileName = await fileStorageService.SaveFileAsync(info.RoomId, ms, info.FileName, cancellationToken);
 
+            await eventBus.PublishAsync(new FileTransferAssemblingEvent
+            {
+                RoomId = info.RoomId,
+                FileMetadataId = info.FileMetadataId,
+                SenderId = info.SenderId,
+            }, cancellationToken);
+
             var filePath = fileStorageService.GetFilePath(info.RoomId, finalFileName) ?? string.Empty;
             logger.Log($"Файл сохранён: {finalFileName} → {filePath}");
 
@@ -200,11 +207,20 @@ public sealed class FileTransferService : IFileTransferService, IDisposable
         var fileSize = new FileInfo(tempFilePath).Length;
         logger.Log($"Перемещаю файл {info.FileName} ({fileSize} байт) из временного пути для transfer {transferId}");
 
-        var movingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, info.CancellationTokenSource?.Token ?? default);
+        var movingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
+            info.CancellationTokenSource?.Token ?? CancellationToken.None);
 
         try
         {
             var finalFileName = await fileStorageService.MoveTempFileToRoomAsync(info.RoomId, tempFilePath, info.FileName, movingCts.Token);
+
+            await eventBus.PublishAsync(new FileTransferAssemblingEvent
+            {
+                RoomId = info.RoomId,
+                FileMetadataId = info.FileMetadataId,
+                SenderId = info.SenderId,
+            }, movingCts.Token);
+
             var filePath = fileStorageService.GetFilePath(info.RoomId, finalFileName) ?? string.Empty;
             logger.Log($"Файл сохранён: {finalFileName} → {filePath}");
 
@@ -214,7 +230,7 @@ public sealed class FileTransferService : IFileTransferService, IDisposable
                 FileMetadataId = info.FileMetadataId,
                 SenderId = info.SenderId,
                 FilePath = filePath,
-            }, cancellationToken);
+            }, movingCts.Token);
 
             RemoveTransfer(transferId);
             pendingMetadata.TryRemove(transferId, out _);
@@ -223,7 +239,7 @@ public sealed class FileTransferService : IFileTransferService, IDisposable
             {
                 TransferId = transferId,
                 FilePath = filePath,
-            }, cancellationToken);
+            }, movingCts.Token);
         }
         catch (Exception ex)
         {

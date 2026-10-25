@@ -63,6 +63,9 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     public partial bool IsTransferring { get; set; }
 
     [ObservableProperty]
+    public partial bool IsAssembling { get; set; }
+
+    [ObservableProperty]
     public partial bool Downloaded { get; set; }
 
     [ObservableProperty]
@@ -145,6 +148,11 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     protected virtual void OnTransferFailed(string errorMessage) { }
 
     /// <summary>
+    /// Файл собирается
+    /// </summary>
+    protected virtual void OnTransferAssembling() { }
+
+    /// <summary>
     /// Передача завершилась
     /// </summary>
     protected virtual void OnTransferCompleted() { }
@@ -169,6 +177,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     {
         Subscriptions.Add(roomScope.Subscribe<FileTransferStartedEvent>(OnFileTransferStarted));
         Subscriptions.Add(roomScope.Subscribe<FileTransferFailedEvent>(OnFileTransferFailed));
+        Subscriptions.Add(roomScope.Subscribe<FileTransferAssemblingEvent>(OnFileTransferAssembling));
         Subscriptions.Add(roomScope.Subscribe<FileTransferCompletedEvent>(OnFileTransferCompleted));
     }
 
@@ -212,11 +221,28 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         }
 
         IsTransferring = false;
+        IsAssembling = false;
 
         UpdateDownloadState();
         OnTransferFailed(eventMessage.ErrorMessage ?? string.Empty);
 
         FileTransferProgressSubsciptionToken.Dispose();
+        return Task.CompletedTask;
+    }
+
+    private Task OnFileTransferAssembling(FileTransferAssemblingEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.FileMetadataId != FileMetadataMessage.Id)
+        {
+            return Task.CompletedTask;
+        }
+
+        DownloadProgress = 100;
+        IsTransferring = false;
+        IsAssembling = true;
+
+        UpdateDownloadState();
+        OnTransferAssembling();
         return Task.CompletedTask;
     }
 
@@ -232,6 +258,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         FileTransferProgressSubsciptionToken.Dispose();
 
         IsTransferring = false;
+        IsAssembling = false;
 
         UpdateDownloadState();
         OnTransferCompleted();
@@ -242,11 +269,13 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     /// Обновить состояния файла
     /// </summary>
     protected void UpdateDownloadState()
-    {
-        FileDownloadState = IsTransferring
-            ? FileDownloadState.IsDownloading : Downloaded
-            ? FileDownloadState.Downloaded : FileDownloadState.NotDownloaded;
-    }
+        => FileDownloadState = IsAssembling
+            ? FileDownloadState.Assembling
+            : IsTransferring
+                ? FileDownloadState.IsDownloading
+                : Downloaded
+                    ? FileDownloadState.Downloaded
+                    : FileDownloadState.NotDownloaded;
 
     [RelayCommand]
     private async Task CopyNameToClipboard()

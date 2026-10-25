@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using MIN.Core.Messaging.Contracts.Enums;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Events;
 using MIN.Core.Transport.Contracts.Helpers;
@@ -43,7 +42,7 @@ public class UdpTransport : IAsyncDisposable
     public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? preferredPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         var connectionId = serverConnectionId ?? Guid.NewGuid();
-        var port = PortProvider.AllocatePort(preferredPort, sequentialAttempts);
+        var port = PortProvider.AllocatePort(TransportType.Udp, preferredPort, sequentialAttempts);
         var server = new UdpSocketServer(logger, port);
 
         server.OnMessageReceived += (UdpSocketServer _, (UdpSocketConnection conn, byte[] msg) eventArgs) =>
@@ -66,11 +65,13 @@ public class UdpTransport : IAsyncDisposable
         if (servers.TryRemove(connectionId, out var server))
         {
             await server.DisposeAsync();
-            PortProvider.ReleasePort(server.Port);
+            PortProvider.ReleasePort(server.Port, TransportType.Udp);
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Подключиться
+    /// </summary>
     public async Task<Guid> ConnectAsync(IEndpoint endpoint, Guid? connectionId, CancellationToken cancellationToken)
     {
         if (endpoint is not UdpEndpoint udpEp)
@@ -91,17 +92,19 @@ public class UdpTransport : IAsyncDisposable
         return client.ConnectionId;
     }
 
-    /// <inheritdoc />
-    public async Task SendAsync(byte[] data, Guid receipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
+    /// <summary>
+    /// Отправить данные
+    /// </summary>
+    public async Task SendAsync(byte[] data, Guid recipientConnectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
     {
-        if (clients.TryGetValue(receipientConnectionId, out var client))
+        if (clients.TryGetValue(recipientConnectionId, out var client))
         {
             await client.SendAsync(data, cancellationToken);
             return;
         }
 
         if (servers.TryGetValue(serverConnectionId ?? Guid.Empty, out var server) &&
-            server.Connections.TryGetValue(receipientConnectionId, out var conn))
+            server.Connections.TryGetValue(recipientConnectionId, out var conn))
         {
             await conn.SendAsync(data, cancellationToken);
             return;
@@ -110,8 +113,10 @@ public class UdpTransport : IAsyncDisposable
         logger.Log("Попытка отправить сообщение, не подключившись, игнорю", LogLevel.Warning);
     }
 
-    /// <inheritdoc />
-    public async Task BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
+    /// <summary>
+    /// Разослать данные по всем соединениям
+    /// </summary>
+    public async Task BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, CancellationToken cancellationToken)
     {
         var excludeSet = excludeConnections?.ToHashSet() ?? [];
 
@@ -124,7 +129,16 @@ public class UdpTransport : IAsyncDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="connectionId"></param>
+    /// <param name="networkOptions"></param>
+    /// <param name="oldNetworkOptions"></param>
+    /// <param name="cancellationToken"></param>
+    /// <exception cref="ArgumentOutOfRangeException"></exception>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public async Task<IEnumerable<IEndpoint>> SetUpEndpoints(Guid connectionId, NetworkOptions networkOptions, NetworkOptions? oldNetworkOptions, CancellationToken cancellationToken)
     {
         if (!servers.TryGetValue(connectionId, out var server))
@@ -156,14 +170,16 @@ public class UdpTransport : IAsyncDisposable
                     break;
 
                 case ResultCodes.ConflictInMappingEntry:
-                    var conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
+                    const string conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
                     logger.Log(conflictMessage, LogLevel.Error);
                     throw new InvalidOperationException(conflictMessage);
 
                 case ResultCodes.UnknownError:
-                    var message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
+                    const string message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
                     logger.Log(message, LogLevel.Error);
                     throw new InvalidOperationException(message);
+                case null:
+                    break;
             }
         }
         else if (oldNetworkOptions.HasValue && !networkOptions.EnablePortForwarding && oldNetworkOptions.Value.EnablePortForwarding)
@@ -190,25 +206,23 @@ public class UdpTransport : IAsyncDisposable
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        var endpoints = new List<UdpEndpoint>();
-
-        foreach (var ip in knownIps)
-        {
-            endpoints.Add(new UdpEndpoint
+        var endpoints = knownIps.Select(ip =>
+            new UdpEndpoint
             {
                 Origin = ip.Origin,
                 IpAddress = ip.Address.ToString(),
                 NetworkName = ip.NetworkName,
                 Port = server.Port
-            });
-        }
+            }).ToList();
 
         cachedServerEndpoints[connectionId] = endpoints;
 
         return endpoints;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Получить точки подключения
+    /// </summary>
     public IEnumerable<IEndpoint> GetEndpoints(Guid serverConnectionId)
     {
         if (!servers.ContainsKey(serverConnectionId))
@@ -219,7 +233,9 @@ public class UdpTransport : IAsyncDisposable
         return cachedServerEndpoints[serverConnectionId];
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Отключить клиента
+    /// </summary>
     public async Task DisconnectClientAsync(Guid clientConnectionId, Guid? serverConnectionId, DisconnectReason reason = DisconnectReason.None)
     {
         logger.Log($"Отключаю соединения с id {clientConnectionId}");
@@ -235,11 +251,11 @@ public class UdpTransport : IAsyncDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Отключиться самому
+    /// </summary>
     public async Task DisconnectAsync(Guid connectionId, DisconnectReason reason)
-    {
-        await DisconnectClientAsync(connectionId, null, reason);
-    }
+        => await DisconnectClientAsync(connectionId, null, reason);
 
     /// <summary>
     /// Готов отправлять сообщения

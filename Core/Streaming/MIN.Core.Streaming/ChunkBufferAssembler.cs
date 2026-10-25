@@ -8,7 +8,6 @@ using MIN.Core.Streaming.Contracts.Events;
 using MIN.Core.Streaming.Contracts.Events.Receiving;
 using MIN.Core.Streaming.Contracts.Interfaces;
 using MIN.Core.Streaming.Contracts.Models;
-using MIN.Core.Transport.Contracts.Constants;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -98,14 +97,15 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
                 await SendAck(chunk.StreamId, chunk.Index, connectionId, serverConnectionId, cancellationToken);
             }
 
+            var result = stream.AddChunk(chunk);
+
             ChunkReceived?.Invoke(new ChunkReceivedEventArgs
             {
                 StreamId = stream.Id,
-                ReceivedBytes = stream.GottenChunks * TransportConstants.MessageBufferSize,
+                ReceivedBytes = stream.TotalDataSize,
                 RoomId = roomId,
             }, cancellationToken);
 
-            var result = stream.AddChunk(chunk);
             if (result != null)
             {
                 logger.Log("Сообщение было собрано из потока");

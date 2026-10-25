@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.FileTransfer.Services.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
@@ -21,11 +22,13 @@ public sealed class FileStorageService : IFileStorageService
 
         baseDirectory = Path.Combine(identityDataPath.FilesDirectory, RoomFilesFolderName);
 
-        if (!Directory.Exists(baseDirectory))
+        if (Directory.Exists(baseDirectory))
         {
-            Directory.CreateDirectory(baseDirectory);
-            logger.Log($"Создана базовая папка для файлов: {baseDirectory}");
+            return;
         }
+
+        Directory.CreateDirectory(baseDirectory);
+        logger.Log($"Создана базовая папка для файлов: {baseDirectory}");
     }
 
     /// <inheritdoc />
@@ -39,11 +42,13 @@ public sealed class FileStorageService : IFileStorageService
     public void EnsureRoomDirectoryExists(Guid roomId)
     {
         var roomDir = GetRoomDirectory(roomId);
-        if (!Directory.Exists(roomDir))
+        if (Directory.Exists(roomDir))
         {
-            Directory.CreateDirectory(roomDir);
-            logger.Log($"Создана папка для комнаты {roomId}: {roomDir}");
+            return;
         }
+
+        Directory.CreateDirectory(roomDir);
+        logger.Log($"Создана папка для комнаты {roomId}: {roomDir}");
     }
 
     bool IFileStorageService.FileExists(Guid roomId, string fileName)
@@ -93,11 +98,13 @@ public sealed class FileStorageService : IFileStorageService
     Task IFileStorageService.DeleteFileAsync(Guid roomId, string fileName, CancellationToken cancellationToken)
     {
         var filePath = GetFilePath(roomId, fileName);
-        if (filePath != null)
+        if (filePath == null)
         {
-            logger.Log($"Удаляю файл: {filePath}");
-            File.Delete(filePath);
+            return Task.CompletedTask;
         }
+
+        logger.Log($"Удаляю файл: {filePath}");
+        File.Delete(filePath);
         return Task.CompletedTask;
     }
 
@@ -112,7 +119,8 @@ public sealed class FileStorageService : IFileStorageService
         return Task.CompletedTask;
     }
 
-    async Task<string> IFileStorageService.MoveTempFileToRoomAsync(Guid roomId, string tempFilePath, string fileName, CancellationToken cancellationToken)
+    async Task<string> IFileStorageService.MoveTempFileToRoomAsync(Guid roomId,
+        string tempFilePath, string fileName, CancellationToken cancellationToken)
     {
         EnsureRoomDirectoryExists(roomId);
         var roomDir = GetRoomDirectory(roomId);
@@ -124,23 +132,33 @@ public sealed class FileStorageService : IFileStorageService
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        var stopwatch = Stopwatch.StartNew();
+
         try
         {
-            await using (var source = File.OpenRead(tempFilePath))
-            await using (var destination = File.Create(finalPath))
-            {
-                await source.CopyToAsync(destination, cancellationToken);
-            }
-
-            File.Delete(tempFilePath);
+            File.Move(tempFilePath, finalPath);
         }
-        catch
+        catch (IOException)
         {
-            TryDeleteFile(finalPath);
-            throw;
+            try
+            {
+                await using (var source = File.OpenRead(tempFilePath))
+                await using (var destination = File.Create(finalPath))
+                {
+                    await source.CopyToAsync(destination, cancellationToken);
+                }
+
+                File.Delete(tempFilePath);
+            }
+            catch
+            {
+                TryDeleteFile(finalPath);
+                throw;
+            }
         }
 
-        logger.Log($"Временный файл удалён: {tempFilePath}");
+        stopwatch.Stop();
+        logger.Log($"Файл перемещён за {stopwatch.ElapsedMilliseconds} мс: {finalPath}");
         return finalFileName;
     }
 

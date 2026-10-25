@@ -41,20 +41,18 @@ public class TcpTransport : ITransport, IAsyncDisposable
     /// <inheritdoc />
     public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
-        var connectionId = serverConnectionId != null
-            ? serverConnectionId.Value
-            : Guid.NewGuid();
+        var connectionId = serverConnectionId ?? Guid.NewGuid();
 
-        var port = PortProvider.AllocatePort(prefferedPort, sequentialAttempts);
+        var port = PortProvider.AllocatePort(TransportType.Tcp, prefferedPort, sequentialAttempts);
         var server = new TcpSocketServer(logger, port);
 
-        server.OnMessageReceived += (TcpSocketServer server, (TcpSocketConnection conn, byte[] msg) eventArgs) =>
+        server.OnMessageReceived += (TcpSocketServer _, (TcpSocketConnection conn, byte[] msg) eventArgs) =>
         {
             var args = new RawMessageReceivedEventArgs(eventArgs.msg, eventArgs.conn.Id, connectionId);
             RawMessageReceived?.Invoke(this, args);
         };
 
-        server.OnConnectionEstablished += (s, conn) =>
+        server.OnConnectionEstablished += (_, conn) =>
         {
             var args = new ConnectionStateChangedEventArgs(conn.Id, true, serverConnectionId: connectionId)
             {
@@ -63,7 +61,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
             ConnectionStateChanged?.Invoke(this, args);
         };
 
-        server.ConnectionDisconnected += (TcpSocketServer server, (TcpSocketConnection conn, DisconnectReason reason) eventArgs) =>
+        server.ConnectionDisconnected += (TcpSocketServer _, (TcpSocketConnection conn, DisconnectReason reason) eventArgs) =>
         {
             var args = new ConnectionStateChangedEventArgs(eventArgs.conn.Id, false, eventArgs.reason, connectionId);
             ConnectionStateChanged?.Invoke(this, args);
@@ -81,7 +79,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
         if (servers.TryRemove(connectionId, out var server))
         {
             await server.DisposeAsync();
-            PortProvider.ReleasePort(server.Port);
+            PortProvider.ReleasePort(server.Port, TransportType.Tcp);
         }
     }
 
