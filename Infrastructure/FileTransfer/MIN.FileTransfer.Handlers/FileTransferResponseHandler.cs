@@ -48,7 +48,7 @@ internal sealed class FileTransferResponseHandler : BaseHandler
                 fileTransferService.RemoveTransfer(response.TransferId);
             }
 
-            return HandlerResult.Failure(response.ErrorMessage ?? "File transfer failed", stopPropagation: false);
+            return HandlerResult.Failure(response.ErrorMessage ?? "File transfer failed", stopPropagation: false, showErrorMessage: false);
         }
 
         if (!fileTransferService.TryGetTransferInfo(response.TransferId, out _))
