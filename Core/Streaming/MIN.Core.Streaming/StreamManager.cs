@@ -177,16 +177,10 @@ public sealed class StreamManager : IStreamManager, IDisposable
 
         try
         {
-            var chunkIndex = 0;
-            long sentLength = 0;
-            int bytesRead;
-
-            while ((bytesRead = await source.ReadAsync(buffer, cancellationToken)) > 0)
+            async Task SendChunkAsync(int index, int total, ReadOnlyMemory<byte> data, long sentBytes)
             {
-                var chunkData = buffer.AsMemory(0, bytesRead);
-
                 var flags = StreamChunkFlags.Mid;
-                if (chunkIndex == 0)
+                if (index == 0)
                 {
                     flags |= StreamChunkFlags.Start;
                     if (options.RequiresAcks)
@@ -198,7 +192,7 @@ public sealed class StreamManager : IStreamManager, IDisposable
                         flags |= StreamChunkFlags.RawPayload;
                     }
                 }
-                if (chunkIndex == totalChunks - 1)
+                if (index == total - 1)
                 {
                     flags |= StreamChunkFlags.End;
                 }
@@ -207,9 +201,9 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 {
                     StreamId = streamId,
                     Flags = flags,
-                    Index = chunkIndex,
-                    Total = totalChunks,
-                    Data = chunkData
+                    Index = index,
+                    Total = total,
+                    Data = data
                 };
 
                 var package = SerializeChunk(chunk);
@@ -217,24 +211,38 @@ public sealed class StreamManager : IStreamManager, IDisposable
 
                 if (options.RequiresAcks)
                 {
-                    var ackKey = new ChunkAckKey { StreamId = streamId, ChunkIndex = chunkIndex };
+                    var ackKey = new ChunkAckKey { StreamId = streamId, ChunkIndex = index };
                     pendingChunks.TryAdd(ackKey, new PendingChunk()
                     {
-                        LastAcknowledgedIndex = chunkIndex,
-                        TotalChunks = totalChunks,
+                        LastAcknowledgedIndex = index,
+                        TotalChunks = total,
                     });
                 }
 
                 // Secure because of message assembling
                 await transport.SendAsync(encrypted, recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
-                chunkIndex++;
-                sentLength += bytesRead;
                 ChunkSended?.Invoke(new ChunkSendedEventArgs()
                 {
                     RoomId = roomId,
                     StreamId = streamId,
-                    ReceivedBytes = sentLength,
+                    ReceivedBytes = sentBytes,
                 }, cancellationToken);
+            }
+
+            var chunkIndex = 0;
+            long sentLength = 0;
+            int bytesRead;
+
+            while ((bytesRead = await source.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                sentLength += bytesRead;
+                await SendChunkAsync(chunkIndex, totalChunks, buffer.AsMemory(0, bytesRead), sentLength);
+                chunkIndex++;
+            }
+
+            if (chunkIndex == 0)
+            {
+                await SendChunkAsync(0, 1, ReadOnlyMemory<byte>.Empty, 0);
             }
 
             logger.Log($"Передача пакетов окончена");
