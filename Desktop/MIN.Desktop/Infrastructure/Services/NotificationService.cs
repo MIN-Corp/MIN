@@ -15,6 +15,7 @@ namespace MIN.Desktop.Infrastructure.Services;
 public class NotificationService : INotificationService
 {
     private const int NotificationsOffset = 8;
+    private const int AllowedNotificationsAtOnce = 3;
 
     private readonly static List<NotificationWindow> activeNotifications = [];
     private Window? parentWindow;
@@ -76,7 +77,12 @@ public class NotificationService : INotificationService
             RepositionAll();
         };
 
-        activeNotifications.Add(notification);
+        if (activeNotifications.Count > AllowedNotificationsAtOnce - 1)
+        {
+            activeNotifications.Remove(activeNotifications.Last());
+        }
+
+        activeNotifications.Insert(0, notification);
         notification.Show();
         RepositionAll();
     }

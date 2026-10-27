@@ -9,6 +9,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.RoomInfo;
 using MIN.Core.Messaging.Stateless.RoomRelated.Sync;
 using MIN.Core.Stores.Contracts.Interfaces;
+using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
 namespace MIN.Core.Handlers.Handlers;
@@ -52,7 +53,6 @@ internal sealed class RoomInfoHandler : BaseHandler
                     room.Name = roomInfoResponse.Room.Name;
                     room.MaximumParticipants = roomInfoResponse.Room.MaximumParticipants;
                     room.CurrentParticipants = roomInfoResponse.Room.CurrentParticipants;
-                    room.ConnectionAddresses = roomInfoResponse.Room.ConnectionAddresses;
                     context.RoomContext.Participants.Bind(room.CurrentParticipants);
                     room.TotalMessageCount = roomInfoResponse.Room.TotalMessageCount;
 
@@ -64,7 +64,19 @@ internal sealed class RoomInfoHandler : BaseHandler
                     });
                 }
 
+                // Адреса подключения — локальная настройка клиента: не перезаписываем
+                // их списком хоста, сохраняем то, по чему клиент реально подключался
+                var knownConnectionAddresses = roomStore.TryGetRoom(roomId, out var registeredRoom)
+                    ? registeredRoom.ConnectionAddresses
+                    : null;
+
                 roomStore.Register(roomInfoResponse.Room);
+
+                var connectionAddresses = knownConnectionAddresses as IEndpoint[] ?? knownConnectionAddresses?.ToArray();
+                if (connectionAddresses?.Length > 0)
+                {
+                    roomStore.GetRoom(roomId).ConnectionAddresses = connectionAddresses;
+                }
 
                 var history = roomInfoResponse.Room.ChatHistory;
                 foreach (var roomMessage in history)
@@ -89,7 +101,6 @@ internal sealed class RoomInfoHandler : BaseHandler
                 var existingRoom = roomStore.GetRoom(roomId);
                 existingRoom.Name = roomInfoUpdated.Room.Name;
                 existingRoom.MaximumParticipants = roomInfoUpdated.Room.MaximumParticipants;
-                existingRoom.ConnectionAddresses = roomInfoUpdated.Endpoints;
 
                 return HandlerResult.WithEvent(new RoomInfoUpdatedMessageEvent()
                 {

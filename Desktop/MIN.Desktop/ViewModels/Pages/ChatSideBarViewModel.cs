@@ -10,6 +10,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Transport.Contracts.Extensions;
+using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
@@ -80,7 +82,7 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     public partial string Classroom { get; set; } = string.Empty;
 
     /// <summary>
-    /// Информация о кол-ве учатсников
+    /// Информация о кол-ве участников
     /// </summary>
     [ObservableProperty]
     public partial string ParticipantsInfo { get; set; } = string.Empty;
@@ -150,12 +152,14 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
 
     partial void OnIsOnlineChanged(bool value)
     {
-        if (!value)
+        if (value)
         {
-            foreach (var participant in RoomParticipants)
-            {
-                participant.MarkAsOffline();
-            }
+            return;
+        }
+
+        foreach (var participant in RoomParticipants)
+        {
+            participant.MarkAsOffline();
         }
     }
 
@@ -178,20 +182,96 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     /// </summary>
     public void UpdateStats(Room room)
     {
-        IsHost = room.HostParticipant?.Id == localParticipant.Id;
-        HostName = IsHost ? "Ты" : room.HostParticipant?.Name ?? "Неизвестно";
+        IsHost = room.HostParticipant.Id == localParticipant.Id;
+        HostName = IsHost ? "Ты" : room.HostParticipant.Name;
 
         clipboard ??= MainWindowViewModel.GetWindow()?.Clipboard;
 
-        ConnectionAddresses.Clear();
-
-        foreach (var address in room.ConnectionAddresses)
-        {
-            ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard));
-        }
+        RenderConnectionAddresses();
 
         Classroom = string.IsNullOrEmpty(room.Cabinet) ? DesktopConstants.UndefinedPcName : room.Cabinet;
         ParticipantsInfo = $"{Room.ParticipantCount}/{Room.MaximumParticipants}";
+    }
+
+    /// <summary>
+    /// Добавить адрес подключения
+    /// </summary>
+    [RelayCommand]
+    private void AddAddress()
+    {
+        ConnectionAddresses.Add(new ConnectionAddressViewModel(null, clipboard, this, isNew: true)
+        {
+            IsEditing = true,
+        });
+    }
+
+    /// <summary>
+    /// Удалить адрес подключения
+    /// </summary>
+    [RelayCommand]
+    private void RemoveAddress(ConnectionAddressViewModel addressViewModel)
+    {
+        Room.ConnectionAddresses = Room.ConnectionAddresses
+            .Where(x => !x.SameTarget(addressViewModel.Endpoint!))
+            .ToList();
+
+        // у хоста удаляем и из кастомных, иначе rehost вернёт адрес обратно
+        if (IsHost)
+        {
+            Room.LocalRoomSettings.CustomEndpoints = Room.LocalRoomSettings.CustomEndpoints
+                .Where(x => !x.SameTarget(addressViewModel.Endpoint!))
+                .ToList();
+        }
+
+        RenderConnectionAddresses();
+    }
+
+    /// <summary>
+    /// Сохранить адрес после редактирования строки
+    /// </summary>
+    public void SaveAddress(ConnectionAddressViewModel addressViewModel, IEndpoint newEndpoint)
+    {
+        var addresses = Room.ConnectionAddresses.ToList();
+        var index = addressViewModel.Endpoint != null
+            ? addresses.FindIndex(x => x.SameTarget(addressViewModel.Endpoint))
+            : -1;
+
+        if (index >= 0)
+        {
+            addresses[index] = newEndpoint;
+        }
+        else
+        {
+            addresses.Add(newEndpoint);
+        }
+
+        Room.ConnectionAddresses = addresses;
+
+        // у хоста кастомные адреса хранятся отдельно, чтобы пережить rehost
+        if (IsHost && !Room.LocalRoomSettings.CustomEndpoints.Any(x => x.SameTarget(newEndpoint)))
+        {
+            Room.LocalRoomSettings.CustomEndpoints = Room.LocalRoomSettings.CustomEndpoints.Append(newEndpoint).ToList();
+        }
+
+        RenderConnectionAddresses();
+    }
+
+    /// <summary>
+    /// Убрать несохранённую строку нового адреса
+    /// </summary>
+    public void CancelNewAddress(ConnectionAddressViewModel addressViewModel)
+    {
+        ConnectionAddresses.Remove(addressViewModel);
+    }
+
+    private void RenderConnectionAddresses()
+    {
+        ConnectionAddresses.Clear();
+
+        foreach (var address in Room.ConnectionAddresses)
+        {
+            ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard, this));
+        }
     }
 
     /// <summary>

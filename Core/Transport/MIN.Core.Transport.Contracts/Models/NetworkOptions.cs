@@ -35,30 +35,28 @@ public struct NetworkOptions()
     /// <summary>
     /// Равенство
     /// </summary>
-    public override bool Equals([NotNullWhen(true)] object? obj) => base.Equals(obj);
+    public override bool Equals([NotNullWhen(true)] object? obj)
+        => obj is NetworkOptions other && this == other;
 
     /// <summary>
     /// Равенство
     /// </summary>
     public static bool operator ==(NetworkOptions networkOptions, NetworkOptions networkOptions2)
         => networkOptions.PrefferredPort == networkOptions2.PrefferredPort
-            || networkOptions.EnableLocalDiscovery == networkOptions2.EnableLocalDiscovery
-            || networkOptions.EnablePortForwarding == networkOptions2.EnablePortForwarding
-            || networkOptions.EnableRadmin == networkOptions2.EnableRadmin
-            || networkOptions.EnableWeb == networkOptions2.EnableWeb;
+           && networkOptions.EnableLocalDiscovery == networkOptions2.EnableLocalDiscovery
+           && networkOptions.EnablePortForwarding == networkOptions2.EnablePortForwarding
+           && networkOptions.EnableRadmin == networkOptions2.EnableRadmin
+           && networkOptions.EnableWeb == networkOptions2.EnableWeb;
 
     /// <summary>
     /// Неравенство
     /// </summary>
     public static bool operator !=(NetworkOptions networkOptions, NetworkOptions networkOptions2)
-        => networkOptions.PrefferredPort != networkOptions2.PrefferredPort
-            || networkOptions.EnableLocalDiscovery != networkOptions2.EnableLocalDiscovery
-            || networkOptions.EnablePortForwarding != networkOptions2.EnablePortForwarding
-            || networkOptions.EnableRadmin != networkOptions2.EnableRadmin
-            || networkOptions.EnableWeb != networkOptions2.EnableWeb;
+        => !(networkOptions == networkOptions2);
 
     /// <summary>
     /// Получить хеш-код
     /// </summary>
-    public override int GetHashCode() => base.GetHashCode();
+    public override int GetHashCode()
+        => HashCode.Combine(PrefferredPort, EnableLocalDiscovery, EnablePortForwarding, EnableRadmin, EnableWeb);
 }

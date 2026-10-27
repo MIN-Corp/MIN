@@ -3,12 +3,12 @@
 namespace MIN.Core.Stores.Contracts.Registries.Interfaces;
 
 /// <summary>
-/// Сервис по ассоциации участников и соеднинений
+/// Сервис по ассоциации участников и соединений
 /// </summary>
 public interface IParticipantConnectionRegistry
 {
     /// <summary>
-    /// Установить ассоциацию соеднинения с участником
+    /// Установить ассоциацию соединения с участником
     /// </summary>
     void Register(Guid connectionId, ParticipantInfo participant);
 
@@ -18,7 +18,7 @@ public interface IParticipantConnectionRegistry
     bool ConnectionExists(Guid connectionId);
 
     /// <summary>
-    /// Установить ассоциацию соеднинения с локальным участником
+    /// Установить ассоциацию соединения с локальным участником
     /// </summary>
     void RegisterLocalParticipant(ParticipantInfo participant);
 
@@ -33,12 +33,12 @@ public interface IParticipantConnectionRegistry
     bool TryGetParticipantFromConnectionId(Guid connectionId, out ParticipantInfo participant);
 
     /// <summary>
-    /// Получить идентификтор участника от идентификатора соеднинения
+    /// Получить идентификатор участника от идентификатора соединения
     /// </summary>
     Guid GetParticipantIdFromConnectionId(Guid connectionId);
 
     /// <summary>
-    /// Получить идентификтор соеднинения от идентификатора участника
+    /// Получить идентификатор соединения от идентификатора участника
     /// </summary>
     Guid GetConnectionIdFromParticipantId(Guid participantId);
 
@@ -48,12 +48,12 @@ public interface IParticipantConnectionRegistry
     bool TryGetConnectionIdFromParticipantId(Guid participantId, out Guid connectionId);
 
     /// <summary>
-    /// Разорвать ассоциацию соеднинения с участником
+    /// Разорвать ассоциацию соединения с участником
     /// </summary>
     void Unregister(Guid connectionId);
 
     /// <summary>
-    /// Разорвать ассоциацию соеднинения со всем участниками
+    /// Разорвать ассоциацию соединения со всем участниками
     /// </summary>
     IEnumerable<Guid> UnregisterAllExceptLocal();
 }

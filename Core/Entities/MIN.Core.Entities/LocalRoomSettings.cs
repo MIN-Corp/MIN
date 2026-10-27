@@ -1,4 +1,5 @@
-﻿using MIN.Core.Transport.Contracts.Models;
+﻿using MIN.Core.Transport.Contracts.Interfaces;
+using MIN.Core.Transport.Contracts.Models;
 
 namespace MIN.Core.Entities;
 
@@ -29,4 +30,12 @@ public record LocalRoomSettings
     /// Участники, которых нужно кикнуть при следующей попытке входа
     /// </summary>
     public Dictionary<Guid, string> PendingKickParticipantIds { get; } = [];
+
+    /// <summary>
+    /// Добавленные вручную точки подключения (например, домен VPS)
+    /// </summary>
+    /// <remarks>
+    /// Переживают rehost: хост заново подмешивает их после SetUpEndpoints
+    /// </remarks>
+    public List<IEndpoint> CustomEndpoints { get; set; } = [];
 }

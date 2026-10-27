@@ -8,6 +8,7 @@
              xmlns:messagesVmFiles="using:MIN.Desktop.ViewModels.Cards.Messages.Files"
              xmlns:messagesVmSessions="using:MIN.Desktop.ViewModels.Cards.Messages.Sessions"
              xmlns:messagesVmVoices="using:MIN.Desktop.ViewModels.Cards.Messages.Voice"
+             xmlns:cardsVm="using:MIN.Desktop.ViewModels.Cards"
              xmlns:designer="using:MIN.Desktop.Contracts.Designer"
              xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -528,39 +529,64 @@
                     </StackPanel>
                  </Border>
 
-                <Button DockPanel.Dock="Bottom"
+                <SplitButton DockPanel.Dock="Bottom"
                     Classes="appear-from-bottom"
+                    HorizontalAlignment="Stretch"
                     Command="{Binding ReconnectCommand}"
                     Opacity="{Binding !IsOnline,
                         Converter={converters:BoolToOpacityConverter}}">
 
-                    <StackPanel Orientation="Horizontal"
-                                Spacing="8">
+                    <Panel>
                         <TextBlock IsVisible="{Binding !IsConnecting}"
-                                VerticalAlignment="Center"
-                                Text="Подключиться" />
-                        <TextBlock IsVisible="{Binding IsConnecting}"
-                                VerticalAlignment="Center"
-                                Text="Отмена" />
-                         <Svg IsVisible="{Binding IsConnecting}"
-                            Path="/Assets/Icons/loading.svg"
-                            Height="21"
-                            Classes="rotating" />
-                    </StackPanel>
+                                HorizontalAlignment="Center"
+                                Text="{Binding ReconnectButtonText}" />
+                        <StackPanel IsVisible="{Binding IsConnecting}"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="Отмена" />
+                            <Svg Path="/Assets/Icons/loading.svg"
+                                Height="21"
+                                Classes="rotating" />
+                        </StackPanel>
+                    </Panel>
 
-                    <Button.Transitions>
-                        <Transitions>
-                            <DoubleTransition Duration="0:0:.2" Property="Opacity" />
-                        </Transitions>
-                    </Button.Transitions>
+                    <SplitButton.Flyout>
+                        <Flyout Placement="Top">
+                            <StackPanel Spacing="2" MinWidth="220">
+                                <Button Classes="card"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Command="{Binding ChooseConnectAddressCommand}"
+                                        CommandParameter="{x:Null}">
+                                    <TextBlock Text="Автоматически" />
+                                </Button>
 
-                     <Button.IsVisible>
+                                <ItemsControl ItemsSource="{Binding ConnectableAddresses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="cardsVm:ConnectionAddressViewModel">
+                                            <Button Classes="card"
+                                                    Classes.selected="{Binding IsChosen}"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    Command="{Binding $parent[ItemsControl].((vm:ChatViewModel)DataContext).ChooseConnectAddressCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="{Binding Address}" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Flyout>
+                    </SplitButton.Flyout>
+
+                    <SplitButton.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="!IsOnline" />
                             <Binding Path="!IsHost" />
                         </MultiBinding>
-                    </Button.IsVisible>
-                </Button>
+                    </SplitButton.IsVisible>
+                </SplitButton>
 
                 <Button DockPanel.Dock="Bottom"
                     Classes="appear-from-bottom"

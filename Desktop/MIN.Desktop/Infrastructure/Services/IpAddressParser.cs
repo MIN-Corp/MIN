@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace MIN.Desktop.Infrastructure.Services;
 
 /// <summary>
-/// Помошник в парсировании ip адреса на адрес и порт
+/// Помощник в парсировании ip адреса на адрес и порт
 /// </summary>
 public static partial class IpAddressParser
 {
@@ -40,7 +40,10 @@ public static partial class IpAddressParser
 
         var addr = parts[0];
 
-        if (!IPAddress.TryParse(addr, out _) || addr.Split('.').Length != 4)
+        var isIp = IPAddress.TryParse(addr, out _) && addr.Split('.').Length == 4;
+        var isDomain = DnsResolveRegex().IsMatch(addr);
+
+        if (!isIp && !isDomain)
         {
             return false;
         }
@@ -60,11 +63,17 @@ public static partial class IpAddressParser
             return ipAddress;
         }
 
-        return DnsResolveRegex().IsMatch(ipAddress)
-            ? await ResolveDns(ipAddress)
-            : throw new InvalidOperationException("IP Адрес задан в неккоретном формате");
-    }
+        if (!DnsResolveRegex().IsMatch(ipAddress))
+        {
+            throw new InvalidOperationException("IP Адрес задан в некорректном формате");
+        }
 
+        // Проверяем, что домен резолвится, но сохраняем сам домен —
+        // так переподключение переживёт смену ip за доменом (динамический DNS)
+        await ResolveDns(ipAddress);
+
+        return ipAddress;
+    }
 
     private static async Task<string> ResolveDns(string hostname)
     {
@@ -72,7 +81,7 @@ public static partial class IpAddressParser
         {
             var entry = await Dns.GetHostAddressesAsync(hostname);
             return entry.Length == 0
-                ? throw new InvalidOperationException("IP Адрес задан в неккоретном формате")
+                ? throw new InvalidOperationException("IP Адрес задан в некорректном формате")
                 : entry.First().ToString();
         }
         catch

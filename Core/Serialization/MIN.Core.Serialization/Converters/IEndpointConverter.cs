@@ -12,7 +12,7 @@ namespace MIN.Core.Serialization.Json.Converters;
 /// </summary>
 public class IEndpointConverter : JsonConverter<IEndpoint>
 {
-    /// <inheritdoc cref="JsonConverter{T}.Read(ref Utf8JsonReader, Type, JsonSerializerOptions)"/>
+    /// <inheritdoc />
     public override IEndpoint Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         using var doc = JsonDocument.ParseValue(ref reader);
@@ -35,7 +35,7 @@ public class IEndpointConverter : JsonConverter<IEndpoint>
         throw new NotSupportedException("Неизвестный тип Endpoint");
     }
 
-    /// <inheritdoc cref="JsonConverter{T}.Write(Utf8JsonWriter, T, JsonSerializerOptions)"/>
+    /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, IEndpoint value, JsonSerializerOptions options)
     {
         JsonSerializer.Serialize(writer, value, value.GetType(), options);

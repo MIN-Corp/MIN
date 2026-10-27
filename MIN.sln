@@ -212,7 +212,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIN.Core.Identity.Contracts
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIN.Core.Identity", "Core\Identity\MIN.Core.Identity\MIN.Core.Identity.csproj", "{9B1A0D83-553C-4A75-93A3-A81BA5B9BD03}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIN.Core.Transport.UdpSockets", "Core\Transport\MIN.Core.Transport.NamedPipes\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj", "{A8A2772E-A578-4195-8615-69DE67C01237}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIN.Core.Transport.UdpSockets", "Core\Transport\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj", "{A8A2772E-A578-4195-8615-69DE67C01237}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIN.Core.Transport", "Core\Transport\MIN.Core.Transport\MIN.Core.Transport.csproj", "{0BCC63A9-01DF-44CC-9F45-3D514753604B}"
 EndProject

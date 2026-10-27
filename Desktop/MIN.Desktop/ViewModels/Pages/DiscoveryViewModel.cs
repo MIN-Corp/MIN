@@ -351,7 +351,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             return;
         }
 
-        result.OnConnect += async () =>
+        result.OnConnect += async void () =>
         {
             await OnRoomJoin(result.Endpoint, expectedRoomId: null);
             result.EnableConnectButton();

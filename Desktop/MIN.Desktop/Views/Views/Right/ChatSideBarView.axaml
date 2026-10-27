@@ -5,6 +5,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cardsVm="using:MIN.Desktop.ViewModels.Cards"
              mc:Ignorable="d" d:DesignWidth="320" d:DesignHeight="720"
              x:DataType="vm:ChatSideBarViewModel"
              Padding="{DynamicResource PaddingPage}"
@@ -126,24 +127,83 @@
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
+                                    <DataTemplate x:DataType="cardsVm:ConnectionAddressViewModel">
                                         <Border Padding="0,4,0,0">
-                                            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="4">
-                                                <Border Grid.Column="0" Classes="status-info">
-                                                    <TextBlock Text="{Binding Origin,
-                                                        Converter={converters:TruncateWithEllipsisConverter},
-                                                        ConverterParameter=15}" />
-                                                </Border>
+                                            <StackPanel Spacing="2">
+                                                <Panel>
+                                                    <Grid IsVisible="{Binding !IsEditing}"
+                                                          ColumnDefinitions="*, Auto, Auto" ColumnSpacing="4">
+                                                        <Border Grid.Column="0" Classes="status-info">
+                                                            <TextBlock Text="{Binding Origin,
+                                                                Converter={converters:TruncateWithEllipsisConverter},
+                                                                ConverterParameter=15}" />
+                                                        </Border>
 
-                                                <SelectableTextBlock Grid.Column="1"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right"
-                                                    Text="{Binding Address}" />
-                                            </Grid>
+                                                        <SelectableTextBlock Grid.Column="1"
+                                                            VerticalAlignment="Center"
+                                                            HorizontalAlignment="Right"
+                                                            Text="{Binding Address}" />
+
+                                                        <Button Grid.Column="2" Classes="icon"
+                                                            ToolTip.Tip="Действия">
+                                                            <Svg Path="/Assets/Icons/about.svg" />
+                                                            <Button.Flyout>
+                                                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                                    <MenuItem Header="Изменить"
+                                                                            Command="{Binding StartEditCommand}">
+                                                                        <MenuItem.Icon>
+                                                                            <Svg Path="/Assets/Icons/pencil.svg" />
+                                                                        </MenuItem.Icon>
+                                                                    </MenuItem>
+                                                                    <MenuItem Classes="danger"
+                                                                            Header="Удалить"
+                                                                            Command="{Binding $parent[ItemsControl].((vm:ChatSideBarViewModel)DataContext).RemoveAddressCommand}"
+                                                                            CommandParameter="{Binding}">
+                                                                        <MenuItem.Icon>
+                                                                            <Svg Path="/Assets/Icons/delete.svg" />
+                                                                        </MenuItem.Icon>
+                                                                    </MenuItem>
+                                                                </MenuFlyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <Grid IsVisible="{Binding IsEditing}"
+                                                          ColumnDefinitions="*, Auto, Auto" ColumnSpacing="4">
+                                                        <TextBox Grid.Column="0"
+                                                            Text="{Binding EditableAddress}"
+                                                            PlaceholderText="ip:порт или домен:порт" />
+                                                        <Button Grid.Column="1" Classes="icon"
+                                                            ToolTip.Tip="Сохранить"
+                                                            Command="{Binding ApplyEditCommand}">
+                                                            <Svg Path="/Assets/Icons/confirm.svg" Height="14" />
+                                                        </Button>
+                                                        <Button Grid.Column="2" Classes="icon"
+                                                            ToolTip.Tip="Отмена"
+                                                            Command="{Binding CancelEditCommand}">
+                                                            <Svg Path="/Assets/Icons/close.svg" Height="14" />
+                                                        </Button>
+                                                    </Grid>
+                                                </Panel>
+
+                                                <TextBlock FontSize="11" Foreground="OrangeRed"
+                                                    Text="{Binding ErrorMessage}"
+                                                    IsVisible="{Binding ErrorMessage,
+                                                        Converter={converters:NonEqualityConverter},
+                                                        ConverterParameter={x:Null}}" />
+                                            </StackPanel>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <Button Classes="card" Margin="0,6,0,0"
+                                Command="{Binding AddAddressCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Svg Path="/Assets/Icons/plus.svg" Height="14" />
+                                    <TextBlock Text="Добавить адрес" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Expander>
                 </Border>
