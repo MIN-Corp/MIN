@@ -45,20 +45,6 @@ public partial class ChatViewModel
     public AvaloniaList<ConnectionAddressViewModel> ConnectableAddresses => chatSideBarViewModel.ConnectionAddresses;
 
     /// <summary>
-    /// Адрес, выбранный в выпадающем списке подключения. Null — подключаться автоматически
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ReconnectButtonText))]
-    public partial ConnectionAddressViewModel? ChosenConnectAddress { get; set; }
-
-    /// <summary>
-    /// Текст кнопки подключения
-    /// </summary>
-    public string ReconnectButtonText => ChosenConnectAddress is null
-        ? "Подключиться"
-        : $"Подключиться · {ChosenConnectAddress.Address}";
-
-    /// <summary>
     /// Идёт подключение
     /// </summary>
     [ObservableProperty]
@@ -364,10 +350,9 @@ public partial class ChatViewModel
 
         reconnectRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
 
-        var chosenAddress = ChosenConnectAddress;
+        var chosenAddress = chatSideBarViewModel.ChosenConnectAddress;
 
-        // Выбранный адрес могли удалить/изменить — тогда подключаемся автоматически
-        if (chosenAddress != null && !ConnectableAddresses.Contains(chosenAddress))
+        if (chosenAddress != null && !chatSideBarViewModel.ConnectionAddresses.Contains(chosenAddress))
         {
             chosenAddress = null;
         }
@@ -378,7 +363,6 @@ public partial class ChatViewModel
         }
         else
         {
-            // Перебираем сохранённые адреса, пока какой-нибудь не заработает
             foreach (var endpoint in room.ConnectionAddresses.ToList())
             {
                 var connected = await ConnectUsingAsync(endpoint, reconnectRoomCts);
@@ -392,25 +376,6 @@ public partial class ChatViewModel
 
         IsConnecting = false;
         reconnectRoomCts = null;
-    }
-
-    /// <summary>
-    /// Выбрать адрес для подключения (null — автоматически)
-    /// </summary>
-    [RelayCommand]
-    private void ChooseConnectAddress(ConnectionAddressViewModel? addressViewModel)
-    {
-        if (ChosenConnectAddress != null)
-        {
-            ChosenConnectAddress.IsChosen = false;
-        }
-
-        ChosenConnectAddress = addressViewModel;
-
-        if (ChosenConnectAddress != null)
-        {
-            ChosenConnectAddress.IsChosen = true;
-        }
     }
 
     /// <summary>

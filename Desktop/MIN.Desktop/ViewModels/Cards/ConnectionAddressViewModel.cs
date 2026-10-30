@@ -127,6 +127,20 @@ public partial class ConnectionAddressViewModel : CardViewModelBase
         owner?.SaveAddress(this, endpoint);
     }
 
+    /// <summary>
+    /// Удалить этот адрес из списка комнаты
+    /// </summary>
+    [RelayCommand]
+    private void RemoveSelf()
+        => owner?.RemoveAddress(this);
+
+    /// <summary>
+    /// Выбрать этот адрес для кнопки подключения
+    /// </summary>
+    [RelayCommand]
+    private void SetChosen()
+        => owner?.ChooseConnectAddress(this);
+
     [RelayCommand]
     private async Task CopyToClipBoard(string message)
     {

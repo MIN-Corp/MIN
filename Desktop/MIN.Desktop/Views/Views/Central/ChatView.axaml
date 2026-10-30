@@ -538,8 +538,8 @@
 
                     <Panel>
                         <TextBlock IsVisible="{Binding !IsConnecting}"
-                                HorizontalAlignment="Center"
-                                Text="{Binding ReconnectButtonText}" />
+                           HorizontalAlignment="Center"
+                           Text="{Binding SideBar.ReconnectButtonText}" />
                         <StackPanel IsVisible="{Binding IsConnecting}"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Center"
@@ -552,12 +552,12 @@
                     </Panel>
 
                     <SplitButton.Flyout>
-                        <Flyout Placement="Top">
-                            <StackPanel Spacing="2" MinWidth="220">
-                                <Button Classes="card"
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel>
+                                <Button Classes="no-background"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
-                                        Command="{Binding ChooseConnectAddressCommand}"
+                                        Command="{Binding SideBar.ChooseConnectAddressCommand}"
                                         CommandParameter="{x:Null}">
                                     <TextBlock Text="Автоматически" />
                                 </Button>
@@ -565,12 +565,11 @@
                                 <ItemsControl ItemsSource="{Binding ConnectableAddresses}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="cardsVm:ConnectionAddressViewModel">
-                                            <Button Classes="card"
+                                            <Button Classes="no-background"
                                                     Classes.selected="{Binding IsChosen}"
                                                     HorizontalAlignment="Stretch"
                                                     HorizontalContentAlignment="Stretch"
-                                                    Command="{Binding $parent[ItemsControl].((vm:ChatViewModel)DataContext).ChooseConnectAddressCommand}"
-                                                    CommandParameter="{Binding}">
+                                                    Command="{Binding SetChosenCommand}">
                                                 <TextBlock Text="{Binding Address}" />
                                             </Button>
                                         </DataTemplate>

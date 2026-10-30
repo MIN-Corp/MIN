@@ -76,6 +76,20 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     public partial AvaloniaList<ConnectionAddressViewModel> ConnectionAddresses { get; set; } = [];
 
     /// <summary>
+    /// Адрес, выбранный для подключения. Null — подключаться автоматически
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReconnectButtonText))]
+    public partial ConnectionAddressViewModel? ChosenConnectAddress { get; set; }
+
+    /// <summary>
+    /// Текст кнопки подключения
+    /// </summary>
+    public string ReconnectButtonText => ChosenConnectAddress is null
+        ? "Подключиться"
+        : $"Подключиться · {ChosenConnectAddress.Address}";
+
+    /// <summary>
     /// Кабинет
     /// </summary>
     [ObservableProperty]
@@ -131,20 +145,22 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         this.featureCollection = featureCollection;
         this.dialogService = dialogService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            appCts = ctsProvider.AppCts;
-
-            OnNavigatedTo = (_, _) => IsOpened = true;
-            OnNavigatedFrom = (sender, _) =>
-            {
-                if ((sender is ChatViewModel chatVm && chatVm.RoomId == roomId)
-                    || (sender is ChatSideBarViewModel chatSideBarVm && chatSideBarVm.roomId == roomId))
-                {
-                    IsOpened = false;
-                }
-            };
+            return;
         }
+
+        appCts = ctsProvider.AppCts;
+
+        OnNavigatedTo = (_, _) => IsOpened = true;
+        OnNavigatedFrom = (sender, _) =>
+        {
+            if ((sender is ChatViewModel chatVm && chatVm.RoomId == roomId)
+                || (sender is ChatSideBarViewModel chatSideBarVm && chatSideBarVm.roomId == roomId))
+            {
+                IsOpened = false;
+            }
+        };
     }
 
     partial void OnNotificationsEnabledChanged(bool value)
@@ -205,21 +221,45 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         });
     }
 
+    partial void OnChosenConnectAddressChanged(ConnectionAddressViewModel? oldValue, ConnectionAddressViewModel? newValue)
+    {
+        if (oldValue != null)
+        {
+            oldValue.IsChosen = false;
+        }
+
+        if (newValue != null)
+        {
+            newValue.IsChosen = true;
+        }
+    }
+
+    /// <summary>
+    /// Выбрать адрес для подключения (null — автоматически)
+    /// </summary>
+    [RelayCommand]
+    public void ChooseConnectAddress(ConnectionAddressViewModel? addressViewModel)
+        => ChosenConnectAddress = addressViewModel;
+
     /// <summary>
     /// Удалить адрес подключения
     /// </summary>
-    [RelayCommand]
-    private void RemoveAddress(ConnectionAddressViewModel addressViewModel)
+    public void RemoveAddress(ConnectionAddressViewModel addressViewModel)
     {
+        if (addressViewModel.Endpoint is null)
+        {
+            return;
+        }
+
         Room.ConnectionAddresses = Room.ConnectionAddresses
-            .Where(x => !x.SameTarget(addressViewModel.Endpoint!))
+            .Where(x => !x.SameTarget(addressViewModel.Endpoint))
             .ToList();
 
         // у хоста удаляем и из кастомных, иначе rehost вернёт адрес обратно
         if (IsHost)
         {
             Room.LocalRoomSettings.CustomEndpoints = Room.LocalRoomSettings.CustomEndpoints
-                .Where(x => !x.SameTarget(addressViewModel.Endpoint!))
+                .Where(x => !x.SameTarget(addressViewModel.Endpoint))
                 .ToList();
         }
 
@@ -242,15 +282,35 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         }
         else
         {
-            addresses.Add(newEndpoint);
+            if (!addresses.Any(x => x.SameTarget(newEndpoint)))
+            {
+                addresses.Add(newEndpoint);
+            }
         }
 
         Room.ConnectionAddresses = addresses;
 
         // у хоста кастомные адреса хранятся отдельно, чтобы пережить rehost
-        if (IsHost && !Room.LocalRoomSettings.CustomEndpoints.Any(x => x.SameTarget(newEndpoint)))
+        if (IsHost)
         {
-            Room.LocalRoomSettings.CustomEndpoints = Room.LocalRoomSettings.CustomEndpoints.Append(newEndpoint).ToList();
+            var customEndpoints = Room.LocalRoomSettings.CustomEndpoints.ToList();
+            var customIndex = addressViewModel.Endpoint != null
+                ? customEndpoints.FindIndex(x => x.SameTarget(addressViewModel.Endpoint))
+                : -1;
+
+            if (customIndex >= 0)
+            {
+                customEndpoints[customIndex] = newEndpoint;
+                customEndpoints = customEndpoints
+                    .Where((x, i) => i == customIndex || !x.SameTarget(newEndpoint))
+                    .ToList();
+            }
+            else if (!customEndpoints.Any(x => x.SameTarget(newEndpoint)))
+            {
+                customEndpoints.Add(newEndpoint);
+            }
+
+            Room.LocalRoomSettings.CustomEndpoints = customEndpoints;
         }
 
         RenderConnectionAddresses();
@@ -272,6 +332,10 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         {
             ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard, this));
         }
+
+        ChosenConnectAddress = ChosenConnectAddress?.Endpoint is null
+            ? null
+            : ConnectionAddresses.FirstOrDefault(x => x.Endpoint != null && x.Endpoint.SameTarget(ChosenConnectAddress.Endpoint));
     }
 
     /// <summary>
@@ -331,17 +395,19 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
             {
                 var kickVm = await dialogService.ShowDialogAsync<ParticipantKickViewModel>(x => x.ParticipantName = participant.Name);
 
-                if (kickVm! == true)
+                if (kickVm! != true)
                 {
-                    try
-                    {
-                        await featureCollection.Chat.ChatRoomService.KickParticipantAsync(roomId,
-                            participant.Id, kickVm!.Reason, appCts.Token);
-                    }
-                    catch (Exception ex)
-                    {
-                        InAppNotifier.Error(ex.Message);
-                    }
+                    return;
+                }
+
+                try
+                {
+                    await featureCollection.Chat.ChatRoomService.KickParticipantAsync(roomId,
+                        participant.Id, kickVm!.Reason, appCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    InAppNotifier.Error(ex.Message);
                 }
             };
 

@@ -76,6 +76,11 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     public partial bool IsAvaibleForNetwork { get; set; }
 
     /// <summary>
+    /// Боковая панель чата
+    /// </summary>
+    public ChatSideBarViewModel SideBar => chatSideBarViewModel;
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ChatViewModel"/>
     /// </summary>
     public ChatViewModel(ChatSideBarViewModel chatSideBarViewModel,

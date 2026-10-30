@@ -157,8 +157,7 @@
                                                                     </MenuItem>
                                                                     <MenuItem Classes="danger"
                                                                             Header="Удалить"
-                                                                            Command="{Binding $parent[ItemsControl].((vm:ChatSideBarViewModel)DataContext).RemoveAddressCommand}"
-                                                                            CommandParameter="{Binding}">
+                                                                            Command="{Binding RemoveSelfCommand}">
                                                                         <MenuItem.Icon>
                                                                             <Svg Path="/Assets/Icons/delete.svg" />
                                                                         </MenuItem.Icon>
