@@ -159,12 +159,10 @@ public sealed class UdpDiscoveryService : IDiscoveryService, IAsyncDisposable
 
             foreach (var roomId in activeRoomIds)
             {
-                var room = roomStore.GetRoom(roomId);
-
-                if (room == null)
+                if (!roomStore.TryGetRoom(roomId, out var room))
                 {
                     logger.Log("Получил запрос на обнаружение, но комната не была установлена", LogLevel.Warning);
-                    return;
+                    continue;
                 }
 
                 discoveryResponse.RoomDiscoveryInfos.Add(new RoomDiscoveryInfo()

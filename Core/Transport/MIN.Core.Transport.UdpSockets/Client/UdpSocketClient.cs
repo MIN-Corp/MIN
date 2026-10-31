@@ -47,7 +47,14 @@ internal sealed class UdpSocketClient : IAsyncDisposable
     public async Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken)
     {
         client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        hostEndPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
+
+        var hostAddress = IPAddress.TryParse(ipAddress, out var parsedAddress)
+            ? parsedAddress
+            : (await Dns.GetHostAddressesAsync(ipAddress, cancellationToken))
+              .FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork)
+              ?? throw new InvalidOperationException($"Не удалось разрешить адрес {ipAddress}");
+
+        hostEndPoint = new IPEndPoint(hostAddress, port);
         var handshakeDatagram = UdpMessage.Wrap(ConnectionId, []);
         await client.SendAsync(handshakeDatagram, hostEndPoint, cancellationToken);
         receiveLoop = Task.Run(ReceiveLoopAsync, cancellationToken);

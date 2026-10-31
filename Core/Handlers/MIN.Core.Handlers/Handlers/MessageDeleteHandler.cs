@@ -15,7 +15,7 @@ internal sealed class MessageDeleteHandler : BaseHandler
         = [MessageTypeTag.ChatTextMessage, MessageTypeTag.FileMetadata, MessageTypeTag.SessionReady];
 
     /// <summary>
-    /// Инициализирует новый экземлпяр <see cref="MessageDeleteHandler"/>
+    /// Инициализирует новый экземпляр <see cref="MessageDeleteHandler"/>
     /// </summary>
     public MessageDeleteHandler(ILoggerProvider logger) : base(logger) { }
 
@@ -30,11 +30,6 @@ internal sealed class MessageDeleteHandler : BaseHandler
         if (existingMessage == null)
         {
             LogWarning("Поступило сообщение на удаление, но его не нашлось в памяти");
-
-            if (context.Role == Role.Host)
-            {
-                return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели удалить, не найдено"));
-            }
 
             return Task.FromResult(HandlerResult.Success());
         }

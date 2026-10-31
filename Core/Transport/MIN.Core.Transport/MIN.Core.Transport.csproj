@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MIN.Core.Transport.NamedPipes\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj" />
     <ProjectReference Include="..\MIN.Core.Transport.TcpSockets\MIN.Core.Transport.TcpSockets.csproj" />
+    <ProjectReference Include="..\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj" />
   </ItemGroup>
 
 </Project>

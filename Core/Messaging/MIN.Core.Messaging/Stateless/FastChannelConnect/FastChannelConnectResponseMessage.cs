@@ -18,5 +18,5 @@ public sealed class FastChannelConnectResponseMessage : BaseMessage
     /// <summary>
     /// Точка подключения к быстрому каналу
     /// </summary>
-    public IEndpoint FastChannelEndpoint { get; set; } = null!;
+    public IEndpoint? FastChannelEndpoint { get; init; }
 }

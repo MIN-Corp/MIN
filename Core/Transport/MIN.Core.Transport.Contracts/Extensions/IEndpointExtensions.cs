@@ -10,6 +10,34 @@ namespace MIN.Core.Transport.Contracts.Extensions;
 public static class IEndpointExtensions
 {
     /// <summary>
+    /// Возвращает хост (ip или домен) из endpoint
+    /// </summary>
+    public static string GetHost(this IEndpoint endpoint)
+    {
+        var address = endpoint.GetAddress();
+        var separatorIndex = address.LastIndexOf(':');
+        return separatorIndex < 0 ? address : address[..separatorIndex];
+    }
+
+    /// <summary>
+    /// Возвращает порт из endpoint
+    /// </summary>
+    public static int GetPort(this IEndpoint endpoint)
+    {
+        var address = endpoint.GetAddress();
+        var separatorIndex = address.LastIndexOf(':');
+        return separatorIndex < 0 ? 0 : int.Parse(address[(separatorIndex + 1)..]);
+    }
+
+    /// <summary>
+    /// Указывают ли обе точки на один и тот же хост и порт
+    /// </summary>
+    public static bool SameTarget(this IEndpoint endpoint, IEndpoint other)
+        => endpoint.Type == other.Type
+           && string.Equals(endpoint.GetHost(), other.GetHost(), StringComparison.OrdinalIgnoreCase)
+           && endpoint.GetPort() == other.GetPort();
+
+    /// <summary>
     /// Возвращает true, если указанный IP-адрес зарезервирован для частных сетей
     /// </summary>
     /// <remarks>
@@ -20,7 +48,8 @@ public static class IEndpointExtensions
     {
         if (!IPAddress.TryParse(endpoint.GetAddress().Split(':')[0], out var address))
         {
-            throw new ArgumentException("Can't parse IpAddress out of endpoint");
+            // домен (например, адрес VPS) — считаем внешним адресом
+            return AddressOrigin.Wan;
         }
 
         var ipAddress = address.TryExtractMappedIPv4();
@@ -30,12 +59,8 @@ public static class IEndpointExtensions
             return AddressOrigin.Lan;
         }
 
-        if (ipAddress.IsVpn())
-        {
-            return AddressOrigin.Vpn;
-        }
-
-        // 3. Все остальное - WAN
-        return AddressOrigin.Wan;
+        return ipAddress.IsVpn() ? AddressOrigin.Vpn :
+            // 3. Все остальное - WAN
+            AddressOrigin.Wan;
     }
 }

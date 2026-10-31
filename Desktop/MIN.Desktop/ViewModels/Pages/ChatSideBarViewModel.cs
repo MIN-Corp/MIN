@@ -10,6 +10,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Transport.Contracts.Extensions;
+using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
@@ -74,13 +76,27 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     public partial AvaloniaList<ConnectionAddressViewModel> ConnectionAddresses { get; set; } = [];
 
     /// <summary>
+    /// Адрес, выбранный для подключения. Null — подключаться автоматически
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReconnectButtonText))]
+    public partial ConnectionAddressViewModel? ChosenConnectAddress { get; set; }
+
+    /// <summary>
+    /// Текст кнопки подключения
+    /// </summary>
+    public string ReconnectButtonText => ChosenConnectAddress is null
+        ? "Подключиться"
+        : $"Подключиться · {ChosenConnectAddress.Address}";
+
+    /// <summary>
     /// Кабинет
     /// </summary>
     [ObservableProperty]
     public partial string Classroom { get; set; } = string.Empty;
 
     /// <summary>
-    /// Информация о кол-ве учатсников
+    /// Информация о кол-ве участников
     /// </summary>
     [ObservableProperty]
     public partial string ParticipantsInfo { get; set; } = string.Empty;
@@ -129,20 +145,22 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         this.featureCollection = featureCollection;
         this.dialogService = dialogService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            appCts = ctsProvider.AppCts;
-
-            OnNavigatedTo = (_, _) => IsOpened = true;
-            OnNavigatedFrom = (sender, _) =>
-            {
-                if ((sender is ChatViewModel chatVm && chatVm.RoomId == roomId)
-                    || (sender is ChatSideBarViewModel chatSideBarVm && chatSideBarVm.roomId == roomId))
-                {
-                    IsOpened = false;
-                }
-            };
+            return;
         }
+
+        appCts = ctsProvider.AppCts;
+
+        OnNavigatedTo = (_, _) => IsOpened = true;
+        OnNavigatedFrom = (sender, _) =>
+        {
+            if ((sender is ChatViewModel chatVm && chatVm.RoomId == roomId)
+                || (sender is ChatSideBarViewModel chatSideBarVm && chatSideBarVm.roomId == roomId))
+            {
+                IsOpened = false;
+            }
+        };
     }
 
     partial void OnNotificationsEnabledChanged(bool value)
@@ -150,12 +168,14 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
 
     partial void OnIsOnlineChanged(bool value)
     {
-        if (!value)
+        if (value)
         {
-            foreach (var participant in RoomParticipants)
-            {
-                participant.MarkAsOffline();
-            }
+            return;
+        }
+
+        foreach (var participant in RoomParticipants)
+        {
+            participant.MarkAsOffline();
         }
     }
 
@@ -178,29 +198,151 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     /// </summary>
     public void UpdateStats(Room room)
     {
-        IsHost = room.HostParticipant?.Id == localParticipant.Id;
-        HostName = IsHost ? "Ты" : room.HostParticipant?.Name ?? "Неизвестно";
+        IsHost = room.HostParticipant.Id == localParticipant.Id;
+        HostName = IsHost ? "Ты" : room.HostParticipant.Name;
 
         clipboard ??= MainWindowViewModel.GetWindow()?.Clipboard;
 
-        ConnectionAddresses.Clear();
-
-        foreach (var address in room.ConnectionAddresses)
-        {
-            ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard));
-        }
+        RenderConnectionAddresses();
 
         Classroom = string.IsNullOrEmpty(room.Cabinet) ? DesktopConstants.UndefinedPcName : room.Cabinet;
         ParticipantsInfo = $"{Room.ParticipantCount}/{Room.MaximumParticipants}";
     }
 
+    #region ConnectionAddresses
+
     /// <summary>
-    /// Обновить пинг
+    /// Добавить адрес подключения
     /// </summary>
-    public void UpdatePing(int pingMs)
+    [RelayCommand]
+    private void AddAddress()
     {
-        Ping = pingMs;
+        ConnectionAddresses.Add(new ConnectionAddressViewModel(null, clipboard, this, isNew: true)
+        {
+            IsEditing = true,
+        });
     }
+
+    partial void OnChosenConnectAddressChanged(ConnectionAddressViewModel? oldValue, ConnectionAddressViewModel? newValue)
+    {
+        if (oldValue != null)
+        {
+            oldValue.IsChosen = false;
+        }
+
+        if (newValue != null)
+        {
+            newValue.IsChosen = true;
+        }
+    }
+
+    /// <summary>
+    /// Выбрать адрес для подключения (null — автоматически)
+    /// </summary>
+    [RelayCommand]
+    public void ChooseConnectAddress(ConnectionAddressViewModel? addressViewModel)
+        => ChosenConnectAddress = addressViewModel;
+
+    /// <summary>
+    /// Удалить адрес подключения
+    /// </summary>
+    public void RemoveAddress(ConnectionAddressViewModel addressViewModel)
+    {
+        if (addressViewModel.Endpoint is null)
+        {
+            return;
+        }
+
+        Room.ConnectionAddresses = Room.ConnectionAddresses
+            .Where(x => !x.SameTarget(addressViewModel.Endpoint))
+            .ToList();
+
+        // у хоста удаляем и из кастомных, иначе rehost вернёт адрес обратно
+        if (IsHost)
+        {
+            Room.LocalRoomSettings.CustomEndpoints = Room.LocalRoomSettings.CustomEndpoints
+                .Where(x => !x.SameTarget(addressViewModel.Endpoint))
+                .ToList();
+        }
+
+        RenderConnectionAddresses();
+    }
+
+    /// <summary>
+    /// Сохранить адрес после редактирования строки
+    /// </summary>
+    public void SaveAddress(ConnectionAddressViewModel addressViewModel, IEndpoint newEndpoint)
+    {
+        var addresses = Room.ConnectionAddresses.ToList();
+        var index = addressViewModel.Endpoint != null
+            ? addresses.FindIndex(x => x.SameTarget(addressViewModel.Endpoint))
+            : -1;
+
+        if (index >= 0)
+        {
+            addresses[index] = newEndpoint;
+        }
+        else
+        {
+            if (!addresses.Any(x => x.SameTarget(newEndpoint)))
+            {
+                addresses.Add(newEndpoint);
+            }
+        }
+
+        Room.ConnectionAddresses = addresses;
+
+        // у хоста кастомные адреса хранятся отдельно, чтобы пережить rehost
+        if (IsHost)
+        {
+            var customEndpoints = Room.LocalRoomSettings.CustomEndpoints.ToList();
+            var customIndex = addressViewModel.Endpoint != null
+                ? customEndpoints.FindIndex(x => x.SameTarget(addressViewModel.Endpoint))
+                : -1;
+
+            if (customIndex >= 0)
+            {
+                customEndpoints[customIndex] = newEndpoint;
+                customEndpoints = customEndpoints
+                    .Where((x, i) => i == customIndex || !x.SameTarget(newEndpoint))
+                    .ToList();
+            }
+            else if (!customEndpoints.Any(x => x.SameTarget(newEndpoint)))
+            {
+                customEndpoints.Add(newEndpoint);
+            }
+
+            Room.LocalRoomSettings.CustomEndpoints = customEndpoints;
+        }
+
+        RenderConnectionAddresses();
+    }
+
+    /// <summary>
+    /// Убрать несохранённую строку нового адреса
+    /// </summary>
+    public void CancelNewAddress(ConnectionAddressViewModel addressViewModel)
+    {
+        ConnectionAddresses.Remove(addressViewModel);
+    }
+
+    private void RenderConnectionAddresses()
+    {
+        ConnectionAddresses.Clear();
+
+        var firstAddress = Room.ConnectionAddresses.FirstOrDefault();
+
+        foreach (var address in Room.ConnectionAddresses)
+        {
+            ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard, this, false, address != firstAddress));
+        }
+
+        ChosenConnectAddress = ChosenConnectAddress?.Endpoint is null
+            ? null
+            : ConnectionAddresses.FirstOrDefault(x => x.Endpoint != null && x.Endpoint.SameTarget(ChosenConnectAddress.Endpoint));
+    }
+
+    #endregion
 
     /// <summary>
     /// Пересортировать участников в зависимости от того
@@ -213,6 +355,14 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
             return;
         }
         RoomParticipants.SortBy(x => x.ParticipantLastSeenAt);
+    }
+
+    /// <summary>
+    /// Обновить пинг
+    /// </summary>
+    public void UpdatePing(int pingMs)
+    {
+        Ping = pingMs;
     }
 
     /// <summary>
@@ -251,17 +401,19 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
             {
                 var kickVm = await dialogService.ShowDialogAsync<ParticipantKickViewModel>(x => x.ParticipantName = participant.Name);
 
-                if (kickVm! == true)
+                if (kickVm! != true)
                 {
-                    try
-                    {
-                        await featureCollection.Chat.ChatRoomService.KickParticipantAsync(roomId,
-                            participant.Id, kickVm!.Reason, appCts.Token);
-                    }
-                    catch (Exception ex)
-                    {
-                        InAppNotifier.Error(ex.Message);
-                    }
+                    return;
+                }
+
+                try
+                {
+                    await featureCollection.Chat.ChatRoomService.KickParticipantAsync(roomId,
+                        participant.Id, kickVm!.Reason, appCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    InAppNotifier.Error(ex.Message);
                 }
             };
 

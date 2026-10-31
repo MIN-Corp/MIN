@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -14,11 +15,13 @@ using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Models;
+using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.Infrastructure.Validators;
+using MIN.Desktop.ViewModels.Cards;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.FileTransfer.Messaging;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -35,6 +38,11 @@ public partial class ChatViewModel
     private CancellationTokenSource? createRoomCts;
     private CancellationTokenSource? reconnectRoomCts;
     private Guid? replyToPreviewId;
+
+    /// <summary>
+    /// Сохранённые адреса для выбора подключения
+    /// </summary>
+    public AvaloniaList<ConnectionAddressViewModel> ConnectableAddresses => chatSideBarViewModel.ConnectionAddresses;
 
     /// <summary>
     /// Идёт подключение
@@ -156,6 +164,18 @@ public partial class ChatViewModel
     }
 
     private async Task OnVoiceCallJoinRequested(int subRoomId)
+    {
+        try
+        {
+            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(RoomId, subRoomId, roomCts.Token);
+        }
+        catch (DirectoryNotFoundException e)
+        {
+            InAppNotifier.Error(e.Message);
+        }
+    }
+
+    private async Task OnDemonstrateScreenRequested(int subRoomId)
     {
         try
         {
@@ -342,50 +362,81 @@ public partial class ChatViewModel
 
         reconnectRoomCts = CancellationTokenSource.CreateLinkedTokenSource(roomCts.Token);
 
-        // TODO: make endpoint choosable
-        var chosenEndpoint = room.ConnectionAddresses.First();
+        var chosenAddress = chatSideBarViewModel.ChosenConnectAddress;
 
-        var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
+        if (chosenAddress != null && !chatSideBarViewModel.ConnectionAddresses.Contains(chosenAddress))
         {
-            Cts = reconnectRoomCts,
-            ExpectedRoomId = RoomId,
-            Endpoint = chosenEndpoint,
-            ShowLoadingDialog = false,
-            OnRoomReady = async (room, connectionId) =>
+            chosenAddress = null;
+        }
+
+        if (chosenAddress != null)
+        {
+            await ConnectUsingAsync(chosenAddress.Endpoint!, reconnectRoomCts);
+        }
+        else
+        {
+            foreach (var endpoint in room.ConnectionAddresses.ToList())
             {
-                if (room == null)
+                var connected = await ConnectUsingAsync(endpoint, reconnectRoomCts);
+
+                if (connected || reconnectRoomCts.IsCancellationRequested)
                 {
-                    IsConnecting = false;
-                    return;
+                    break;
                 }
-
-                await RefreshAfterReconnect(room, connectionId);
-            }
-        }, reconnectRoomCts.Token);
-
-        if (reconnectResult.Failure != null && reconnectResult.RoomIdentityMismatchException != null)
-        {
-            switch (reconnectResult.RoomMismatchChoice)
-            {
-                case RoomMismatchChoice.JoinNew:
-                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
-                    break;
-                case RoomMismatchChoice.Replace:
-                    connectionId = reconnectResult.RoomIdentityMismatchException.ConnectionId;
-                    await Disconnect(asForget: true);
-                    await discoveryViewModel.OnRoomJoin(chosenEndpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
-                    break;
-                case RoomMismatchChoice.None:
-                case RoomMismatchChoice.Cancel:
-                case null:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
         }
 
         IsConnecting = false;
         reconnectRoomCts = null;
+    }
+
+    /// <summary>
+    /// Одна попытка подключения по адресу. True — прекращать перебор адресов
+    /// </summary>
+    private async Task<bool> ConnectUsingAsync(IEndpoint endpoint, CancellationTokenSource cts)
+    {
+        var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
+        {
+            Cts = cts,
+            ExpectedRoomId = RoomId,
+            Endpoint = endpoint,
+            ShowLoadingDialog = false,
+            OnRoomReady = async (readyRoom, readyConnectionId) =>
+            {
+                if (readyRoom == null)
+                {
+                    return;
+                }
+
+                await RefreshAfterReconnect(readyRoom, readyConnectionId);
+            }
+        }, cts.Token);
+
+        if (reconnectResult.Failure == null || reconnectResult.RoomIdentityMismatchException == null)
+        {
+            return reconnectResult.Failure == null;
+        }
+
+        switch (reconnectResult.RoomMismatchChoice)
+        {
+            case RoomMismatchChoice.JoinNew:
+                await discoveryViewModel.OnRoomJoin(endpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
+                break;
+            case RoomMismatchChoice.Replace:
+                connectionId = reconnectResult.RoomIdentityMismatchException.ConnectionId;
+                await Disconnect(asForget: true);
+                await discoveryViewModel.OnRoomJoin(endpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
+                break;
+            case RoomMismatchChoice.None:
+            case RoomMismatchChoice.Cancel:
+            case null:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        return true;
+
     }
 
     private async Task RefreshAfterReconnect(Room updatedRoom, Guid connectionId)
@@ -398,7 +449,7 @@ public partial class ChatViewModel
         RoomName = room.Name;
         IsHost = localParticipant.Id == room.HostParticipant.Id;
         IsOnline = room.IsOnline;
-        IsAvaibleForNetwork = IsOnline || IsHost;
+        IsAvailableForNetwork = IsOnline || IsHost;
 
         await UpdateChatFlow();
 

@@ -97,7 +97,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             SubscribeToEvents();
             InitializeLayoutStyles();
 
-            this.RegisterMessageListener<CancelRoutingOperationReferenceCommand, DiscoveryViewModel>((vm, _) =>
+            this.RegisterMessageListener<CancelRoutingOperationReferenceCommand, DiscoveryViewModel>((_, _) =>
             {
                 createRoomCts?.Cancel();
             });
@@ -255,13 +255,10 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
                 featureCollection.Core.RoomStore.RoomExists(discoveryInfo.Room.Id),
                 clipboard);
 
-            card.Clicked += async (origin) =>
+            card.Clicked += async void (origin) =>
             {
                 await OnRoomJoin(discoveryInfo.Endpoints.First(x => x.Origin == origin), discoveryInfo.Room.Id);
-                if (card != null)
-                {
-                    card.IsConnecting = false;
-                }
+                card.IsConnecting = false;
             };
 
             card.RoomDestroyed += () =>
@@ -280,62 +277,70 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// </summary>
     public async Task OnRoomJoin(IEndpoint endpoint, Guid? expectedRoomId)
     {
-        if (expectedRoomId is Guid targetId && chatViewsRegistry.TryGet(targetId, out var existingChat))
+        while (true)
         {
-            ChangeView(existingChat!);
-            return;
-        }
-
-        if (!await ResolveParticipant())
-        {
-            return;
-        }
-
-        var connectCts = CancellationTokenSource.CreateLinkedTokenSource(lifeTimeCts.Token);
-
-        var joinResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
-        {
-            Cts = connectCts,
-            Endpoint = endpoint,
-            ExpectedRoomId = expectedRoomId,
-            ShowLoadingDialog = true,
-            OnRoomReady = async (room, connectionId) =>
+            if (expectedRoomId is { } targetId && chatViewsRegistry.TryGet(targetId, out var existingChat))
             {
-                if (room == null)
-                {
-                    return;
-                }
-
-                if (chatViewsRegistry.TryGet(room.Id, out var existingChat))
-                {
-                    existingChat!.AdoptLiveRoom(room, connectionId);
-                    ChangeView(existingChat);
-                    return;
-                }
-
-                var chatViewModel = chatViewModelFactory.Create();
-                ChangeView(chatViewModel, connectCts.Token);
-
-                await chatViewModel.LoadRoomDataAndRefresh(room, connectionId);
-                RegisterRoom(new RoomInfo(room), chatViewModel);
+                ChangeView(existingChat!);
+                return;
             }
-        }, connectCts.Token);
 
-        if (joinResult.Failure != null && joinResult.RoomIdentityMismatchException != null)
-        {
-            switch (joinResult.RoomMismatchChoice)
+            if (!await ResolveParticipant())
             {
-                case RoomMismatchChoice.JoinNew:
-                    await OnRoomJoin(endpoint, joinResult.RoomIdentityMismatchException.ActualRoom.Id);
-                    break;
-                case RoomMismatchChoice.Replace:
-                    await featureCollection.Core.Lifecycle.ForgetRoomAsync(joinResult.RoomIdentityMismatchException.ExpectedRoomId,
-                        joinResult.RoomIdentityMismatchException.ConnectionId);
-                    await OnRoomJoin(endpoint, joinResult.RoomIdentityMismatchException.ActualRoom.Id);
-                    break;
-                default:
-                    break;
+                return;
             }
+
+            var connectCts = CancellationTokenSource.CreateLinkedTokenSource(lifeTimeCts.Token);
+
+            var joinResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
+            {
+                Cts = connectCts,
+                Endpoint = endpoint,
+                ExpectedRoomId = expectedRoomId,
+                ShowLoadingDialog = true,
+                OnRoomReady = async (room, connectionId) =>
+                {
+                    if (room == null)
+                    {
+                        return;
+                    }
+
+                    if (chatViewsRegistry.TryGet(room.Id, out var existingChatVm))
+                    {
+                        existingChatVm!.AdoptLiveRoom(room, connectionId);
+                        ChangeView(existingChatVm, connectCts.Token);
+                        return;
+                    }
+
+                    var chatViewModel = chatViewModelFactory.Create();
+                    ChangeView(chatViewModel, connectCts.Token);
+
+                    await chatViewModel.LoadRoomDataAndRefresh(room, connectionId);
+                    RegisterRoom(new RoomInfo(room), chatViewModel);
+                }
+            }, connectCts.Token);
+
+            if (joinResult.Failure != null && joinResult.RoomIdentityMismatchException != null)
+            {
+                switch (joinResult.RoomMismatchChoice)
+                {
+                    case RoomMismatchChoice.JoinNew:
+                        expectedRoomId = joinResult.RoomIdentityMismatchException.ActualRoom.Id;
+                        continue;
+                    case RoomMismatchChoice.Replace:
+                        await featureCollection.Core.Lifecycle.ForgetRoomAsync(joinResult.RoomIdentityMismatchException.ExpectedRoomId, joinResult.RoomIdentityMismatchException.ConnectionId);
+                        expectedRoomId = joinResult.RoomIdentityMismatchException.ActualRoom.Id;
+                        continue;
+                    case RoomMismatchChoice.None:
+                    case RoomMismatchChoice.Cancel:
+                    case null:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            break;
         }
     }
 
@@ -351,7 +356,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
             return;
         }
 
-        result.OnConnect += async () =>
+        result.OnConnect += async void () =>
         {
             await OnRoomJoin(result.Endpoint, expectedRoomId: null);
             result.EnableConnectButton();
