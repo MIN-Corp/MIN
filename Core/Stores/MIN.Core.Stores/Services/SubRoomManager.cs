@@ -234,6 +234,13 @@ public class SubRoomManager : ISubRoomManager
             {
                 state.SubRooms.Remove(subRoom.Id);
             }
+
+            var leftOverScreenDemos = state.SubRooms.Values.Where(x => x.Purpose == SubRoomPurpose.ScreenDemo).ToList();
+
+            foreach (var subRoom in leftOverScreenDemos)
+            {
+                state.SubRooms.Remove(subRoom.Id);
+            }
         }
     }
 }

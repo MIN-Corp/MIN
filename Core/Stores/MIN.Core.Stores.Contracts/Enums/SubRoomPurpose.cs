@@ -13,5 +13,10 @@ public enum SubRoomPurpose : byte
     /// <summary>
     /// Звонок
     /// </summary>
-    Voice
+    Voice,
+
+    /// <summary>
+    /// Демонстрация экрана
+    /// </summary>
+    ScreenDemo
 }

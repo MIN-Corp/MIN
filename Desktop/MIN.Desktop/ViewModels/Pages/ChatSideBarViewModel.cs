@@ -209,6 +209,8 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
         ParticipantsInfo = $"{Room.ParticipantCount}/{Room.MaximumParticipants}";
     }
 
+    #region ConnectionAddresses
+
     /// <summary>
     /// Добавить адрес подключения
     /// </summary>
@@ -328,9 +330,11 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     {
         ConnectionAddresses.Clear();
 
+        var firstAddress = Room.ConnectionAddresses.FirstOrDefault();
+
         foreach (var address in Room.ConnectionAddresses)
         {
-            ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard, this));
+            ConnectionAddresses.Add(new ConnectionAddressViewModel(address, clipboard, this, false, address != firstAddress));
         }
 
         ChosenConnectAddress = ChosenConnectAddress?.Endpoint is null
@@ -338,13 +342,7 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
             : ConnectionAddresses.FirstOrDefault(x => x.Endpoint != null && x.Endpoint.SameTarget(ChosenConnectAddress.Endpoint));
     }
 
-    /// <summary>
-    /// Обновить пинг
-    /// </summary>
-    public void UpdatePing(int pingMs)
-    {
-        Ping = pingMs;
-    }
+    #endregion
 
     /// <summary>
     /// Пересортировать участников в зависимости от того
@@ -357,6 +355,14 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
             return;
         }
         RoomParticipants.SortBy(x => x.ParticipantLastSeenAt);
+    }
+
+    /// <summary>
+    /// Обновить пинг
+    /// </summary>
+    public void UpdatePing(int pingMs)
+    {
+        Ping = pingMs;
     }
 
     /// <summary>

@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\Infrastructure\FileTransfer\MIN.FileTransfer.DI\MIN.FileTransfer.DI.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Sessions\Core\MIN.Sessions.Core.DI\MIN.Sessions.Core.DI.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Voice\MIN.Voice.DI\MIN.Voice.DI.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ScreenDemo\MIN.ScreenDemo.DI\MIN.ScreenDemo.DI.csproj" />
   </ItemGroup>
 
 </Project>

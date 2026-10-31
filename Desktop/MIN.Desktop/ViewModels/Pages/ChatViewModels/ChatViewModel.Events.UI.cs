@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Avalonia.Collections;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,11 +17,11 @@ using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Models.ReferenceCommands.Layout;
 using MIN.Desktop.Infrastructure.Extensions;
 using MIN.Desktop.Infrastructure.Services;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.Desktop.ViewModels.Modals;
 using MIN.Desktop.Views;
 using MIN.Sessions.Core.Services.Contracts.Enums;
+using Timer = System.Timers.Timer;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 
@@ -31,7 +30,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// </summary>
 public partial class ChatViewModel
 {
-    private System.Timers.Timer? typingTimer;
+    private Timer? typingTimer;
     private bool isParentWindowActive = true;
     private bool isParentWindowClosed = true;
     private int? activeVoiceChatSubroomId;
@@ -123,8 +122,8 @@ public partial class ChatViewModel
 
     private void InitializeTimers()
     {
-        typingTimer = new() { Interval = 3000 };
-        typingTimer.Elapsed += (s, e) => OnTypingTimerStop();
+        typingTimer = new Timer { Interval = 3000 };
+        typingTimer.Elapsed += (_, _) => OnTypingTimerStop();
         callTimer.Tick += OnCallTimerTick;
     }
 
@@ -192,11 +191,11 @@ public partial class ChatViewModel
                 return;
             }
 
-            if (choosingForm!.SelectedSession!.Kind == SessionKind.Process)
+            if (choosingForm.SelectedSession!.Kind == SessionKind.Process)
             {
-                InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
+                InAppNotifier.Info($"Сессия \"{choosingForm.SelectedSession!.Name}\" запускается, это может занять некоторое время");
             }
-            await SendSessionStartMessage(choosingForm!.SelectedSession!);
+            await SendSessionStartMessage(choosingForm.SelectedSession!);
         }
     }
 
@@ -213,6 +212,17 @@ public partial class ChatViewModel
         }
 
         await OnVoiceCallJoinRequested(activeVoiceChatSubroomId.Value);
+    }
+
+    [RelayCommand]
+    private async Task DemonstrateScreen()
+    {
+        if (activeVoiceChatSubroomId == null)
+        {
+            return;
+        }
+
+        await OnDemonstrateScreenRequested(activeVoiceChatSubroomId.Value);
     }
 
     [RelayCommand]
@@ -424,7 +434,7 @@ public partial class ChatViewModel
     }
 
     [RelayCommand]
-    private async Task PasteData() => await PasteDataFromClipboard(false);
+    private async Task PasteData() => await PasteDataFromClipboard();
 
     [RelayCommand]
     private async Task PasteDataWithText() => await PasteDataFromClipboard(true);
@@ -459,7 +469,7 @@ public partial class ChatViewModel
         {
             if (formats.Contains(DataFormat.Text))
             {
-                if (await clipboard.TryGetTextAsync() is string text)
+                if (await clipboard.TryGetTextAsync() is { } text)
                 {
                     SendingMessage = SendingMessage.Insert(CaretIndex, text);
                     CaretIndex += text.Length;
@@ -469,11 +479,11 @@ public partial class ChatViewModel
         }
 
         var image = await clipboard.TryGetBitmapAsync();
-        if (image is Bitmap bitmap)
+        if (image != null)
         {
             var timestamp = DateTime.Now.ToString("yyyy-dd-MM-HH-mm-ss-fffff");
             var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{timestamp}.png");
-            bitmap.Save(tempPath);
+            image.Save(tempPath);
             UploadFile(tempPath);
         }
     }

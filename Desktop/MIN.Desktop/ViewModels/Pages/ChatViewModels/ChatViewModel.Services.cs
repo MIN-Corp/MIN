@@ -175,6 +175,18 @@ public partial class ChatViewModel
         }
     }
 
+    private async Task OnDemonstrateScreenRequested(int subRoomId)
+    {
+        try
+        {
+            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(RoomId, subRoomId, roomCts.Token);
+        }
+        catch (DirectoryNotFoundException e)
+        {
+            InAppNotifier.Error(e.Message);
+        }
+    }
+
     private async Task OnMuteSelfRequested()
     {
         if (activeVoiceChatSubroomId != null)
@@ -437,7 +449,7 @@ public partial class ChatViewModel
         RoomName = room.Name;
         IsHost = localParticipant.Id == room.HostParticipant.Id;
         IsOnline = room.IsOnline;
-        IsAvaibleForNetwork = IsOnline || IsHost;
+        IsAvailableForNetwork = IsOnline || IsHost;
 
         await UpdateChatFlow();
 

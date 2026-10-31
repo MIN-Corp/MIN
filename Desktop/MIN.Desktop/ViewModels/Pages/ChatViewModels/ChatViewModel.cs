@@ -73,7 +73,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     /// Можем ли мы воспользоваться функцией комнаты
     /// </summary>
     [ObservableProperty]
-    public partial bool IsAvaibleForNetwork { get; set; }
+    public partial bool IsAvailableForNetwork { get; set; }
 
     /// <summary>
     /// Боковая панель чата
@@ -186,10 +186,10 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
     partial void OnIsOnlineChanged(bool value)
     {
-        IsAvaibleForNetwork = value || IsHost;
+        IsAvailableForNetwork = value || IsHost;
     }
 
-    partial void OnIsAvaibleForNetworkChanged(bool value)
+    partial void OnIsAvailableForNetworkChanged(bool value)
     {
         foreach (var message in Messages)
         {
@@ -206,7 +206,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         this.connectionId = connectionId;
         IsOnline = true;
         chatSideBarViewModel.IsOnline = true;
-        IsAvaibleForNetwork = IsOnline || IsHost;
+        IsAvailableForNetwork = IsOnline || IsHost;
     }
 
     /// <summary>
@@ -231,7 +231,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         IsHost = localParticipant.Id == room.HostParticipant.Id;
         IsOnline = room.IsOnline;
         chatSideBarViewModel.IsOnline = IsOnline;
-        IsAvaibleForNetwork = IsOnline || IsHost;
+        IsAvailableForNetwork = IsOnline || IsHost;
         RoomId = room.Id;
         SubscribeToEvents(featureCollection.Core.EventBus);
 

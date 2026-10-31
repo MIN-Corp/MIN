@@ -80,7 +80,7 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                      <MenuItem IsVisible="{Binding !IsVoiceChatActive}"
-                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            IsEnabled="{Binding IsAvailableForNetwork}"
                                             Header="Начать звонок"
                                             Command="{Binding StartVoiceCallClickCommand}">
                                         <MenuItem.Icon>
@@ -250,7 +250,7 @@
                                                                                     Spacing="8">
                                                                                     <Svg Path="/Assets/Icons/sound-on.svg" />
                                                                                     <TextBlock VerticalAlignment="Center"
-                                                                                        Text="Разглушить участника" />
+                                                                                        Text="Размьютить участника" />
                                                                                 </StackPanel>
                                                                             </Button>
 
@@ -343,6 +343,18 @@
                                         </Button>
                                     </StackPanel>
 
+                                    <Button Command="{Binding DemonstrateScreenCommand}"
+                                            ToolTip.Tip="Демонстрировать экран"
+                                            Classes="icon">
+                                        <Button.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="IsInVoiceChat" />
+                                                <Binding Path="IsAvailableForNetwork" />
+                                            </MultiBinding>
+                                        </Button.IsVisible>
+                                        <Svg Path="/Assets/Icons/monitor.svg" />
+                                    </Button>
+
                                     <Button Command="{Binding JoinVoiceCallCommand}"
                                         ToolTip.Tip="Присоединиться к звонку"
                                         Classes="icon"
@@ -350,7 +362,7 @@
                                         <Button.IsVisible>
                                             <MultiBinding Converter="{StaticResource AndMultiConverter}">
                                                 <Binding Path="!IsInVoiceChat" />
-                                                <Binding Path="IsAvaibleForNetwork" />
+                                                <Binding Path="IsAvailableForNetwork" />
                                             </MultiBinding>
                                         </Button.IsVisible>
                                         <Svg Path="/Assets/Icons/phone.svg" />
@@ -363,7 +375,7 @@
                                         <Button.IsVisible>
                                             <MultiBinding Converter="{StaticResource AndMultiConverter}">
                                                 <Binding Path="IsInVoiceChat" />
-                                                <Binding Path="IsAvaibleForNetwork" />
+                                                <Binding Path="IsAvailableForNetwork" />
                                             </MultiBinding>
                                         </Button.IsVisible>
                                         <Svg Path="/Assets/Icons/phone-disconnect.svg" />
@@ -467,14 +479,14 @@
                                 <Button.Flyout>
                                     <MenuFlyout Placement="TopEdgeAlignedLeft">
                                         <MenuItem Header="Отправить файл"
-                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            IsEnabled="{Binding IsAvailableForNetwork}"
                                             Command="{Binding UploadFileClickCommand}">
                                             <MenuItem.Icon>
                                                 <Svg Path="/Assets/Icons/file-upload.svg" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Начать активность"
-                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            IsEnabled="{Binding IsAvailableForNetwork}"
                                             Command="{Binding StartSessionClickCommand}">
                                             <MenuItem.Icon>
                                                 <Svg Path="/Assets/Icons/rocket.svg" />
@@ -487,7 +499,7 @@
                             <Button
                                 Command="{Binding SendMessageCommand}"
                                 VerticalAlignment="Bottom"
-                                IsEnabled="{Binding IsAvaibleForNetwork}"
+                                IsEnabled="{Binding IsAvailableForNetwork}"
                                 ToolTip.Tip="Отправить"
                                 Classes="icon primary"
                                 DockPanel.Dock="Right"

@@ -28,7 +28,7 @@ public partial class ConnectionAddressViewModel : CardViewModelBase
     /// <summary>
     /// Строка создана через "Добавить адрес" и ещё не сохранена
     /// </summary>
-    public bool IsNew { get; }
+    private bool IsNew { get; }
 
     /// <summary>
     /// Место получения адреса
@@ -56,13 +56,22 @@ public partial class ConnectionAddressViewModel : CardViewModelBase
     public partial string? ErrorMessage { get; set; }
 
     /// <summary>
+    /// Адрес можно удалить
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSelfCommand))]
+    public partial bool CanDelete { get; set; }
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ConnectionAddressViewModel"/>
     /// </summary>
-    public ConnectionAddressViewModel(IEndpoint? address, IClipboard? clipboard, ChatSideBarViewModel? owner, bool isNew = false)
+    public ConnectionAddressViewModel(IEndpoint? address, IClipboard? clipboard,
+        ChatSideBarViewModel? owner, bool isNew = false, bool isAbleToDelete = true)
     {
         Endpoint = address;
         this.clipboard = clipboard;
         this.owner = owner;
+        CanDelete = isAbleToDelete;
         IsNew = isNew;
     }
 
@@ -130,7 +139,7 @@ public partial class ConnectionAddressViewModel : CardViewModelBase
     /// <summary>
     /// Удалить этот адрес из списка комнаты
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanDelete))]
     private void RemoveSelf()
         => owner?.RemoveAddress(this);
 
