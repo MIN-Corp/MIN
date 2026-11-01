@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MIN.Desktop.ViewModels.Windows"
+        xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Width="960"
+        Height="540"
+        MinWidth="480"
+        MinHeight="270"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        x:Class="MIN.Desktop.Views.Windows.ScreenDemoPreviewWindow"
+        x:DataType="vm:ScreenDemoPreviewViewModel"
+        Title="MIN - Демонстрация экрана">
+
+    <DockPanel>
+        <controls:CustomTitleBar CanMinimize="True" CanMaximize="True" />
+        <DockPanel>
+            <Border DockPanel.Dock="Bottom"
+                    Classes="footer">
+                <Button
+                    Command="{Binding StopDemoCommand}"
+                    Content="Остановить демонстрацию"
+                    Classes="secondary"
+                    FontWeight="Bold"
+                    HorizontalAlignment="Right" />
+            </Border>
+
+            <Border>
+                <Image x:Name="ScreenImage"
+                       Source="{Binding FrameImage}"
+                       Stretch="Uniform" />
+            </Border>
+        </DockPanel>
+    </DockPanel>
+</Window>

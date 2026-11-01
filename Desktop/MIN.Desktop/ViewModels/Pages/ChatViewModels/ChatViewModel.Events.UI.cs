@@ -217,12 +217,23 @@ public partial class ChatViewModel
     [RelayCommand]
     private async Task DemonstrateScreen()
     {
-        if (activeVoiceChatSubroomId == null)
+        var selfId = localParticipant.Id;
+
+        // Уже демонстрирую — вторую демонстрацию не начинаем
+        // (в фазе 3 кнопка превратится в «Остановить»)
+        if (featureCollection.ScreenDemo.ScreenDemoState.GetOwnDemo(RoomId, selfId) != null)
         {
             return;
         }
 
-        await OnDemonstrateScreenRequested(activeVoiceChatSubroomId.Value);
+        var picked = await dialogService.ShowDialogAsync<ScreenDemoSourcePickerViewModel>();
+
+        if (!picked || picked?.SelectedSource == null)
+        {
+            return;
+        }
+
+        await featureCollection.Chat.ChatScreenDemoService.StartDemoAsync(RoomId, picked.SelectedSource, roomCts.Token);
     }
 
     [RelayCommand]
