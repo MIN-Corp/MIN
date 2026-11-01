@@ -28,7 +28,8 @@ public interface IScreenVideoCodec : IDisposable
     byte[] Encode(ScreenFrame frame, out bool isKeyframe);
 
     /// <summary>
-    /// Распаковать байты в кадр (BGRA)
+    /// Распаковать байты в кадр (BGRA).
+    /// Возвращает null, если картинки ещё нет (норма до получения первого ключевого кадра)
     /// </summary>
-    ScreenFrame Decode(byte[] encoded, long timestampMs);
+    ScreenFrame? Decode(byte[] encoded, long timestampMs);
 }

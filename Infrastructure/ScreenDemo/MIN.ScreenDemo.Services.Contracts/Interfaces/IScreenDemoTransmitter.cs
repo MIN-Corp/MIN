@@ -1,4 +1,5 @@
 ﻿using MIN.Core.Stores.Contracts.Models.SubRooms;
+using MIN.ScreenDemo.Services.Contracts.Models;
 
 namespace MIN.ScreenDemo.Services.Contracts.Interfaces;
 
@@ -11,7 +12,7 @@ public interface IScreenDemoTransmitter : IDisposable
     /// Начать демонстрацию: захват и кодирование идут сразу (локальный предпросмотр),
     /// но данные в сеть не отправляются, пока нет ни одного зрителя
     /// </summary>
-    void Begin(SubRoomContext subRoomContext);
+    void Begin(SubRoomContext subRoomContext, ScreenSourceInfo source);
 
     /// <summary>
     /// Добавить зрителя — с этого момента начинается отправка данных в сеть

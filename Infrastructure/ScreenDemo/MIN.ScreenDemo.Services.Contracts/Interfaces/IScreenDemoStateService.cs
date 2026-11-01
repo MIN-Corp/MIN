@@ -28,9 +28,19 @@ public interface IScreenDemoStateService
     void AddDemo(ScreenDemoSessionInfo demo);
 
     /// <summary>
-    /// Обновить список зрителей демонстрации
+    /// Добавить зрителя демонстрации
     /// </summary>
-    void UpdateViewers(Guid roomId, int subRoomId, IReadOnlyList<Guid> viewerIds);
+    void AddViewer(Guid roomId, int subRoomId, Guid viewerId);
+
+    /// <summary>
+    /// Убрать зрителя демонстрации
+    /// </summary>
+    void RemoveViewer(Guid roomId, int subRoomId, Guid viewerId);
+
+    /// <summary>
+    /// Смотрит ли участник данную демонстрацию (или сам её ведёт)
+    /// </summary>
+    bool IsWatching(Guid roomId, int subRoomId, Guid participantId);
 
     /// <summary>
     /// Убрать завершённую демонстрацию

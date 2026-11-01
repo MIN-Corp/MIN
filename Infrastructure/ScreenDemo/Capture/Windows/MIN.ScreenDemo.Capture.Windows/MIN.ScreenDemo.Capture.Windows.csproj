@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Vortice.Direct3D11" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\..\..\Helpers\MIN.Helpers.Contracts\MIN.Helpers.Contracts.csproj" />
+      <ProjectReference Include="..\..\..\MIN.ScreenDemo.Services.Contracts\MIN.ScreenDemo.Services.Contracts.csproj" />
+    </ItemGroup>
+
+</Project>

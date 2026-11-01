@@ -18,5 +18,5 @@ public sealed class ScreenDemoFrameDecodedEventArgs : EventArgs
     /// <summary>
     /// Декодированный кадр (BGRA)
     /// </summary>
-    public required ScreenFrame Frame { get; init; }
+    public required ScreenFrame? Frame { get; init; }
 }
