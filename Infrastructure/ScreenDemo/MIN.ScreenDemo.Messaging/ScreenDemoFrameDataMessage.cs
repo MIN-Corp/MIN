@@ -52,6 +52,16 @@ public sealed class ScreenDemoFrameDataMessage : BaseMessage, IWithinSubRoom
     public bool IsKeyframe { get; init; }
 
     /// <summary>
+    /// Ширина потока кадра (после масштабирования)
+    /// </summary>
+    public int Width { get; init; }
+
+    /// <summary>
+    /// Высота потока кадра
+    /// </summary>
+    public int Height { get; init; }
+
+    /// <summary>
     /// Содержимое фрагмента (кусок H.264 Annex-B)
     /// </summary>
     public required byte[] Data { get; init; }

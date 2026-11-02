@@ -18,7 +18,10 @@ public interface IScreenCaptureService : IDisposable
     void Stop();
 
     /// <summary>
-    /// Получен кадр экрана для отправки
+    /// Получен кадр экрана для отправки.
+    /// ВАЖНО: буфер Data выдан из ArrayPool и переходит во владение подписчику —
+    /// подписчик обязан вернуть его через ArrayPool, когда кадр больше не нужен.
+    /// Подписчик должен быть один (трансмиттер); предпросмотр подписывается на IScreenDemoTransmitter.FramePreview
     /// </summary>
     event EventHandler<ScreenFrame>? FrameCaptured;
 }

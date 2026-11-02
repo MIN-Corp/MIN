@@ -81,6 +81,19 @@ public partial class ChatViewModel
     [ObservableProperty]
     public partial TimeSpan CallDuration { get; set; }
 
+    // Screen demo
+
+    /// <summary>
+    /// Активные демонстрации экрана в звонке
+    /// </summary>
+    public AvaloniaList<ScreenDemoSessionViewModel> ScreenDemoSessions { get; } = [];
+
+    /// <summary>
+    /// Демонстрирует ли экран локальный пользователь прямо сейчас
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsSharingScreen { get; set; }
+
     #region Layouting
 
     [ObservableProperty]
@@ -217,12 +230,9 @@ public partial class ChatViewModel
     [RelayCommand]
     private async Task DemonstrateScreen()
     {
-        var selfId = localParticipant.Id;
-
-        // Уже демонстрирую — вторую демонстрацию не начинаем
-        // (в фазе 3 кнопка превратится в «Остановить»)
-        if (featureCollection.ScreenDemo.ScreenDemoState.GetOwnDemo(RoomId, selfId) != null)
+        if (IsSharingScreen)
         {
+            await StopSharingScreen();
             return;
         }
 
@@ -234,6 +244,36 @@ public partial class ChatViewModel
         }
 
         await featureCollection.Chat.ChatScreenDemoService.StartDemoAsync(RoomId, picked.SelectedSource, roomCts.Token);
+    }
+
+    private void AddScreenDemoSession(int subRoomId, Guid sharerId, IReadOnlyList<Guid> viewerIds)
+    {
+        if (ScreenDemoSessions.Any(x => x.SubRoomId == subRoomId))
+        {
+            return;
+        }
+
+        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
+        var sharerName = context.Participants.TryGetParticipantById(sharerId, out var sharer)
+            ? sharer!.Name
+            : "неизвестный участник";
+
+        var card = new ScreenDemoSessionViewModel(subRoomId, sharerId, sharerName,
+            sharerId == localParticipant.Id, viewerIds.Count)
+        {
+            IsWatching = viewerIds.Contains(localParticipant.Id),
+        };
+
+        card.Joined += () => JoinScreenDemo(subRoomId);
+        card.Left += () => LeaveScreenDemo(subRoomId);
+        card.Stopped += StopSharingScreen;
+
+        ScreenDemoSessions.Add(card);
+
+        if (sharerId == localParticipant.Id)
+        {
+            IsSharingScreen = true;
+        }
     }
 
     [RelayCommand]

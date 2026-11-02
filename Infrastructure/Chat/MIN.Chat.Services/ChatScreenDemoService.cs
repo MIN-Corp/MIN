@@ -4,6 +4,8 @@ using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Models.SubRooms;
+using MIN.Helpers.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Models.Enums;
 using MIN.ScreenDemo.Events;
 using MIN.ScreenDemo.Messaging;
 using MIN.ScreenDemo.Services.Contracts.Interfaces;
@@ -20,6 +22,7 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
     private readonly IScreenDemoTransmitter screenDemoTransmitter;
     private readonly IMessageRouter messageRouter;
     private readonly IIdentityService identityService;
+    private readonly ILoggerProvider logger;
 
     /// <summary>
     /// Источник, выбранный в диалоге, который ждёт подтверждения демонстрации (roomId -> источник)
@@ -34,13 +37,15 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
         IScreenDemoTransmitter screenDemoTransmitter,
         IMessageRouter messageRouter,
         IEventBus eventBus,
-        IIdentityService identityService)
+        IIdentityService identityService,
+        ILoggerProvider logger)
     {
         this.screenDemoStateService = screenDemoStateService;
         this.screenDemoPlaybackService = screenDemoPlaybackService;
         this.screenDemoTransmitter = screenDemoTransmitter;
         this.messageRouter = messageRouter;
         this.identityService = identityService;
+        this.logger = logger;
 
         eventBus.Subscribe<ScreenDemoEstablishedEvent>(OnDemoEstablished);
         eventBus.Subscribe<VoiceCallLeftEvent>(OnVoiceCallLeft);
@@ -57,12 +62,13 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
     }
 
     async Task IChatScreenDemoService.JoinDemoAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
-        => await SendAsync(new ScreenDemoJoinRequestMessage()
+        => await SendBestEffortAsync(new ScreenDemoJoinRequestMessage()
         {
             SubRoomId = subRoomId,
         }, roomId, cancellationToken);
 
-    async Task IChatScreenDemoService.LeaveDemoAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task LeaveDemoAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
     {
         // локально чистим себя сразу, не дожидаясь от хоста
         var demo = screenDemoStateService.GetDemo(roomId, subRoomId);
@@ -74,17 +80,18 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
 
         screenDemoStateService.RemoveViewer(roomId, subRoomId, identityService.SelfParticipant.Id);
 
-        await SendAsync(new ScreenDemoLeaveMessage()
+        await SendBestEffortAsync(new ScreenDemoLeaveMessage()
         {
             SubRoomId = subRoomId,
         }, roomId, cancellationToken);
     }
 
-    async Task IChatScreenDemoService.EndDemoAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task EndDemoAsync(Guid roomId, int subRoomId, CancellationToken cancellationToken)
     {
         // transmitter.End() и остановка предпросмотра произойдут
         // в ScreenDemoEndHandler (RequiresLocalDuplication = true)
-        await SendAsync(new ScreenDemoEndMessage()
+        await SendBestEffortAsync(new ScreenDemoEndMessage()
         {
             SubRoomId = subRoomId,
         }, roomId, cancellationToken);
@@ -121,15 +128,28 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
 
         if (ownDemo != null)
         {
-            await ((IChatScreenDemoService)this).EndDemoAsync(e.RoomId, ownDemo.SubRoomId, cancellationToken);
+            await EndDemoAsync(e.RoomId, ownDemo.SubRoomId, cancellationToken);
         }
 
         foreach (var demo in screenDemoStateService.GetActiveDemos(e.RoomId).Where(d => d.ViewerIds.Contains(selfId)))
         {
-            await ((IChatScreenDemoService)this).LeaveDemoAsync(e.RoomId, demo.SubRoomId, cancellationToken);
+            await LeaveDemoAsync(e.RoomId, demo.SubRoomId, cancellationToken);
         }
     }
 
+
     private async Task SendAsync(IMessage message, Guid roomId, CancellationToken cancellationToken)
         => await messageRouter.RouteAsync(message, roomId, identityService.SelfParticipant.Id, cancellationToken);
+    private async Task SendBestEffortAsync(IMessage message, Guid roomId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await SendAsync(message, roomId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // комната могла уже уйти в оффлайн — локальная очистка уже выполнена
+            logger.Log($"Не удалось отправить {message.GetType().Name} (комната {roomId}): {ex.Message}", LogLevel.Warning);
+        }
+    }
 }

@@ -16,7 +16,7 @@ internal sealed class VoiceCallEndHandler : BaseHandler
     private readonly IVoiceCallStateService voiceCallStateService;
 
     /// <summary>
-    /// Инициализирует новый экземлпяр <see cref="VoiceCallEndHandler"/>
+    /// Инициализирует новый экземпляр <see cref="VoiceCallEndHandler"/>
     /// </summary>
     public VoiceCallEndHandler(IEventBus eventBus,
         IVoiceCallStateService voiceCallStateService,

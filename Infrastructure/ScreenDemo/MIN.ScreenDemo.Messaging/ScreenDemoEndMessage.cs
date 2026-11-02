@@ -9,7 +9,7 @@ namespace MIN.ScreenDemo.Messaging;
 /// Рассылается самим демонстрирующим: хост деактивирует подкомнату,
 /// зрители закрывают окна просмотра
 /// </summary>
-public sealed class ScreenDemoEndMessage : BaseMessage, IWithinSubRoom
+public sealed class ScreenDemoEndMessage : BaseMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.ScreenDemoEnd;
@@ -20,6 +20,8 @@ public sealed class ScreenDemoEndMessage : BaseMessage, IWithinSubRoom
     /// <inheritdoc />
     public override bool RequiresLocalDuplication => true;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Идентификатор подкомнаты
+    /// </summary>
     public int SubRoomId { get; set; }
 }

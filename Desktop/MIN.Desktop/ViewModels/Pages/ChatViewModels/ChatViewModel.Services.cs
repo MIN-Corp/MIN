@@ -169,23 +169,38 @@ public partial class ChatViewModel
         {
             await featureCollection.Chat.ChatVoiceService.JoinCallAsync(RoomId, subRoomId, roomCts.Token);
         }
-        catch (DirectoryNotFoundException e)
+        catch (Exception e)
         {
             InAppNotifier.Error(e.Message);
         }
     }
 
-    private async Task OnDemonstrateScreenRequested(int subRoomId)
+    /// <summary>
+    /// Завершить собственную демонстрацию
+    /// </summary>
+    private async Task StopSharingScreen()
     {
-        try
+        var ownDemo = ScreenDemoSessions.FirstOrDefault(x => x.IsMine);
+
+        if (ownDemo == null)
         {
-            await featureCollection.Chat.ChatVoiceService.JoinCallAsync(RoomId, subRoomId, roomCts.Token);
+            return;
         }
-        catch (DirectoryNotFoundException e)
-        {
-            InAppNotifier.Error(e.Message);
-        }
+
+        await featureCollection.Chat.ChatScreenDemoService.EndDemoAsync(RoomId, ownDemo.SubRoomId, roomCts.Token);
     }
+
+    /// <summary>
+    /// Присоединиться к чужой демонстрации как зритель
+    /// </summary>
+    private async Task JoinScreenDemo(int subRoomId)
+        => await featureCollection.Chat.ChatScreenDemoService.JoinDemoAsync(RoomId, subRoomId, roomCts.Token);
+
+    /// <summary>
+    /// Покинуть чужую демонстрацию из панели звонка
+    /// </summary>
+    private async Task LeaveScreenDemo(int subRoomId)
+        => await featureCollection.Chat.ChatScreenDemoService.LeaveDemoAsync(RoomId, subRoomId, roomCts.Token);
 
     private async Task OnMuteSelfRequested()
     {
@@ -215,8 +230,11 @@ public partial class ChatViewModel
     private async Task OnVoiceCallLeaveRequested(int subRoomId)
         => await featureCollection.Chat.ChatVoiceService.LeaveCallAsync(RoomId, subRoomId, roomCts.Token);
 
-    private async Task RequestVoiceCallStateAsync()
-        => await featureCollection.Chat.ChatVoiceService.RequestCallStateAsync(RoomId, roomCts.Token);
+    private async Task RequestStateActionsAsync()
+    {
+        await featureCollection.Chat.ChatScreenDemoService.RequestDemoStateAsync(RoomId, roomCts.Token);
+        await featureCollection.Chat.ChatVoiceService.RequestCallStateAsync(RoomId, roomCts.Token);
+    }
 
     private async Task OnCancelRequested(FileMetadataMessage fileMetadata)
         => await featureCollection.Chat.ChatFileService.CancelFileDownloadAsync(RoomId,
@@ -455,7 +473,7 @@ public partial class ChatViewModel
 
         if (!IsHost)
         {
-            await RequestVoiceCallStateAsync();
+            await RequestStateActionsAsync();
         }
         else
         {

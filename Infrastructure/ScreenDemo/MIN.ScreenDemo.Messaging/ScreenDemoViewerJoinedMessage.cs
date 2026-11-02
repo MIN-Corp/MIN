@@ -10,7 +10,7 @@ namespace MIN.ScreenDemo.Messaging;
 /// Рассылается самим зрителем после подтверждения — демонстрирующий
 /// по нему узнаёт, что можно начинать отправку кадров
 /// </summary>
-public sealed class ScreenDemoViewerJoinedMessage : BaseMessage, IWithinSubRoom
+public sealed class ScreenDemoViewerJoinedMessage : BaseMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.ScreenDemoViewerJoined;
@@ -24,8 +24,10 @@ public sealed class ScreenDemoViewerJoinedMessage : BaseMessage, IWithinSubRoom
     /// <summary>
     /// Информация о зрителе
     /// </summary>
-    public ParticipantInfo Participant { get; set; } = null!;
+    public ParticipantInfo Participant { get; init; } = null!;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Идентификатор подкомнаты
+    /// </summary>
     public int SubRoomId { get; set; }
 }

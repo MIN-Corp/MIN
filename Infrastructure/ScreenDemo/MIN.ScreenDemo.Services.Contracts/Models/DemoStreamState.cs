@@ -31,6 +31,16 @@ public sealed class DemoStreamState
     public bool IsKeyframe { get; set; }
 
     /// <summary>
+    /// Ширина экрана
+    /// </summary>
+    public int StreamWidth { get; set; }
+
+    /// <summary>
+    /// Высота экрана
+    /// </summary>
+    public int StreamHeight { get; set; }
+
+    /// <summary>
     /// Таблица фрагментов
     /// </summary>
     public byte[][] Fragments { get; set; } = [];
@@ -39,4 +49,14 @@ public sealed class DemoStreamState
     /// Список полученных
     /// </summary>
     public bool[] Received { get; set; } = [];
+
+    /// <summary>
+    /// Буферы декодирования
+    /// </summary>
+    public byte[][] DecodeBuffers { get; set; } = [];
+
+    /// <summary>
+    /// Номер буфера декодирования
+    /// </summary>
+    public int DecodeBufferIndex { get; set; }
 }

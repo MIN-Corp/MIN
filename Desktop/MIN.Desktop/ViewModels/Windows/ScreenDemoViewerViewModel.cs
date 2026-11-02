@@ -50,6 +50,13 @@ public partial class ScreenDemoViewerViewModel : ViewModelBase, IDisposable
     public bool IsLeaving { get; private set; }
 
     /// <summary>
+    /// Получен ли уже первый кадр (для индикатора загрузки)
+    /// </summary>
+    public bool HasFrame => FrameImage != null;
+
+    partial void OnFrameImageChanged(WriteableBitmap? value) => OnPropertyChanged(nameof(HasFrame));
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoViewerViewModel"/>
     /// </summary>
     public ScreenDemoViewerViewModel(IScreenDemoPlaybackService screenDemoPlaybackService,
@@ -92,11 +99,22 @@ public partial class ScreenDemoViewerViewModel : ViewModelBase, IDisposable
 
     private void RenderFrame(ScreenFrame frame)
     {
+        if (!ScreenFrameBlitter.IsRenderable(frame))
+        {
+            return;
+        }
+
         if (!ScreenFrameBlitter.IsSameSize(bitmap, frame))
         {
-            bitmap?.Dispose();
+            var previous = bitmap;
             bitmap = ScreenFrameBlitter.Create(frame);
             FrameImage = bitmap;
+
+            // Утилизируем отложено: композитор мог ещё читать старый битмап
+            if (previous != null)
+            {
+                Dispatcher.UIThread.Post(previous.Dispose, DispatcherPriority.Background);
+            }
         }
 
         ScreenFrameBlitter.Blit(bitmap!, frame);

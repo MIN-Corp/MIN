@@ -1,4 +1,5 @@
-﻿using System.Threading.Channels;
+﻿using System.Buffers;
+using System.Threading.Channels;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Stores.Contracts.Models.SubRooms;
@@ -27,7 +28,6 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
 
     private SubRoomContext context;
     private long frameId;
-    private int framesSinceLastKeyframe;
     private long lastFrameTimestamp;
     private int lastWidth;
     private int lastHeight;
@@ -53,6 +53,9 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         this.logger = logger;
     }
 
+    /// <inheritdoc />
+    public event EventHandler<ScreenFrame>? FramePreview;
+
     void IScreenDemoTransmitter.Begin(SubRoomContext subRoomContext, ScreenSourceInfo source)
     {
         if (isActive)
@@ -63,7 +66,6 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         context = subRoomContext;
         isActive = true;
         frameId = 0;
-        framesSinceLastKeyframe = 0;
         lastFrameTimestamp = 0;
         lastWidth = 0;
         lastHeight = 0;
@@ -167,53 +169,8 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         {
             await foreach (var frame in captureQueue.Reader.ReadAllAsync(cancellationToken))
             {
-                // Троттлинг до ScreenDemoConstants.Fps
-                if (frame.TimestampMs - lastFrameTimestamp < ScreenDemoConstants.FrameIntervalMs)
-                {
-                    continue;
-                }
-
-                // Зрителей нет — демонстрация только локальная, кодирование не тратим
-                if (!HasViewers)
-                {
-                    continue;
-                }
-
-                var scaled = ScreenFrameScaler.Downscale(frame, ScreenDemoConstants.MaxFrameHeight);
-
-                // Размер кадра изменился (изменение размера окна) — переконфигурация кодека
-                if (scaled.Width != lastWidth || scaled.Height != lastHeight)
-                {
-                    lastWidth = scaled.Width;
-                    lastHeight = scaled.Height;
-                    forceKeyframe = true;
-                }
-
-                var needKeyframe = forceKeyframe || framesSinceLastKeyframe >= ScreenDemoConstants.KeyframeIntervalFrames;
-
-                if (needKeyframe)
-                {
-                    // Переконфигурация сбрасывает кодек — следующий кадр всегда ключевой
-                    codec.Configure(scaled.Width, scaled.Height, ScreenDemoConstants.TargetBitrateKbps);
-                    framesSinceLastKeyframe = 0;
-                    forceKeyframe = false;
-                }
-
-                var currentFrameId = Interlocked.Increment(ref frameId);
-                var encoded = codec.Encode(scaled, out var isKeyframe);
-
-                framesSinceLastKeyframe = isKeyframe ? 0 : framesSinceLastKeyframe + 1;
-                lastFrameTimestamp = frame.TimestampMs;
-
-                if (encoded.Length == 0)
-                {
-                    continue;
-                }
-
-                foreach (var fragment in FragmentFrame(currentFrameId, isKeyframe, encoded))
-                {
-                    sendQueue.Writer.TryWrite(fragment);
-                }
+                FramePreview?.Invoke(this, frame);
+                ProcessFrame(frame);
             }
         }
         catch (OperationCanceledException)
@@ -221,7 +178,67 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         }
     }
 
-    private IEnumerable<ScreenDemoFrameDataMessage> FragmentFrame(long currentFrameId, bool isKeyframe, byte[] encoded)
+    private void ProcessFrame(ScreenFrame frame)
+    {
+        ScreenFrame? scaled = null;
+
+        try
+        {
+            // Троттлинг до ScreenDemoConstants.Fps
+            if (frame.TimestampMs - lastFrameTimestamp < ScreenDemoConstants.FrameIntervalMs)
+            {
+                return;
+            }
+
+            // Зрителей нет — демонстрация только локальная, кодирование не тратим
+            if (!HasViewers)
+            {
+                return;
+            }
+
+            scaled = ScreenFrameScaler.Downscale(frame, ScreenDemoConstants.MaxFrameHeight);
+
+            if (scaled.Width != lastWidth || scaled.Height != lastHeight)
+            {
+                logger.Log($"Размер потока демонстрации: {scaled.Width}x{scaled.Height}");
+                lastWidth = scaled.Width;
+                lastHeight = scaled.Height;
+                forceKeyframe = true;
+            }
+
+            if (forceKeyframe)
+            {
+                codec.Configure(scaled.Width, scaled.Height, ScreenDemoConstants.TargetBitrateKbps);
+                forceKeyframe = false;
+            }
+
+            var currentFrameId = Interlocked.Increment(ref frameId);
+            var encoded = codec.Encode(scaled, out var isKeyframe);
+
+            lastFrameTimestamp = frame.TimestampMs;
+
+            if (encoded.Length == 0)
+            {
+                return;
+            }
+
+            foreach (var fragment in FragmentFrame(currentFrameId, isKeyframe, scaled.Width, scaled.Height, encoded))
+            {
+                sendQueue.Writer.TryWrite(fragment);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(frame.Data);
+
+            if (scaled != null && !ReferenceEquals(scaled, frame))
+            {
+                ArrayPool<byte>.Shared.Return(scaled.Data);
+            }
+        }
+    }
+
+    private IEnumerable<ScreenDemoFrameDataMessage> FragmentFrame(long currentFrameId, bool isKeyframe, int width, int height, byte[] encoded)
     {
         var fragmentCount = (int)Math.Ceiling(encoded.Length / (double)ScreenDemoConstants.FragmentTargetSize);
 
@@ -246,6 +263,8 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
                 FragmentIndex = i,
                 FragmentCount = fragmentCount,
                 IsKeyframe = isKeyframe,
+                Width = width,
+                Height = height,
                 Data = data,
             };
         }

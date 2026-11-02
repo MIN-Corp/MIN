@@ -55,6 +55,8 @@ internal sealed class ScreenDemoDataHandler : BaseHandler
             frameData.FragmentIndex,
             frameData.FragmentCount,
             frameData.IsKeyframe,
+            frameData.Width,
+            frameData.Height,
             frameData.Data);
 
         return Task.FromResult(HandlerResult.WithEvent(new ScreenDemoDataReceivedEvent()

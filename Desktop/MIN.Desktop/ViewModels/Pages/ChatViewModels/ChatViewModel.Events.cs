@@ -17,6 +17,7 @@ using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.FileTransfer.Events;
 using MIN.FileTransfer.Services.Contracts.Models.Enums;
+using MIN.ScreenDemo.Events;
 using MIN.Sessions.Core.Events;
 using MIN.Voice.Events;
 
@@ -52,6 +53,14 @@ public partial class ChatViewModel
         roomScope.Subscribe<VoiceParticipantJoinedEvent>(OnVoiceParticipantJoined);
         roomScope.Subscribe<VoiceParticipantLeftEvent>(OnVoiceParticipantLeft);
         roomScope.Subscribe<VoiceCallStateReceivedEvent>(VoiceCallStateReceived);
+
+        // Screen demo
+        roomScope.Subscribe<ScreenDemoStartedEvent>(OnScreenDemoStarted);
+        roomScope.Subscribe<ScreenDemoEndedEvent>(OnScreenDemoEnded);
+        roomScope.Subscribe<ScreenDemoEstablishedEvent>(OnScreenDemoEstablished);
+        roomScope.Subscribe<ScreenDemoViewerJoinedEvent>(OnScreenDemoViewerJoined);
+        roomScope.Subscribe<ScreenDemoViewerLeftEvent>(OnScreenDemoViewerLeft);
+        roomScope.Subscribe<ScreenDemoStateReceivedEvent>(OnScreenDemoStateReceived);
 
         // Other
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdated);
@@ -114,6 +123,8 @@ public partial class ChatViewModel
         activeVoiceChatSubroomId = null;
         IsInVoiceChat = false;
         IsVoiceChatActive = false;
+        ScreenDemoSessions.Clear();
+        IsSharingScreen = false;
         return Task.CompletedTask;
     }
 
@@ -186,6 +197,96 @@ public partial class ChatViewModel
 
     #endregion
 
+    #region Screen demo related
+
+    private Task OnScreenDemoStarted(ScreenDemoStartedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        AddScreenDemoSession(eventMessage.SubRoomId, eventMessage.SharerId, []);
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoEnded(ScreenDemoEndedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        var session = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
+
+        if (session != null)
+        {
+            ScreenDemoSessions.Remove(session);
+        }
+
+        if (eventMessage.SharerId == localParticipant.Id)
+        {
+            IsSharingScreen = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoEstablished(ScreenDemoEstablishedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.SharerId == localParticipant.Id)
+        {
+            return Task.CompletedTask;
+        }
+
+        var model = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
+        if (model != null)
+        {
+            model.IsWatching = true;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoViewerJoined(ScreenDemoViewerJoinedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        var session = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
+
+        if (session != null)
+        {
+            session.ViewerCount++;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoViewerLeft(ScreenDemoViewerLeftEvent eventMessage, CancellationToken cancellationToken)
+    {
+        var session = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
+
+        if (session is not { ViewerCount: > 0 })
+        {
+            return Task.CompletedTask;
+        }
+
+        if (eventMessage.ViewerId == localParticipant.Id)
+        {
+            session.IsWatching = false;
+        }
+
+        session.ViewerCount--;
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoStateReceived(ScreenDemoStateReceivedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        ScreenDemoSessions.Clear();
+        IsSharingScreen = false;
+
+        foreach (var demo in eventMessage.Demos)
+        {
+            AddScreenDemoSession(demo.SubRoomId, demo.Sharer.Id, demo.ViewerIds);
+        }
+
+        loadingTcs?.SetResult();
+        loadingTcs = null;
+
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
     #region File related
 
     private async Task OnFileMetaDataMessageReceived(FileMetaDataMessageReceivedEvent eventMessage, CancellationToken cancellationToken)
@@ -193,11 +294,13 @@ public partial class ChatViewModel
 
     private Task OnFileTransferStarted(FileTransferStartedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.Direction == FileTransferDirection.Upload && IsHost)
+        if (eventMessage.Direction != FileTransferDirection.Upload || !IsHost)
         {
-            var sanitizedSize = featureCollection.FileTransfer.FileHelperService.FormatFileSize(eventMessage.FileSize);
-            AddStatus(new FileUploadingStatus(eventMessage.FileMetadataId, eventMessage.FileName, eventMessage.Sender.Name, sanitizedSize));
+            return Task.CompletedTask;
         }
+
+        var sanitizedSize = featureCollection.FileTransfer.FileHelperService.FormatFileSize(eventMessage.FileSize);
+        AddStatus(new FileUploadingStatus(eventMessage.FileMetadataId, eventMessage.FileName, eventMessage.Sender.Name, sanitizedSize));
         return Task.CompletedTask;
     }
 

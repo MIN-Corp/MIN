@@ -35,7 +35,7 @@ public class OpenH264VideoCodec : IScreenVideoCodec
 
         // Контейнер ссылается на память кадра без копирования (конвертация BGRA->I420
         // происходит внутри Encode, SIMD-конвертером)
-        var input = new RgbImage(ImageFormat.Bgra, frame.Width, frame.Height, frame.Width * 4, frame.Data, 0, frame.Data.Length);
+        var input = new RgbImage(ImageFormat.Bgra, frame.Width, frame.Height, frame.Width * 4, frame.Data, 0, frame.Width * 4 * frame.Height);
 
         if (!encoder.Encode(input, out var encodedFrames) || encodedFrames.Length == 0)
         {
@@ -52,43 +52,47 @@ public class OpenH264VideoCodec : IScreenVideoCodec
         return annexB;
     }
 
-    ScreenFrame? IScreenVideoCodec.Decode(byte[] encoded, long timestampMs)
+    bool IScreenVideoCodec.Decode(byte[] encoded, int expectedWidth, int expectedHeight, byte[] targetBuffer)
     {
+        if (expectedWidth is < 1 or > 4096 || expectedHeight is < 1 or > 2160)
+        {
+            return false;
+        }
+
         if (!decoderInitialized)
         {
             decoder.Initialize();
             decoderInitialized = true;
         }
 
-        // Контейнер BGRA-вывода. Декодер OpenH264 сам подстраивается под размер потока,
-        // буфер создаём с запасом под максимальные 720p-широкие кадры
-
-        decodeOutput ??= new RgbImage(ImageFormat.Bgra, 1920, ScreenDemoConstants.MaxFrameHeight);
+        // Контейнер строго под размер потока: пересоздаём на первом кадре
+        // и при любом изменении размера демонстрируемого окна
+        if (decodeOutput == null || decodeOutput.Width != expectedWidth || decodeOutput.Height != expectedHeight)
+        {
+            decodeOutput = new RgbImage(ImageFormat.Rgba, expectedWidth, expectedHeight);
+        }
 
         if (!decoder.Decode(encoded, 0, encoded.Length, noDelay: true, out _, ref decodeOutput))
         {
-            return null; // норма до первого ключевого кадра
+            return false;
         }
 
-        // Нативная память Cisco имеет паддинг (stride >= width * 4) — копируем построчно
         var frameWidth = decodeOutput.Width;
         var frameHeight = decodeOutput.Height;
+
+        if (frameWidth != expectedWidth || frameHeight != expectedHeight)
+        {
+            return false; // неожиданный размер — контейнер пересоздаётся на следующем кадре
+        }
+
         var stride = decodeOutput.Stride;
-        var data = new byte[frameWidth * 4 * frameHeight];
 
-        if (stride == frameWidth * 4)
+        for (var y = 0; y < frameHeight; y++)
         {
-            Marshal.Copy(decodeOutput.NativeBytes, data, 0, data.Length);
-        }
-        else
-        {
-            for (var y = 0; y < frameHeight; y++)
-            {
-                Marshal.Copy(IntPtr.Add(decodeOutput.NativeBytes, y * stride), data, y * frameWidth * 4, frameWidth * 4);
-            }
+            Marshal.Copy(IntPtr.Add(decodeOutput.NativeBytes, y * stride), targetBuffer, y * frameWidth * 4, frameWidth * 4);
         }
 
-        return new ScreenFrame(frameWidth, frameHeight, data, timestampMs);
+        return true;
     }
 
     void IDisposable.Dispose()

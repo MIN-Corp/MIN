@@ -9,7 +9,7 @@ namespace MIN.ScreenDemo.Messaging;
 /// Сообщение об уходе зрителя из демонстрации экрана.
 /// Рассылается хостом после обработки выхода
 /// </summary>
-public sealed class ScreenDemoViewerLeftMessage : BaseMessage, IWithinSubRoom
+public sealed class ScreenDemoViewerLeftMessage : BaseMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.ScreenDemoViewerLeft;
@@ -27,8 +27,10 @@ public sealed class ScreenDemoViewerLeftMessage : BaseMessage, IWithinSubRoom
     /// <summary>
     /// Информация о зрителе
     /// </summary>
-    public ParticipantInfo Participant { get; set; } = null!;
+    public ParticipantInfo Participant { get; init; } = null!;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Идентификатор подкомнаты
+    /// </summary>
     public int SubRoomId { get; set; }
 }

@@ -20,7 +20,7 @@ public class ScreenDemoConstants
     /// Максимальная высота передаваемого кадра (пропорции сохраняются).
     /// Ограничивает нагрузку на OpenH264 и битрейт
     /// </summary>
-    public const int MaxFrameHeight = 720;
+    public const int MaxFrameHeight = 1080;
 
     /// <summary>
     /// Целевой битрейт кодека в килобитах в секунду

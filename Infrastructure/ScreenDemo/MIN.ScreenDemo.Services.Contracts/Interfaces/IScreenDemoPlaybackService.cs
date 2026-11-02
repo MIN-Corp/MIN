@@ -27,7 +27,8 @@ public interface IScreenDemoPlaybackService : IDisposable
     /// Передать полученный фрагмент кадра на сборку и декодирование.
     /// Кадр с недостающими фрагментами отбрасывается целиком — ждём следующий ключевой кадр
     /// </summary>
-    void SubmitFragment(Guid roomId, Guid sharerId, long frameId, int fragmentIndex, int fragmentCount, bool isKeyframe, byte[] data);
+    void SubmitFragment(Guid roomId, Guid sharerId, long frameId, int fragmentIndex,
+        int fragmentCount, bool isKeyframe, int width, int height, byte[] data);
 
     /// <summary>
     /// Очистить все потоки демонстраций (при выходе из звонка или комнаты)

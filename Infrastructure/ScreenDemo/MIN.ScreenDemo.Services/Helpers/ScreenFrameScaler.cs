@@ -1,4 +1,5 @@
-﻿using MIN.ScreenDemo.Services.Contracts.Models;
+﻿using System.Buffers;
+using MIN.ScreenDemo.Services.Contracts.Models;
 
 namespace MIN.ScreenDemo.Services.Helpers;
 
@@ -23,7 +24,7 @@ static internal class ScreenFrameScaler
 
         var sourceStride = frame.Width * 4;
         var targetStride = newWidth * 4;
-        var target = new byte[targetStride * newHeight];
+        var target = ArrayPool<byte>.Shared.Rent(targetStride * newHeight);
 
         for (var y = 0; y < newHeight; y++)
         {

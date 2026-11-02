@@ -9,7 +9,7 @@ namespace MIN.ScreenDemo.Services;
 /// <inheritdoc cref="IScreenDemoPlaybackService"/>
 public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
 {
-    private sealed record DecodedJob(Guid RoomId, Guid SharerId, byte[] EncodedFrame);
+    private sealed record DecodedJob(Guid RoomId, Guid SharerId, byte[] EncodedFrame, int Width, int Height);
 
     private readonly IScreenVideoCodec codec;
     private readonly ILoggerProvider logger;
@@ -60,14 +60,20 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
         }
     }
 
-    void IScreenDemoPlaybackService.SubmitFragment(Guid roomId, Guid sharerId, long frameId,
-        int fragmentIndex, int fragmentCount, bool isKeyframe, byte[] data)
+    void IScreenDemoPlaybackService.SubmitFragment(Guid roomId, Guid sharerId, long frameId, int fragmentIndex,
+        int fragmentCount, bool isKeyframe, int width, int height, byte[] data)
     {
+        if (width is < 1 or > 4096 || height is < 1 or > 2160)
+        {
+            return;
+        }
+
         byte[]? assembled;
+        DemoStreamState? state;
 
         lock (gate)
         {
-            if (!streams.TryGetValue((roomId, sharerId), out var state))
+            if (!streams.TryGetValue((roomId, sharerId), out state))
             {
                 return;
             }
@@ -95,6 +101,8 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
                 state.FragmentCount = fragmentCount;
                 state.FragmentsReceived = 0;
                 state.IsKeyframe = isKeyframe;
+                state.StreamWidth = width;
+                state.StreamHeight = height;
                 state.Fragments = new byte[fragmentCount][];
                 state.Received = new bool[fragmentCount];
             }
@@ -129,7 +137,7 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
         }
 
         // Декодирование вне блокировки — через очередь декодеру
-        decodeQueue.Writer.TryWrite(new DecodedJob(roomId, sharerId, assembled));
+        decodeQueue.Writer.TryWrite(new DecodedJob(roomId, sharerId, assembled, state.StreamWidth, state.StreamHeight));
     }
 
     void IScreenDemoPlaybackService.Clear()
@@ -155,15 +163,43 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
             {
                 try
                 {
-                    // До первого ключевого кадра декодер может отдавать пустые/битые кадры — это норма
-                    var frame = codec.Decode(job.EncodedFrame, Environment.TickCount64);
-
-                    FrameDecoded?.Invoke(this, new ScreenDemoFrameDecodedEventArgs
+                    DemoStreamState? state;
+                    lock (gate)
                     {
-                        RoomId = job.RoomId,
-                        SharerId = job.SharerId,
-                        Frame = frame,
-                    });
+                        streams.TryGetValue((job.RoomId, job.SharerId), out state);
+                    }
+
+                    if (state == null)
+                    {
+                        continue;
+                    }
+
+                    // Размер изменился — пересоздаём пару буферов
+                    if (state.DecodeBuffers.Length != 2 || state.DecodeBuffers[0].Length != job.Width * 4 * job.Height)
+                    {
+                        state.DecodeBuffers = [new byte[job.Width * 4 * job.Height], new byte[job.Width * 4 * job.Height]];
+                        state.DecodeBufferIndex = 0;
+                    }
+
+                    var bufferIndex = state.DecodeBufferIndex;
+                    state.DecodeBufferIndex = (bufferIndex + 1) % 2;
+
+                    var ok = false;
+                    try
+                    {
+                        ok = codec.Decode(job.EncodedFrame, job.Width, job.Height, state.DecodeBuffers[bufferIndex]);
+                    }
+                    catch (Exception ex) { logger.Log($"Ошибка декодирования: {ex.Message}"); }
+
+                    if (ok)
+                    {
+                        FrameDecoded?.Invoke(this, new ScreenDemoFrameDecodedEventArgs
+                        {
+                            RoomId = job.RoomId,
+                            SharerId = job.SharerId,
+                            Frame = new ScreenFrame(job.Width, job.Height, state.DecodeBuffers[bufferIndex], Environment.TickCount64),
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {

@@ -71,7 +71,6 @@ public class IdentityMonitor : IHostedService
     private async Task OnParticipantUpdated(ParticipantUpdatedEvent eventMessage, CancellationToken cancellationToken)
     {
         var context = roomFactory.GetOrCreateContext(eventMessage.RoomId);
-        var role = registry.GetRole(eventMessage.RoomId);
         var newName = eventMessage.NewParticipant.Name;
 
         var affectedMessages = context.Messages.GetHistory()
@@ -89,7 +88,7 @@ public class IdentityMonitor : IHostedService
                 SenderId = authoredMessage.SenderId,
                 MessageIdToEdit = authoredMessage.Id,
                 NewMessage = authoredMessage,
-            }, eventMessage.RoomId, role, cancellationToken: cancellationToken);
+            }, eventMessage.RoomId, cancellationToken: cancellationToken);
         }
     }
 
@@ -162,7 +161,7 @@ public class IdentityMonitor : IHostedService
                 await messageRouter.PublishLocally(new ParticipantUpdatedMessage
                 {
                     NewParticipant = updatedParticipant,
-                }, roomId, registry.GetRole(roomId), null, appCts!.Token).ConfigureAwait(false);
+                }, roomId, null, appCts!.Token).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)

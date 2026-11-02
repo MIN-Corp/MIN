@@ -1,5 +1,4 @@
 ﻿using MIN.Common.Core.Contracts.Interfaces;
-using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
@@ -69,7 +68,8 @@ public class ScreenDemoMonitor : IHostedService
             await messageRouter.PublishLocally(new ScreenDemoEndMessage()
             {
                 SubRoomId = ownDemo.SubRoomId,
-            }, e.RoomId, Role.Host, null, cancellationToken);
+                SenderId = identityService.SelfParticipant.Id,
+            }, e.RoomId, null, cancellationToken);
         }
 
         screenDemoPlaybackService.Clear();

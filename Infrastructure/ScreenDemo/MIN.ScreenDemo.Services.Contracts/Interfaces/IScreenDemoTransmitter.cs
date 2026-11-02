@@ -9,6 +9,13 @@ namespace MIN.ScreenDemo.Services.Contracts.Interfaces;
 public interface IScreenDemoTransmitter : IDisposable
 {
     /// <summary>
+    /// Локальный кадр перед кодированием (для предпросмотра).
+    /// ВАЖНО: буфер Data принадлежит трансмиттеру и переиспользуется —
+    /// подписчик должен использовать кадр синхронно, внутри обработчика события
+    /// </summary>
+    event EventHandler<ScreenFrame>? FramePreview;
+
+    /// <summary>
     /// Начать демонстрацию: захват и кодирование идут сразу (локальный предпросмотр),
     /// но данные в сеть не отправляются, пока нет ни одного зрителя
     /// </summary>

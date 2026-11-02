@@ -3,6 +3,7 @@ using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Handlers.Contracts.Base;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
+using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Enums;
@@ -17,14 +18,17 @@ namespace MIN.ScreenDemo.Handlers;
 internal sealed class ScreenDemoStateHandler : BaseHandler
 {
     private readonly IScreenDemoStateService screenDemoStateService;
+    private readonly IIdentityService identityService;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoStateHandler"/>
     /// </summary>
     public ScreenDemoStateHandler(ILoggerProvider logger,
-        IScreenDemoStateService screenDemoStateService) : base(logger)
+        IScreenDemoStateService screenDemoStateService,
+        IIdentityService identityService) : base(logger)
     {
         this.screenDemoStateService = screenDemoStateService;
+        this.identityService = identityService;
     }
 
     public override IEnumerable<MessageTypeTag> HandledTypes
@@ -51,8 +55,7 @@ internal sealed class ScreenDemoStateHandler : BaseHandler
                     .Select(x => new ScreenDemoStateEntry(
                         x.Id,
                         x.CreatorId == context.SelfId
-                            ? /* инфо о себе */
-                            throw new InvalidOperationException()
+                            ? identityService.SelfParticipant.ToParticipantInfo()
                             : context.RoomContext.Participants.GetParticipantById(x.CreatorId).ToParticipantInfo(),
                         x.Participants.Select(p => p.Id).ToList()))
                     .ToList();

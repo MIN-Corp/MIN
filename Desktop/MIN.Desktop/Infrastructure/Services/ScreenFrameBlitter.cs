@@ -26,6 +26,12 @@ static internal class ScreenFrameBlitter
         => bitmap != null && bitmap.PixelSize.Width == frame.Width && bitmap.PixelSize.Height == frame.Height;
 
     /// <summary>
+    /// Можно ли отрисовать кадр (размеры валидны, данных достаточно)
+    /// </summary>
+    public static bool IsRenderable(ScreenFrame frame)
+        => frame.Width >= 1 && frame.Height >= 1 && frame.Data.Length >= frame.Width * 4 * frame.Height;
+
+    /// <summary>
     /// Скопировать кадр в битмап. ScreenFrame всегда плотный (stride = width * 4),
     /// целевой битмап может иметь паддинг — копируем построчно при расхождении
     /// </summary>

@@ -7,11 +7,13 @@ using Avalonia.Threading;
 using MIN.Chat.Services.Contracts.Interfaces;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Events.Contracts.Interfaces;
+using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Models.SubRooms;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.Desktop.Views.Windows;
 using MIN.Helpers.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Models.Enums;
 using MIN.ScreenDemo.Events;
 using MIN.ScreenDemo.Services.Contracts.Interfaces;
 
@@ -24,7 +26,7 @@ namespace MIN.Desktop.Infrastructure.Services;
 public class ScreenDemoWindowsService : IHostedService
 {
     private readonly IEventBus eventBus;
-    private readonly IScreenCaptureService screenCaptureService;
+    private readonly IScreenDemoTransmitter screenDemoTransmitter;
     private readonly IScreenDemoPlaybackService screenDemoPlaybackService;
     private readonly IScreenDemoStateService screenDemoStateService;
     private readonly IChatScreenDemoService chatScreenDemoService;
@@ -32,8 +34,10 @@ public class ScreenDemoWindowsService : IHostedService
     private readonly ILoggerProvider logger;
 
     private readonly Dictionary<(Guid RoomId, Guid SharerId), ScreenDemoViewerWindow> viewerWindows = [];
+    private readonly Dictionary<(Guid RoomId, Guid SharerId), int> viewerSubRooms = [];
 
     private ScreenDemoPreviewWindow? previewWindow;
+    private Guid? previewRoomId;
 
     int IHostedService.Priority => 50;
 
@@ -41,7 +45,7 @@ public class ScreenDemoWindowsService : IHostedService
     /// Инициализирует новый экземпляр <see cref="ScreenDemoWindowsService"/>
     /// </summary>
     public ScreenDemoWindowsService(IEventBus eventBus,
-        IScreenCaptureService screenCaptureService,
+        IScreenDemoTransmitter screenDemoTransmitter,
         IScreenDemoPlaybackService screenDemoPlaybackService,
         IScreenDemoStateService screenDemoStateService,
         IChatScreenDemoService chatScreenDemoService,
@@ -49,7 +53,7 @@ public class ScreenDemoWindowsService : IHostedService
         ILoggerProvider logger)
     {
         this.eventBus = eventBus;
-        this.screenCaptureService = screenCaptureService;
+        this.screenDemoTransmitter = screenDemoTransmitter;
         this.screenDemoPlaybackService = screenDemoPlaybackService;
         this.screenDemoStateService = screenDemoStateService;
         this.chatScreenDemoService = chatScreenDemoService;
@@ -61,6 +65,8 @@ public class ScreenDemoWindowsService : IHostedService
     {
         eventBus.Subscribe<ScreenDemoEstablishedEvent>(OnDemoEstablished);
         eventBus.Subscribe<ScreenDemoEndedEvent>(OnDemoEnded);
+        eventBus.Subscribe<ScreenDemoViewerLeftEvent>(OnViewerLeft);
+        eventBus.Subscribe<RoomWentOfflineEvent>(OnRoomWentOffline);
         return Task.CompletedTask;
     }
 
@@ -90,6 +96,26 @@ public class ScreenDemoWindowsService : IHostedService
         return Task.CompletedTask;
     }
 
+    private Task OnViewerLeft(ScreenDemoViewerLeftEvent e, CancellationToken cancellationToken)
+    {
+        if (e.ViewerId != identityService.SelfParticipant.Id)
+        {
+            return Task.CompletedTask;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var entry = viewerSubRooms.FirstOrDefault(x => x.Key.RoomId == e.RoomId && x.Value == e.SubRoomId);
+
+            if (entry.Key != default)
+            {
+                CloseViewerInternal(e.RoomId, entry.Key.SharerId);
+            }
+        });
+
+        return Task.CompletedTask;
+    }
+
     private Task OnDemoEnded(ScreenDemoEndedEvent e, CancellationToken cancellationToken)
     {
         var selfId = identityService.SelfParticipant.Id;
@@ -109,6 +135,24 @@ public class ScreenDemoWindowsService : IHostedService
         return Task.CompletedTask;
     }
 
+    private Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (previewRoomId == e.RoomId)
+            {
+                ClosePreviewInternal();
+            }
+
+            foreach (var key in viewerWindows.Keys.Where(k => k.RoomId == e.RoomId).ToList())
+            {
+                CloseViewerInternal(key.RoomId, key.SharerId);
+            }
+        });
+
+        return Task.CompletedTask;
+    }
+
     private void OpenPreview(Guid roomId, int subRoomId)
     {
         if (previewWindow != null)
@@ -121,15 +165,27 @@ public class ScreenDemoWindowsService : IHostedService
 
         previewWindow = new ScreenDemoPreviewWindow
         {
-            DataContext = new ScreenDemoPreviewViewModel(screenCaptureService, chatScreenDemoService, new SubRoomContext(roomId, subRoomId), sourceTitle),
+            DataContext = new ScreenDemoPreviewViewModel(screenDemoTransmitter, chatScreenDemoService, new SubRoomContext(roomId, subRoomId), sourceTitle),
         };
 
-        previewWindow.Closed += (_, _) =>
+        previewRoomId = roomId;
+
+        previewWindow.Closed += async (_, _) =>
         {
             if (previewWindow?.DataContext is ScreenDemoPreviewViewModel viewModel)
             {
                 viewModel.Dispose();
+
+                // Крест на предпросмотре = завершить демонстрацию
+                var demo = screenDemoStateService.GetDemo(viewModel.Context.RoomId, viewModel.Context.SubRoomId);
+
+                if (!viewModel.IsStopping && demo != null && demo.Sharer.Id == identityService.SelfParticipant.Id)
+                {
+                    await chatScreenDemoService.EndDemoAsync(viewModel.Context.RoomId, viewModel.Context.SubRoomId);
+                }
             }
+
+            previewWindow = null;
         };
 
         previewWindow.Show();
@@ -159,20 +215,27 @@ public class ScreenDemoWindowsService : IHostedService
         };
 
         viewerWindows[key] = window;
+        viewerSubRooms[key] = subRoomId;
 
         window.Closed += async (_, _) =>
         {
-            viewModel.Dispose();
-
-            // Пользователь закрыл окно крестом — уходим из демонстрации.
-            // При остановке демонстрации окно закрывает сервис: IsLeaving не установлен,
-            // но демонстрация уже завершена — Leave вернёт ошибку, безопасно
-            if (!viewModel.IsLeaving)
+            try
             {
-                await chatScreenDemoService.LeaveDemoAsync(roomId, subRoomId);
-            }
+                viewModel.Dispose();
+                viewerWindows.Remove(key);
+                viewerSubRooms.Remove(key);
 
-            viewerWindows.Remove(key);
+                var demo = screenDemoStateService.GetDemo(roomId, subRoomId);
+
+                if (!viewModel.IsLeaving && demo != null && demo.ViewerIds.Contains(identityService.SelfParticipant.Id))
+                {
+                    await chatScreenDemoService.LeaveDemoAsync(roomId, subRoomId);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Log($"Ошибка при закрытии окна просмотра: {ex}", LogLevel.Error);
+            }
         };
 
         window.Show();
@@ -183,6 +246,7 @@ public class ScreenDemoWindowsService : IHostedService
     {
         previewWindow?.Close();
         previewWindow = null;
+        previewRoomId = null;
     }
 
     private void CloseViewerInternal(Guid roomId, Guid sharerId)

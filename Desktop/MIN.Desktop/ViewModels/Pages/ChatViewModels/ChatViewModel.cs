@@ -239,7 +239,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
         if (!IsHost && room.IsOnline)
         {
-            await RequestVoiceCallStateAsync();
+            await RequestStateActionsAsync();
         }
         else
         {

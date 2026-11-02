@@ -2,15 +2,19 @@
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Windows.Graphics.Capture;
+using Windows.Graphics.DirectX.Direct3D11;
 using WinRT;
-using WinRT.Interop;
 using WinRtDevice = Windows.Graphics.DirectX.Direct3D11.IDirect3DDevice;
 using WinRtSurface = Windows.Graphics.DirectX.Direct3D11.IDirect3DSurface;
 
 namespace MIN.ScreenDemo.Capture.Windows.Interop;
 
 /// <summary>
-/// Мост между D3D11 (Vortice) и WinRT IDirect3DDevice/ITexture2D для Windows.Graphics.Capture
+/// Мост между D3D11 (Vortice) и WinRT IDirect3DDevice/ITexture2D для Windows.Graphics.Capture.
+/// Interop-интерфейсы вызываются напрямую через vtable, БЕЗ встроенных RCW:
+/// пул кадров циклически переиспользует одни и те же COM-объекты поверхностей,
+/// а кеш RCW привязывает обёртку к потоку создания — на другом потоке колбека
+/// FrameArrived это даёт RPC_E_WRONG_THREAD
 /// </summary>
 public static class Direct3D11Helper
 {
@@ -25,36 +29,13 @@ public static class Direct3D11Helper
     // IID IDirect3DDxgiInterfaceAccess
     private readonly static Guid direct3DDxgiInterfaceAccessIid = new("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1");
 
-    // ВАЖНО: IGraphicsCaptureItemInterop наследуется от IUnknown (см. windows.graphics.capture.interop.h),
-    // поэтому InterfaceIsIUnknown. InterfaceIsIInspectable больше не поддерживается CLR .NET 5+
-    // — методы на таких интерфейсах бросают "Marshalling as IInspectable is not supported"
-    [ComImport]
-    [Guid("3628E81B-3CAC-4C60-B7F4-23CE0E0C3356")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IGraphicsCaptureItemInterop
-    {
-        /// <summary>
-        /// Создать GraphicsCaptureItem для окна
-        /// </summary>
-        void CreateForWindow(IntPtr window, ref Guid iid, out IntPtr result);
+    // vtable IGraphicsCaptureItemInterop: IUnknown (слоты 0-2) + CreateForWindow (3) + CreateForMonitor (4)
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int CreateItemDelegate(IntPtr thisPtr, IntPtr handle, ref Guid iid, out IntPtr result);
 
-        /// <summary>
-        /// Создать GraphicsCaptureItem для монитора
-        /// </summary>
-        void CreateForMonitor(IntPtr hMonitor, ref Guid iid, out IntPtr result);
-    }
-
-    // IDirect3DDxgiInterfaceAccess тоже IUnknown-based — InterfaceIsIUnknown корректен
-    [ComImport]
-    [Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IDirect3DDxgiInterfaceAccess
-    {
-        /// <summary>
-        /// Получить нативный интерфейс
-        /// </summary>
-        void GetInterface(ref Guid iid, out IntPtr ppv);
-    }
+    // vtable IDirect3DDxgiInterfaceAccess: IUnknown (слоты 0-2) + GetInterface (3)
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int GetInterfaceDelegate(IntPtr thisPtr, ref Guid iid, out IntPtr ppv);
 
     [DllImport("d3d11.dll", EntryPoint = "CreateDirect3D11DeviceFromDXGIDevice", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
     private static extern uint CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
@@ -92,28 +73,16 @@ public static class Direct3D11Helper
     }
 
     /// <summary>
-    /// Создать GraphicsCaptureItem для окна (через COM-фабрику)
+    /// Создать GraphicsCaptureItem для окна
     /// </summary>
     public static GraphicsCaptureItem CreateCaptureItemForWindow(IntPtr window)
-    {
-        return CreateFromInterop((interop, iid) =>
-        {
-            interop.CreateForWindow(window, ref iid, out var itemPointer);
-            return itemPointer;
-        });
-    }
+        => CreateFromInterop(3, window);
 
     /// <summary>
-    /// Создать GraphicsCaptureItem для монитора (через COM-фабрику)
+    /// Создать GraphicsCaptureItem для монитора
     /// </summary>
     public static GraphicsCaptureItem CreateCaptureItemForMonitor(IntPtr hMonitor)
-    {
-        return CreateFromInterop((interop, iid) =>
-        {
-            interop.CreateForMonitor(hMonitor, ref iid, out var itemPointer);
-            return itemPointer;
-        });
-    }
+        => CreateFromInterop(4, hMonitor);
 
     /// <summary>
     /// Достать нативный D3D11 текстурный указатель из IDirect3DSurface кадра захвата
@@ -128,10 +97,13 @@ public static class Direct3D11Helper
 
         try
         {
-            var access = (IDirect3DDxgiInterfaceAccess)Marshal.GetObjectForIUnknown(accessPointer);
+            var vtable = Marshal.ReadIntPtr(accessPointer);
+            var methodPointer = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+            var getInterface = Marshal.GetDelegateForFunctionPointer<GetInterfaceDelegate>(methodPointer);
 
             var iid = typeof(ID3D11Texture2D).GUID;
-            access.GetInterface(ref iid, out var texturePointer);
+            var result = getInterface(accessPointer, ref iid, out var texturePointer);
+            Marshal.ThrowExceptionForHR(result);
 
             return texturePointer;
         }
@@ -141,22 +113,24 @@ public static class Direct3D11Helper
         }
     }
 
-    private static GraphicsCaptureItem CreateFromInterop(Func<IGraphicsCaptureItemInterop, Guid, IntPtr> create)
+    private static GraphicsCaptureItem CreateFromInterop(int methodSlot, IntPtr handle)
     {
         WindowsCreateString(GraphicsCaptureItemRuntimeClassId, GraphicsCaptureItemRuntimeClassId.Length, out var hString);
 
         try
         {
             var interopIid = graphicsCaptureItemInteropIid;
-            RoGetActivationFactory(hString, ref interopIid, out var interopPointer);
+            RoGetActivationFactory(hString, ref interopIid, out var factoryPointer);
 
             try
             {
-                // IUnknown-based ComImport — встроенный RCW-механизм .NET это поддерживает
-                var interop = (IGraphicsCaptureItemInterop)Marshal.GetObjectForIUnknown(interopPointer);
+                var vtable = Marshal.ReadIntPtr(factoryPointer);
+                var methodPointer = Marshal.ReadIntPtr(vtable, methodSlot * IntPtr.Size);
+                var createMethod = Marshal.GetDelegateForFunctionPointer<CreateItemDelegate>(methodPointer);
 
                 var itemIid = graphicsCaptureItemIid;
-                var itemPointer = create(interop, itemIid);
+                var result = createMethod(factoryPointer, handle, ref itemIid, out var itemPointer);
+                Marshal.ThrowExceptionForHR(result);
 
                 try
                 {
@@ -169,7 +143,7 @@ public static class Direct3D11Helper
             }
             finally
             {
-                Marshal.Release(interopPointer);
+                Marshal.Release(factoryPointer);
             }
         }
         finally

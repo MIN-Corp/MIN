@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -19,12 +18,10 @@ namespace MIN.Desktop.ViewModels.Windows;
 /// </summary>
 public partial class ScreenDemoPreviewViewModel : ViewModelBase, IDisposable
 {
-    private readonly IScreenCaptureService screenCaptureService;
+    private readonly IScreenDemoTransmitter screenDemoTransmitter;
     private readonly IChatScreenDemoService chatScreenDemoService;
-    private readonly SubRoomContext context;
 
     private WriteableBitmap? bitmap;
-    private int isFrameQueued;
 
     /// <summary>
     /// Кадр перерисован — окно должно вызвать InvalidateVisual у Image
@@ -49,46 +46,64 @@ public partial class ScreenDemoPreviewViewModel : ViewModelBase, IDisposable
     public bool IsStopping { get; private set; }
 
     /// <summary>
+    /// Контекст подкомнаты демонстрации
+    /// </summary>
+    public SubRoomContext Context { get; }
+
+    /// <summary>
+    /// Получен ли уже первый кадр (для индикатора загрузки)
+    /// </summary>
+    public bool HasFrame => FrameImage != null;
+
+    partial void OnFrameImageChanged(WriteableBitmap? value) => OnPropertyChanged(nameof(HasFrame));
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoPreviewViewModel"/>
     /// </summary>
-    public ScreenDemoPreviewViewModel(IScreenCaptureService screenCaptureService,
+    public ScreenDemoPreviewViewModel(IScreenDemoTransmitter screenDemoTransmitter,
         IChatScreenDemoService chatScreenDemoService,
         SubRoomContext context,
         string sourceTitle)
     {
-        this.screenCaptureService = screenCaptureService;
+        this.screenDemoTransmitter = screenDemoTransmitter;
         this.chatScreenDemoService = chatScreenDemoService;
-        this.context = context;
+        Context = context;
 
         Title = $"Демонстрация экрана: {sourceTitle}";
 
-        screenCaptureService.FrameCaptured += OnFrameCaptured;
+        screenDemoTransmitter.FramePreview += OnFramePreview;
     }
 
-    private void OnFrameCaptured(object? sender, ScreenFrame e)
+    private void OnFramePreview(object? sender, ScreenFrame e)
     {
-        // Коалесинг кадров: если отрисовка не успевает, рендерим только последний кадр
-        if (Interlocked.Exchange(ref isFrameQueued, 1) != 0)
+        if (!ScreenFrameBlitter.IsRenderable(e))
         {
             return;
         }
 
-        Dispatcher.UIThread.Post(() =>
-        {
-            Volatile.Write(ref isFrameQueued, 0);
-            RenderFrame(e);
-        });
+        // Синхронно: буфер кадра переиспользуется трансмиттером сразу после события
+        Dispatcher.UIThread.Invoke(() => RenderFrame(e));
     }
 
     private void RenderFrame(ScreenFrame frame)
     {
-        if (!ScreenFrameBlitter.IsSameSize(bitmap, frame))
+        if (!ScreenFrameBlitter.IsRenderable(frame))
         {
-            bitmap?.Dispose();
-            bitmap = ScreenFrameBlitter.Create(frame);
-            FrameImage = bitmap;
+            return;
         }
 
+        if (!ScreenFrameBlitter.IsSameSize(bitmap, frame))
+        {
+            var previous = bitmap;
+            bitmap = ScreenFrameBlitter.Create(frame);
+            FrameImage = bitmap;
+
+            // Утилизируем отложено: композитор мог ещё читать старый битмап
+            if (previous != null)
+            {
+                Dispatcher.UIThread.Post(previous.Dispose, DispatcherPriority.Background);
+            }
+        }
         ScreenFrameBlitter.Blit(bitmap!, frame);
         FrameRendered?.Invoke();
     }
@@ -103,14 +118,14 @@ public partial class ScreenDemoPreviewViewModel : ViewModelBase, IDisposable
 
         IsStopping = true;
 
-        await chatScreenDemoService.EndDemoAsync(context.RoomId, context.SubRoomId);
+        await chatScreenDemoService.EndDemoAsync(Context.RoomId, Context.SubRoomId);
         // Окно закроется в ScreenDemoWindowsService по ScreenDemoEndedEvent
     }
 
     /// <inheritdoc cref="IDisposable.Dispose"/>
     public override void Dispose()
     {
-        screenCaptureService.FrameCaptured -= OnFrameCaptured;
+        screenDemoTransmitter.FramePreview -= OnFramePreview;
         base.Dispose();
     }
 }
