@@ -58,7 +58,6 @@ public partial class ChatViewModel
         roomScope.Subscribe<ScreenDemoStartedEvent>(OnScreenDemoStarted);
         roomScope.Subscribe<ScreenDemoEndedEvent>(OnScreenDemoEnded);
         roomScope.Subscribe<ScreenDemoEstablishedEvent>(OnScreenDemoEstablished);
-        roomScope.Subscribe<ScreenDemoViewerJoinedEvent>(OnScreenDemoViewerJoined);
         roomScope.Subscribe<ScreenDemoViewerLeftEvent>(OnScreenDemoViewerLeft);
         roomScope.Subscribe<ScreenDemoStateReceivedEvent>(OnScreenDemoStateReceived);
 
@@ -123,8 +122,8 @@ public partial class ChatViewModel
         activeVoiceChatSubroomId = null;
         IsInVoiceChat = false;
         IsVoiceChatActive = false;
-        ScreenDemoSessions.Clear();
         IsSharingScreen = false;
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
@@ -201,83 +200,51 @@ public partial class ChatViewModel
 
     private Task OnScreenDemoStarted(ScreenDemoStartedEvent eventMessage, CancellationToken cancellationToken)
     {
-        AddScreenDemoSession(eventMessage.SubRoomId, eventMessage.SharerId, []);
+        if (eventMessage.SharerId == localParticipant.Id)
+        {
+            IsSharingScreen = true;
+        }
+
+        MoveStreamingParticipantFirst(eventMessage.SharerId);
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
     private Task OnScreenDemoEnded(ScreenDemoEndedEvent eventMessage, CancellationToken cancellationToken)
     {
-        var session = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
-
-        if (session != null)
-        {
-            ScreenDemoSessions.Remove(session);
-        }
-
         if (eventMessage.SharerId == localParticipant.Id)
         {
             IsSharingScreen = false;
         }
 
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
     private Task OnScreenDemoEstablished(ScreenDemoEstablishedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.SharerId == localParticipant.Id)
-        {
-            return Task.CompletedTask;
-        }
-
-        var model = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
-        if (model != null)
-        {
-            model.IsWatching = true;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private Task OnScreenDemoViewerJoined(ScreenDemoViewerJoinedEvent eventMessage, CancellationToken cancellationToken)
-    {
-        var session = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
-
-        if (session != null)
-        {
-            session.ViewerCount++;
-        }
-
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
     private Task OnScreenDemoViewerLeft(ScreenDemoViewerLeftEvent eventMessage, CancellationToken cancellationToken)
     {
-        var session = ScreenDemoSessions.FirstOrDefault(x => x.SubRoomId == eventMessage.SubRoomId);
-
-        if (session is not { ViewerCount: > 0 })
-        {
-            return Task.CompletedTask;
-        }
-
-        if (eventMessage.ViewerId == localParticipant.Id)
-        {
-            session.IsWatching = false;
-        }
-
-        session.ViewerCount--;
-
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
     private Task OnScreenDemoStateReceived(ScreenDemoStateReceivedEvent eventMessage, CancellationToken cancellationToken)
     {
-        ScreenDemoSessions.Clear();
         IsSharingScreen = false;
 
-        foreach (var demo in eventMessage.Demos)
+        foreach (var streamingCard in eventMessage.Demos
+                     .Select(demo => VoiceChatParticipants.FirstOrDefault(x => x.ParticipantId == demo.Sharer.Id))
+                     .OfType<ParticipantVoiceCardViewModel>())
         {
-            AddScreenDemoSession(demo.SubRoomId, demo.Sharer.Id, demo.ViewerIds);
+            streamingCard.IsStreaming = true;
         }
+
+        UpdateActiveStream();
 
         loadingTcs?.SetResult();
         loadingTcs = null;

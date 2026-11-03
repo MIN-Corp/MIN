@@ -42,6 +42,11 @@ public class ScreenDemoWindowsService : IHostedService
     int IHostedService.Priority => 50;
 
     /// <summary>
+    /// Окно демонстрации закрыто (roomId, subRoomId)
+    /// </summary>
+    public event Action<Guid, int>? DemoWindowClosed;
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoWindowsService"/>
     /// </summary>
     public ScreenDemoWindowsService(IEventBus eventBus,
@@ -63,7 +68,6 @@ public class ScreenDemoWindowsService : IHostedService
 
     Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
-        eventBus.Subscribe<ScreenDemoEstablishedEvent>(OnDemoEstablished);
         eventBus.Subscribe<ScreenDemoEndedEvent>(OnDemoEnded);
         eventBus.Subscribe<ScreenDemoViewerLeftEvent>(OnViewerLeft);
         eventBus.Subscribe<RoomWentOfflineEvent>(OnRoomWentOffline);
@@ -77,22 +81,6 @@ public class ScreenDemoWindowsService : IHostedService
             ClosePreviewInternal();
             CloseAllViewersInternal();
         });
-        return Task.CompletedTask;
-    }
-
-    private Task OnDemoEstablished(ScreenDemoEstablishedEvent e, CancellationToken cancellationToken)
-    {
-        var selfId = identityService.SelfParticipant.Id;
-
-        if (e.SharerId == selfId)
-        {
-            Dispatcher.UIThread.Post(() => OpenPreview(e.RoomId, e.SubRoomId));
-        }
-        else
-        {
-            Dispatcher.UIThread.Post(() => OpenViewer(e.RoomId, e.SubRoomId, e.SharerId));
-        }
-
         return Task.CompletedTask;
     }
 
@@ -153,7 +141,10 @@ public class ScreenDemoWindowsService : IHostedService
         return Task.CompletedTask;
     }
 
-    private void OpenPreview(Guid roomId, int subRoomId)
+    /// <summary>
+    /// Показать превью демонстрирующего в отдельном окне
+    /// </summary>
+    public void ShowPreviewWindow(Guid roomId, int subRoomId)
     {
         if (previewWindow != null)
         {
@@ -170,29 +161,25 @@ public class ScreenDemoWindowsService : IHostedService
 
         previewRoomId = roomId;
 
-        previewWindow.Closed += async (_, _) =>
+        previewWindow.Closed += (_, _) =>
         {
             if (previewWindow?.DataContext is ScreenDemoPreviewViewModel viewModel)
             {
                 viewModel.Dispose();
-
-                // Крест на предпросмотре = завершить демонстрацию
-                var demo = screenDemoStateService.GetDemo(viewModel.Context.RoomId, viewModel.Context.SubRoomId);
-
-                if (!viewModel.IsStopping && demo != null && demo.Sharer.Id == identityService.SelfParticipant.Id)
-                {
-                    await chatScreenDemoService.EndDemoAsync(viewModel.Context.RoomId, viewModel.Context.SubRoomId);
-                }
             }
 
             previewWindow = null;
+            DemoWindowClosed?.Invoke(roomId, subRoomId);
         };
 
         previewWindow.Show();
         logger.Log("Открыто окно предпросмотра демонстрации");
     }
 
-    private void OpenViewer(Guid roomId, int subRoomId, Guid sharerId)
+    /// <summary>
+    /// Показать демо зрителя в отдельном окне
+    /// </summary>
+    public void ShowViewerWindow(Guid roomId, int subRoomId, Guid sharerId)
     {
         var key = (roomId, sharerId);
 
@@ -217,25 +204,12 @@ public class ScreenDemoWindowsService : IHostedService
         viewerWindows[key] = window;
         viewerSubRooms[key] = subRoomId;
 
-        window.Closed += async (_, _) =>
+        window.Closed += (_, _) =>
         {
-            try
-            {
-                viewModel.Dispose();
-                viewerWindows.Remove(key);
-                viewerSubRooms.Remove(key);
-
-                var demo = screenDemoStateService.GetDemo(roomId, subRoomId);
-
-                if (!viewModel.IsLeaving && demo != null && demo.ViewerIds.Contains(identityService.SelfParticipant.Id))
-                {
-                    await chatScreenDemoService.LeaveDemoAsync(roomId, subRoomId);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.Log($"Ошибка при закрытии окна просмотра: {ex}", LogLevel.Error);
-            }
+            viewModel.Dispose();
+            viewerWindows.Remove(key);
+            viewerSubRooms.Remove(key);
+            DemoWindowClosed?.Invoke(roomId, subRoomId);
         };
 
         window.Show();

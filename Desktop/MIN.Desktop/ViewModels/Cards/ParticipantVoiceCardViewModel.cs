@@ -63,6 +63,24 @@ public partial class ParticipantVoiceCardViewModel : CardViewModelBase
     public partial int DesiredVolume { get; set; } = 100;
 
     /// <summary>
+    /// Демонстрирует ли участник экран
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsStreaming { get; set; }
+
+    /// <summary>
+    /// Подкомната демонстрации участника (если демонстрирует)
+    /// </summary>
+    [ObservableProperty]
+    public partial int? DemoSubRoomId { get; set; }
+
+    /// <summary>
+    /// Смотрит ли локальный пользователь демонстрацию этого участника
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsWatchingDemo { get; set; }
+
+    /// <summary>
     /// Событие по переключению заглушки участника
     /// </summary>
     public Action<bool>? OnForceMuted;

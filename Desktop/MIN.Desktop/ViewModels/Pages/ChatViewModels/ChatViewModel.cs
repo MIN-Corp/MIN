@@ -10,6 +10,7 @@ using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.DI.FeatureCollection;
@@ -25,6 +26,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     private readonly DiscoveryViewModel discoveryViewModel;
     private readonly MainSideBarViewModel mainSideBarViewModel;
     private readonly MainWindowViewModel mainWindowViewModel;
+    private readonly ScreenDemoWindowsService screenDemoWindowsService;
     private readonly IDialogService dialogService;
 
     private readonly IMinFeatureCollection featureCollection;
@@ -87,6 +89,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         MainSideBarViewModel mainSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
         MainWindowViewModel mainWindowViewModel,
+        ScreenDemoWindowsService screenDemoWindowsService,
         IMinFeatureCollection featureCollection,
         IRoomConnectionUiService roomConnectionUiService,
         IDialogService dialogService)
@@ -96,6 +99,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         this.mainSideBarViewModel = mainSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
         this.mainWindowViewModel = mainWindowViewModel;
+        this.screenDemoWindowsService = screenDemoWindowsService;
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
@@ -115,6 +119,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     private void InitializeUiActions()
     {
         InitializeLayoutStyles();
+        InitializeDemoWindows();
         InitializeObservableCollections();
     }
 

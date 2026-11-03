@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cards="clr-namespace:MIN.Desktop.ViewModels.Cards"
+             mc:Ignorable="d"
+             x:Class="MIN.Desktop.Views.Cards.ScreenDemoStreamView"
+             x:DataType="cards:ScreenDemoStreamViewModel">
+
+    <Panel MinHeight="180">
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8"
+                    IsVisible="{Binding !HasFrame}">
+            <Svg Path="/Assets/Icons/loading.svg"
+                 Width="32" Height="32"
+                 HorizontalAlignment="Center"
+                 Classes="rotating"/>
+            <TextBlock Text="Ожидание потока демонстрации..."
+                       Opacity="0.7"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <Image x:Name="StreamImage"
+               Source="{Binding FrameImage}"
+               Stretch="Uniform"
+               IsVisible="{Binding HasFrame}" />
+    </Panel>
+</UserControl>

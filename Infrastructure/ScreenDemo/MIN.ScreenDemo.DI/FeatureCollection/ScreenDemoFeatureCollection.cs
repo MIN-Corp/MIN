@@ -11,18 +11,18 @@ public class ScreenDemoFeatureCollection : IScreenDemoFeatureCollection
     /// <inheritdoc cref="IScreenDemoPlaybackService"/>
     public IScreenDemoPlaybackService ScreenDemoPlayback { get; }
 
-    /// <inheritdoc cref="IScreenSourceService"/>
-    public IScreenSourceService ScreenSources { get; }
+    /// <inheritdoc cref="IScreenDemoTransmitter"/>
+    public IScreenDemoTransmitter ScreenDemoTransmitter { get; }
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoFeatureCollection"/>
     /// </summary>
     public ScreenDemoFeatureCollection(IScreenDemoStateService screenDemoState,
         IScreenDemoPlaybackService screenDemoPlayback,
-        IScreenSourceService screenSources)
+        IScreenDemoTransmitter screenDemoTransmitter)
     {
         ScreenDemoState = screenDemoState;
         ScreenDemoPlayback = screenDemoPlayback;
-        ScreenSources = screenSources;
+        ScreenDemoTransmitter = screenDemoTransmitter;
     }
 }

@@ -39,10 +39,22 @@ public partial class ScreenDemoSessionViewModel : ObservableObject
     public partial bool IsWatching { get; set; }
 
     /// <summary>
+    /// Является ли локальный пользователь вообще в звонке
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsInVoiceChat { get; set; }
+
+    /// <summary>
     /// Количество зрителей
     /// </summary>
     [ObservableProperty]
     public partial int ViewerCount { get; set; }
+
+    /// <summary>
+    /// Показывается ли этот поток сейчас (во встроенной области / всплывающем окне)
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsActiveStream { get; set; }
 
     /// <summary>
     /// Событие по нажатию на присоединение
@@ -60,14 +72,20 @@ public partial class ScreenDemoSessionViewModel : ObservableObject
     public Func<Task>? Stopped { get; set; }
 
     /// <summary>
+    /// Событие по нажатию на остановку демонстрации
+    /// </summary>
+    public Func<Task>? Popout { get; set; }
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoSessionViewModel"/>
     /// </summary>
-    public ScreenDemoSessionViewModel(int subRoomId, Guid sharerId, string sharerName, bool isMine, int viewerCount)
+    public ScreenDemoSessionViewModel(int subRoomId, Guid sharerId, string sharerName, bool isMine, bool isInVoiceChat, int viewerCount)
     {
         SubRoomId = subRoomId;
         SharerId = sharerId;
         SharerName = sharerName;
         IsMine = isMine;
+        IsInVoiceChat = isInVoiceChat;
         ViewerCount = viewerCount;
     }
 
@@ -82,4 +100,8 @@ public partial class ScreenDemoSessionViewModel : ObservableObject
     [RelayCommand]
     private async Task OnStoppedClicked()
         => await Stopped?.Invoke()!;
+
+    [RelayCommand]
+    private async Task OPopoutClicked()
+        => await Popout?.Invoke()!;
 }

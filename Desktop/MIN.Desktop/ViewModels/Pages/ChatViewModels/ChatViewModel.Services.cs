@@ -178,9 +178,10 @@ public partial class ChatViewModel
     /// <summary>
     /// Завершить собственную демонстрацию
     /// </summary>
+    [RelayCommand]
     private async Task StopSharingScreen()
     {
-        var ownDemo = ScreenDemoSessions.FirstOrDefault(x => x.IsMine);
+        var ownDemo = featureCollection.ScreenDemo.ScreenDemoState.GetOwnDemo(RoomId, localParticipant.Id);
 
         if (ownDemo == null)
         {
@@ -191,16 +192,52 @@ public partial class ChatViewModel
     }
 
     /// <summary>
-    /// Присоединиться к чужой демонстрации как зритель
+    /// Смотреть демонстрацию (можно смотреть только одну одновременно)
     /// </summary>
+    [RelayCommand]
     private async Task JoinScreenDemo(int subRoomId)
-        => await featureCollection.Chat.ChatScreenDemoService.JoinDemoAsync(RoomId, subRoomId, roomCts.Token);
+    {
+        var selfId = localParticipant.Id;
+        var demos = featureCollection.ScreenDemo.ScreenDemoState.GetActiveDemos(RoomId);
+
+        var target = demos.FirstOrDefault(x => x.SubRoomId == subRoomId);
+
+        if (target == null)
+        {
+            return;
+        }
+
+        if (target.ViewerIds.Contains(selfId))
+        {
+            return;
+        }
+
+        var watched = demos.FirstOrDefault(x => x.ViewerIds.Contains(selfId) && x.SubRoomId != subRoomId);
+
+        if (watched != null)
+        {
+            // правило одной демонстрации: сначала выходим из текущей
+            await featureCollection.Chat.ChatScreenDemoService.LeaveDemoAsync(RoomId, watched.SubRoomId, roomCts.Token);
+        }
+
+        await featureCollection.Chat.ChatScreenDemoService.JoinDemoAsync(RoomId, subRoomId, roomCts.Token);
+    }
 
     /// <summary>
     /// Покинуть чужую демонстрацию из панели звонка
     /// </summary>
+    [RelayCommand]
     private async Task LeaveScreenDemo(int subRoomId)
-        => await featureCollection.Chat.ChatScreenDemoService.LeaveDemoAsync(RoomId, subRoomId, roomCts.Token);
+    {
+        var demo = featureCollection.ScreenDemo.ScreenDemoState.GetDemo(RoomId, subRoomId);
+
+        if (demo == null || !demo.ViewerIds.Contains(localParticipant.Id))
+        {
+            return;
+        }
+
+        await featureCollection.Chat.ChatScreenDemoService.LeaveDemoAsync(RoomId, subRoomId, roomCts.Token);
+    }
 
     private async Task OnMuteSelfRequested()
     {

@@ -244,7 +244,8 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
 
         if (fragmentCount > ScreenDemoConstants.MaxFragmentsPerFrame)
         {
-            logger.Log($"Кадр {currentFrameId} не влез в {ScreenDemoConstants.MaxFragmentsPerFrame} фрагментов ({encoded.Length} байт) — отброшен", LogLevel.Warning);
+            logger.Log($"Кадр {currentFrameId} не влез в {ScreenDemoConstants.MaxFragmentsPerFrame} фрагментов ({encoded.Length} байт) — отброшен",
+                LogLevel.Warning);
             yield break;
         }
 

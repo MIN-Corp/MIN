@@ -70,7 +70,7 @@ public partial class ChatViewModel
     public partial bool IsInVoiceChat { get; set; }
 
     /// <summary>
-    /// Выключил ли микрофон локальный пользователь
+    /// Выключен ли у пользователя микрофон
     /// </summary>
     [ObservableProperty]
     public partial bool IsMuted { get; set; }
@@ -81,18 +81,23 @@ public partial class ChatViewModel
     [ObservableProperty]
     public partial TimeSpan CallDuration { get; set; }
 
-    // Screen demo
-
-    /// <summary>
-    /// Активные демонстрации экрана в звонке
-    /// </summary>
-    public AvaloniaList<ScreenDemoSessionViewModel> ScreenDemoSessions { get; } = [];
-
     /// <summary>
     /// Демонстрирует ли экран локальный пользователь прямо сейчас
     /// </summary>
     [ObservableProperty]
     public partial bool IsSharingScreen { get; set; }
+
+    /// <summary>
+    /// Поток демонстрации вынесен в отдельное окно (встроенная область показывает заглушку)
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsStreamPoppedOut { get; set; }
+
+    /// <summary>
+    /// Активный поток демонстрации, показываемый во встроенной области
+    /// </summary>
+    [ObservableProperty]
+    public partial ScreenDemoStreamViewModel? ActiveStreamViewModel { get; set; }
 
     #region Layouting
 
@@ -108,6 +113,11 @@ public partial class ChatViewModel
 
         this.RegisterMessageListener<LayoutModeChangedReferenceCommand, ChatViewModel>((msg, _) =>
             CurrentLayout = msg.Layout);
+    }
+
+    private void InitializeDemoWindows()
+    {
+        screenDemoWindowsService.DemoWindowClosed += OnDemoWindowClosed;
     }
 
     [RelayCommand]
@@ -227,10 +237,25 @@ public partial class ChatViewModel
         await OnVoiceCallJoinRequested(activeVoiceChatSubroomId.Value);
     }
 
+    private void MoveStreamingParticipantFirst(Guid sharerId)
+    {
+        var card = VoiceChatParticipants.FirstOrDefault(x => x.ParticipantId == sharerId);
+
+        if (card == null || VoiceChatParticipants.IndexOf(card) == 0)
+        {
+            return;
+        }
+
+        VoiceChatParticipants.Remove(card);
+        VoiceChatParticipants.Insert(0, card);
+    }
+
     [RelayCommand]
     private async Task DemonstrateScreen()
     {
-        if (IsSharingScreen)
+        var ownDemo = featureCollection.ScreenDemo.ScreenDemoState.GetOwnDemo(RoomId, localParticipant.Id);
+
+        if (ownDemo != null)
         {
             await StopSharingScreen();
             return;
@@ -246,34 +271,83 @@ public partial class ChatViewModel
         await featureCollection.Chat.ChatScreenDemoService.StartDemoAsync(RoomId, picked.SelectedSource, roomCts.Token);
     }
 
-    private void AddScreenDemoSession(int subRoomId, Guid sharerId, IReadOnlyList<Guid> viewerIds)
+    /// <summary>
+    /// Вынести активный поток в отдельное окно
+    /// </summary>
+    [RelayCommand]
+    private void PopoutActiveStream()
     {
-        if (ScreenDemoSessions.Any(x => x.SubRoomId == subRoomId))
+        if (ActiveStreamViewModel == null || IsStreamPoppedOut)
         {
             return;
         }
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
-        var sharerName = context.Participants.TryGetParticipantById(sharerId, out var sharer)
-            ? sharer!.Name
-            : "неизвестный участник";
+        IsStreamPoppedOut = true;
 
-        var card = new ScreenDemoSessionViewModel(subRoomId, sharerId, sharerName,
-            sharerId == localParticipant.Id, viewerIds.Count)
+        if (ActiveStreamViewModel.IsOwnStream)
         {
-            IsWatching = viewerIds.Contains(localParticipant.Id),
-        };
-
-        card.Joined += () => JoinScreenDemo(subRoomId);
-        card.Left += () => LeaveScreenDemo(subRoomId);
-        card.Stopped += StopSharingScreen;
-
-        ScreenDemoSessions.Add(card);
-
-        if (sharerId == localParticipant.Id)
-        {
-            IsSharingScreen = true;
+            screenDemoWindowsService.ShowPreviewWindow(RoomId, ActiveStreamViewModel.SubRoomId);
         }
+        else
+        {
+            screenDemoWindowsService.ShowViewerWindow(RoomId, ActiveStreamViewModel.SubRoomId, ActiveStreamViewModel.SharerId);
+        }
+    }
+
+    private void OnDemoWindowClosed(Guid roomId, int subRoomId)
+    {
+        if (roomId == RoomId)
+        {
+            IsStreamPoppedOut = false;
+        }
+    }
+
+    /// <summary>
+    /// Синхронизировать карточки участников с состоянием демонстраций
+    /// и пересчитать активный поток: просматриваемый ?? собственный
+    /// </summary>
+    private void UpdateActiveStream()
+    {
+        var activeDemos = featureCollection.ScreenDemo.ScreenDemoState.GetActiveDemos(RoomId);
+        var selfId = localParticipant.Id;
+
+        // 1. Карточки — из состояния демонстраций (устойчиво к пересборке карточек)
+        foreach (var card in VoiceChatParticipants)
+        {
+            var demo = activeDemos.FirstOrDefault(x => x.Sharer.Id == card.ParticipantId);
+
+            card.IsStreaming = demo != null;
+            card.DemoSubRoomId = demo?.SubRoomId;
+            card.IsWatchingDemo = demo != null && demo.ViewerIds.Contains(selfId);
+        }
+
+        // 2. Активный поток
+        var watchedCard = VoiceChatParticipants.FirstOrDefault(x => x.IsWatchingDemo);
+        var ownCard = VoiceChatParticipants.FirstOrDefault(x => x.IsSelf && x.IsStreaming);
+        var activeCard = watchedCard ?? (IsSharingScreen ? ownCard : null);
+
+        if (activeCard == null)
+        {
+            ActiveStreamViewModel?.Dispose();
+            ActiveStreamViewModel = null;
+            return;
+        }
+
+        var isOwn = activeCard.IsSelf;
+        var subRoomId = activeCard.DemoSubRoomId!.Value;
+
+        if (ActiveStreamViewModel != null
+            && ActiveStreamViewModel.SubRoomId == subRoomId
+            && ActiveStreamViewModel.IsOwnStream == isOwn)
+        {
+            return;
+        }
+
+        ActiveStreamViewModel?.Dispose();
+
+        ActiveStreamViewModel = isOwn
+            ? new ScreenDemoStreamViewModel(RoomId, subRoomId, activeCard.ParticipantId, featureCollection.ScreenDemo.ScreenDemoTransmitter)
+            : new ScreenDemoStreamViewModel(RoomId, subRoomId, activeCard.ParticipantId, featureCollection.ScreenDemo.ScreenDemoPlayback);
     }
 
     [RelayCommand]
@@ -460,6 +534,9 @@ public partial class ChatViewModel
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
         mainWindowViewModel.OnMinimizedToTray -= Parent_OnMinimizedToTray;
+
+        screenDemoWindowsService.DemoWindowClosed -= OnDemoWindowClosed;
+        ActiveStreamViewModel?.Dispose();
 
         featureCollection.Helper.NotificationService.OnNotificationClick -= OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked -= NotificationTurnOffClicked;

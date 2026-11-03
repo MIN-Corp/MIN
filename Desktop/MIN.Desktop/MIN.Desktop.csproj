@@ -122,5 +122,9 @@
       <DependentUpon>ScreenDemoViewerWindow.axaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\Cards\ScreenDemoStreamView.axaml.cs">
+      <DependentUpon>ScreenDemoStreamView.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

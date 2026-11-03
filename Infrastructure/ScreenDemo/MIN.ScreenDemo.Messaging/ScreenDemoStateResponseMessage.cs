@@ -18,5 +18,5 @@ public sealed class ScreenDemoStateResponseMessage : BaseMessage
     /// <summary>
     /// Активные демонстрации в комнате
     /// </summary>
-    public List<ScreenDemoStateEntry> Demos { get; set; } = [];
+    public List<ScreenDemoStateEntry> Demos { get; init; } = [];
 }

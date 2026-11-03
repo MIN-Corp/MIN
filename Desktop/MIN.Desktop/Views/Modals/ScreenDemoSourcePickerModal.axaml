@@ -7,7 +7,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Width="560"
+        Width="524"
         SizeToContent="Height"
         CanResize="False"
         x:Class="MIN.Desktop.Views.Modals.ScreenDemoSourcePickerModal"
@@ -66,7 +66,7 @@
 
             <ScrollViewer Classes="main" MaxHeight="620">
                 <StackPanel Margin="8" Spacing="8">
-                    <TextBlock Classes="header3" Text="Мониторы" />
+                    <TextBlock Classes="header4" Text="Мониторы" />
                     <ItemsControl ItemsSource="{Binding Monitors}"
                                   ItemTemplate="{StaticResource ScreenDemoSourceCardTemplate}">
                         <ItemsControl.ItemsPanel>
@@ -78,7 +78,7 @@
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
 
-                    <TextBlock Classes="header3" Text="Окна" />
+                    <TextBlock Classes="header4" Text="Приложения" />
                     <ItemsControl ItemsSource="{Binding Windows}"
                                   ItemTemplate="{StaticResource ScreenDemoSourceCardTemplate}">
                         <ItemsControl.ItemsPanel>

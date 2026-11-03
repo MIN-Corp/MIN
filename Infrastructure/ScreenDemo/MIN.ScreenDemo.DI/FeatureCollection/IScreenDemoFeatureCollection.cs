@@ -10,9 +10,9 @@ public interface IScreenDemoFeatureCollection
     /// <inheritdoc cref="IScreenDemoStateService"/>
     IScreenDemoStateService ScreenDemoState { get; }
 
+    /// <inheritdoc cref="IScreenDemoTransmitter"/>
+    IScreenDemoTransmitter ScreenDemoTransmitter { get; }
+
     /// <inheritdoc cref="IScreenDemoPlaybackService"/>
     IScreenDemoPlaybackService ScreenDemoPlayback { get; }
-
-    /// <inheritdoc cref="IScreenSourceService"/>
-    IScreenSourceService ScreenSources { get; }
 }
