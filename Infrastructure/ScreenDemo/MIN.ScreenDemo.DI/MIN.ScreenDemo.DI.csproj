@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\MIN.Common.Mvc\MIN.Common.Mvc.csproj" />
+    <ProjectReference Include="..\MIN.ScreenDemo.Handlers\MIN.ScreenDemo.Handlers.csproj" />
+    <ProjectReference Include="..\MIN.ScreenDemo.Messaging\MIN.ScreenDemo.Messaging.csproj" />
+    <ProjectReference Include="..\MIN.ScreenDemo.Services\MIN.ScreenDemo.Services.csproj" />
+  </ItemGroup>
+
+</Project>

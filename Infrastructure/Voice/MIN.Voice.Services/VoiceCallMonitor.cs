@@ -1,5 +1,4 @@
 ﻿using MIN.Common.Core.Contracts.Interfaces;
-using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
@@ -80,7 +79,7 @@ public class VoiceCallMonitor : IHostedService
             await messageRouter.PublishLocally(new VoiceCallEndedMessage()
             {
                 SubRoomId = voiceContext.Value.SubRoomId,
-            }, voiceContext.Value.RoomId, Role.Host, null, cancellationToken);
+            }, voiceContext.Value.RoomId, null, cancellationToken);
         }
     }
 

@@ -31,12 +31,12 @@ public partial class SessionChoosingViewModel : ModalViewModelBase
     /// <summary>
     /// Выбранная сессия
     /// </summary>
-    public Session? SelectedSession { get; set; }
+    public Session? SelectedSession { get; private set; }
 
     /// <summary>
     /// Выбран туннель
     /// </summary>
-    public bool IsTunnelCreationRequested { get; set; }
+    public bool IsTunnelCreationRequested { get; private set; }
 
     /// <summary>
     /// Скаченные сессии

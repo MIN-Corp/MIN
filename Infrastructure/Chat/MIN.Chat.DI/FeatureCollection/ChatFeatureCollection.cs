@@ -26,6 +26,9 @@ public class ChatFeatureCollection : IChatFeatureCollection
     /// <inheritdoc cref="IChatVoiceService"/>
     public IChatVoiceService ChatVoiceService { get; }
 
+    /// <inheritdoc cref="IChatScreenDemoService"/>
+    public IChatScreenDemoService ChatScreenDemoService { get; }
+
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ChatFeatureCollection"/>
     /// </summary>
@@ -35,7 +38,8 @@ public class ChatFeatureCollection : IChatFeatureCollection
         IChatStatusService chatStatusService,
         IChatFileService chatFileService,
         IChatSessionService chatSessionService,
-        IChatVoiceService chatVoiceService)
+        IChatVoiceService chatVoiceService,
+        IChatScreenDemoService chatScreenDemoService)
     {
         ChatRoomService = chatRoomService;
         ChatMessageService = chatMessageService;
@@ -44,5 +48,6 @@ public class ChatFeatureCollection : IChatFeatureCollection
         ChatFileService = chatFileService;
         ChatSessionService = chatSessionService;
         ChatVoiceService = chatVoiceService;
+        ChatScreenDemoService = chatScreenDemoService;
     }
 }

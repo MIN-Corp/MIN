@@ -17,6 +17,7 @@ using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.FileTransfer.Events;
 using MIN.FileTransfer.Services.Contracts.Models.Enums;
+using MIN.ScreenDemo.Events;
 using MIN.Sessions.Core.Events;
 using MIN.Voice.Events;
 
@@ -52,6 +53,13 @@ public partial class ChatViewModel
         roomScope.Subscribe<VoiceParticipantJoinedEvent>(OnVoiceParticipantJoined);
         roomScope.Subscribe<VoiceParticipantLeftEvent>(OnVoiceParticipantLeft);
         roomScope.Subscribe<VoiceCallStateReceivedEvent>(VoiceCallStateReceived);
+
+        // Screen demo
+        roomScope.Subscribe<ScreenDemoStartedEvent>(OnScreenDemoStarted);
+        roomScope.Subscribe<ScreenDemoEndedEvent>(OnScreenDemoEnded);
+        roomScope.Subscribe<ScreenDemoEstablishedEvent>(OnScreenDemoEstablished);
+        roomScope.Subscribe<ScreenDemoViewerLeftEvent>(OnScreenDemoViewerLeft);
+        roomScope.Subscribe<ScreenDemoStateReceivedEvent>(OnScreenDemoStateReceived);
 
         // Other
         roomScope.Subscribe<RoomInfoUpdatedMessageEvent>(OnRoomInfoUpdated);
@@ -114,6 +122,8 @@ public partial class ChatViewModel
         activeVoiceChatSubroomId = null;
         IsInVoiceChat = false;
         IsVoiceChatActive = false;
+        IsSharingScreen = false;
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
@@ -122,17 +132,23 @@ public partial class ChatViewModel
         VoiceChatParticipants.Clear();
         callStartedAt = eventMessage.StartedAt;
         IsVoiceChatActive = eventMessage.ActiveSubRoomId != null;
+
         if (IsVoiceChatActive)
         {
             callTimer.Start();
         }
+
         activeVoiceChatSubroomId = eventMessage.ActiveSubRoomId;
         foreach (var participant in eventMessage.CallParticipants)
         {
             AddToVoiceChatParticipant(participant);
         }
+
         loadingTcs?.SetResult();
         loadingTcs = null;
+
+        UpdateActiveStream();
+
         return Task.CompletedTask;
     }
 
@@ -186,6 +202,53 @@ public partial class ChatViewModel
 
     #endregion
 
+    #region Screen demo related
+
+    private Task OnScreenDemoStarted(ScreenDemoStartedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.SharerId == localParticipant.Id)
+        {
+            IsSharingScreen = true;
+        }
+
+        MoveStreamingParticipantFirst(eventMessage.SharerId);
+        UpdateActiveStream();
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoEnded(ScreenDemoEndedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        if (eventMessage.SharerId == localParticipant.Id)
+        {
+            IsSharingScreen = false;
+        }
+
+        UpdateActiveStream();
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoEstablished(ScreenDemoEstablishedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        UpdateActiveStream();
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoViewerLeft(ScreenDemoViewerLeftEvent eventMessage, CancellationToken cancellationToken)
+    {
+        UpdateActiveStream();
+        return Task.CompletedTask;
+    }
+
+    private Task OnScreenDemoStateReceived(ScreenDemoStateReceivedEvent eventMessage, CancellationToken cancellationToken)
+    {
+        loadingTcs?.SetResult();
+        loadingTcs = null;
+        UpdateActiveStream();
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
     #region File related
 
     private async Task OnFileMetaDataMessageReceived(FileMetaDataMessageReceivedEvent eventMessage, CancellationToken cancellationToken)
@@ -193,11 +256,13 @@ public partial class ChatViewModel
 
     private Task OnFileTransferStarted(FileTransferStartedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.Direction == FileTransferDirection.Upload && IsHost)
+        if (eventMessage.Direction != FileTransferDirection.Upload || !IsHost)
         {
-            var sanitizedSize = featureCollection.FileTransfer.FileHelperService.FormatFileSize(eventMessage.FileSize);
-            AddStatus(new FileUploadingStatus(eventMessage.FileMetadataId, eventMessage.FileName, eventMessage.Sender.Name, sanitizedSize));
+            return Task.CompletedTask;
         }
+
+        var sanitizedSize = featureCollection.FileTransfer.FileHelperService.FormatFileSize(eventMessage.FileSize);
+        AddStatus(new FileUploadingStatus(eventMessage.FileMetadataId, eventMessage.FileName, eventMessage.Sender.Name, sanitizedSize));
         return Task.CompletedTask;
     }
 

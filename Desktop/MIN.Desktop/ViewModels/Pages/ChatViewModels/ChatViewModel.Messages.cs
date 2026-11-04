@@ -308,7 +308,7 @@ public partial class ChatViewModel
 
         var messagesCount = context.Messages.GetMessageCount();
 
-        if (!IsHost && IsAvaibleForNetwork
+        if (!IsHost && IsAvailableForNetwork
             && olderInMemory.Count < StoreConstants.MessagesPageSize
             && messagesCount < room.TotalMessageCount)
         {
@@ -403,7 +403,7 @@ public partial class ChatViewModel
         var removeHeaders = isSelf || lastChatMessage?.SenderId == msg.SenderId;
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
-        var card = new ChatTextMessageViewModel(msg, dialogService, timePadding, isSelf, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
+        var card = new ChatTextMessageViewModel(msg, dialogService, timePadding, isSelf, isHost, removeHeaders, parentWindow.Clipboard, IsAvailableForNetwork);
         card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
         card.OnEditRequested += (newContent) => OnMessageEditRequested(msg.Id, newContent);
         card.OnReplyRequested += () => SetReplyTo(msg);
@@ -425,7 +425,7 @@ public partial class ChatViewModel
 
         var card = new ChatFileMessageViewModel(featureCollection.FileTransfer,
             dialogService, roomScope, msg, timePadding,
-            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
+            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvailableForNetwork);
 
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
@@ -450,7 +450,7 @@ public partial class ChatViewModel
 
         var card = new ChatFileImagePreviewMessageViewModel(featureCollection.FileTransfer,
             dialogService, roomScope, msg, timePadding,
-            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvaibleForNetwork);
+            localParticipant, isHost, removeHeaders, parentWindow.Clipboard, IsAvailableForNetwork);
 
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
@@ -476,7 +476,7 @@ public partial class ChatViewModel
         var card = new ChatSessionMessageViewModel(featureCollection.Sessions,
             featureCollection.Core.RoomFactory.GetRoomContext(RoomId), roomScope,
             featureCollection.Core.EventBus, dialogService, parentWindow.Clipboard,
-            msg, localParticipant, timePadding, IsHost, isHost, removeHeaders, IsAvaibleForNetwork);
+            msg, localParticipant, timePadding, IsHost, isHost, removeHeaders, IsAvailableForNetwork);
 
         card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
         card.OnJoinRequested += () => OnSessionJoinRequested(msg);
@@ -499,7 +499,7 @@ public partial class ChatViewModel
         var removeHeaders = isSelf || lastChatMessage?.SenderId == msg.SenderId;
         var timePadding = CalculateTimePadding(msg.Timestamp);
 
-        var card = new ChatVoiceCallMessageViewModel(roomScope, msg, localParticipant, timePadding, isHost, removeHeaders, IsAvaibleForNetwork);
+        var card = new ChatVoiceCallMessageViewModel(roomScope, msg, localParticipant, timePadding, isHost, removeHeaders, IsAvailableForNetwork);
 
         card.OnJoinRequested += () => OnVoiceCallJoinRequested(msg.SubRoomId);
         card.OnLeaveRequested += () => OnVoiceCallLeaveRequested(msg.SubRoomId);

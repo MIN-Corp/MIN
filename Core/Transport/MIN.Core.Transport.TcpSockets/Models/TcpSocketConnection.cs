@@ -21,7 +21,7 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
     private bool disposed;
 
     /// <summary>
-    /// Инициализирует новый экзмепляр <see cref="TcpSocketConnection"/>
+    /// Инициализирует новый экземпляр <see cref="TcpSocketConnection"/>
     /// </summary>
     public TcpSocketConnection(TcpClient client, ILoggerProvider logger, Guid? connectionId = null)
         : base(connectionId ?? Guid.NewGuid())

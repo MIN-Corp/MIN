@@ -42,5 +42,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageVersion>
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageVersion Include="H264Sharp" Version="1.6.0" />
+    <PackageVersion Include="Vortice.Direct3D11" Version="3.8.3" />
   </ItemGroup>
 </Project>

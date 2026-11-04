@@ -1,5 +1,4 @@
 ﻿using MIN.Chat.Services.Contracts.Interfaces;
-using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.History;
@@ -80,7 +79,7 @@ public sealed class ChatMessageService : IChatMessageService
             {
                 From = firstMessage.Timestamp,
                 UpTo = DateTime.Now,
-            }, roomId, Role.Client, null, cancellationToken);
+            }, roomId, null, cancellationToken);
         }
     }
 }

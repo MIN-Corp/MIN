@@ -19,6 +19,7 @@ using MIN.Desktop.ViewModels.Windows;
 using MIN.Desktop.Views;
 using MIN.Desktop.Views.Base;
 using MIN.DI;
+using MIN.ScreenDemo.Capture.Windows;
 using ServiceScan.SourceGenerator;
 
 namespace MIN.Desktop.Infrastructure.Extensions;
@@ -59,7 +60,9 @@ public static partial class ServiceCollectionExtensions
                 };
 
                 window.Closing += OnClose;
-                window.Closed += (_, e) => trayService?.Dispose();
+                window.Closed += (_, _) => trayService.Dispose();
+
+                return window;
 
                 async void OnClose(object? sender, WindowClosingEventArgs e)
                 {
@@ -82,14 +85,11 @@ public static partial class ServiceCollectionExtensions
                         catch (Exception ex)
                         {
                             Debug.WriteLine($"{svc.GetType().Name} failed at stopping : {ex.Message}");
-                            continue;
                         }
                     }
 
                     window.Close();
                 }
-
-                return window;
             })
             .AddDialogs()
             .AddViews()
@@ -106,6 +106,8 @@ public static partial class ServiceCollectionExtensions
         services.RegisterAsImplementedInterfaces<ChatViewModelFactory>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<RoomConnectionUiService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ChatViewsRegistry>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<ScreenDemoWindowsService>(ServiceLifetime.Singleton);
+        services.RegisterModule<ScreenDemoCaptureWindowsModule>();
         services.RegisterModule<MinModule>();
         return services;
     }
@@ -132,6 +134,8 @@ public static partial class ServiceCollectionExtensions
             dialog.DataContext = provider.GetRequiredService(viewModel);
             return dialog;
         }));
+        return;
+
         static Type GetViewModelType() => typeof(TDialog).GetCustomAttribute<ModalForViewModelAttribute>()?.ViewModelType
             ?? throw new Exception($"No ViewModel assigned to {typeof(TDialog).Name}");
     }

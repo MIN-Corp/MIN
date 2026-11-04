@@ -10,6 +10,7 @@ using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.DI.FeatureCollection;
@@ -25,6 +26,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     private readonly DiscoveryViewModel discoveryViewModel;
     private readonly MainSideBarViewModel mainSideBarViewModel;
     private readonly MainWindowViewModel mainWindowViewModel;
+    private readonly ScreenDemoWindowsService screenDemoWindowsService;
     private readonly IDialogService dialogService;
 
     private readonly IMinFeatureCollection featureCollection;
@@ -73,7 +75,12 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     /// Можем ли мы воспользоваться функцией комнаты
     /// </summary>
     [ObservableProperty]
-    public partial bool IsAvaibleForNetwork { get; set; }
+    public partial bool IsAvailableForNetwork { get; set; }
+
+    /// <summary>
+    /// Боковая панель чата
+    /// </summary>
+    public ChatSideBarViewModel SideBar => chatSideBarViewModel;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ChatViewModel"/>
@@ -82,6 +89,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         MainSideBarViewModel mainSideBarViewModel,
         DiscoveryViewModel discoveryViewModel,
         MainWindowViewModel mainWindowViewModel,
+        ScreenDemoWindowsService screenDemoWindowsService,
         IMinFeatureCollection featureCollection,
         IRoomConnectionUiService roomConnectionUiService,
         IDialogService dialogService)
@@ -91,6 +99,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         this.mainSideBarViewModel = mainSideBarViewModel;
         this.discoveryViewModel = discoveryViewModel;
         this.mainWindowViewModel = mainWindowViewModel;
+        this.screenDemoWindowsService = screenDemoWindowsService;
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
@@ -110,6 +119,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     private void InitializeUiActions()
     {
         InitializeLayoutStyles();
+        InitializeDemoWindows();
         InitializeObservableCollections();
     }
 
@@ -181,10 +191,10 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
     partial void OnIsOnlineChanged(bool value)
     {
-        IsAvaibleForNetwork = value || IsHost;
+        IsAvailableForNetwork = value || IsHost;
     }
 
-    partial void OnIsAvaibleForNetworkChanged(bool value)
+    partial void OnIsAvailableForNetworkChanged(bool value)
     {
         foreach (var message in Messages)
         {
@@ -201,7 +211,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         this.connectionId = connectionId;
         IsOnline = true;
         chatSideBarViewModel.IsOnline = true;
-        IsAvaibleForNetwork = IsOnline || IsHost;
+        IsAvailableForNetwork = IsOnline || IsHost;
     }
 
     /// <summary>
@@ -226,7 +236,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         IsHost = localParticipant.Id == room.HostParticipant.Id;
         IsOnline = room.IsOnline;
         chatSideBarViewModel.IsOnline = IsOnline;
-        IsAvaibleForNetwork = IsOnline || IsHost;
+        IsAvailableForNetwork = IsOnline || IsHost;
         RoomId = room.Id;
         SubscribeToEvents(featureCollection.Core.EventBus);
 
@@ -234,7 +244,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
         if (!IsHost && room.IsOnline)
         {
-            await RequestVoiceCallStateAsync();
+            await RequestStateActionsAsync();
         }
         else
         {

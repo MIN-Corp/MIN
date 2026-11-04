@@ -29,6 +29,32 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChangedEvent;
+        VoicePanelGrid.RowDefinitions[0].Height = GridLength.Auto;
+        VoicePanelExpander.PropertyChanged += OnVoicePanelPropertyChanged;
+    }
+
+    private void OnVoicePanelPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Expander.IsExpandedProperty)
+        {
+            // Сброс высоты строки после drag'а сплиттера:
+            // схлопнулось — сжалось к заголовку, раскрылось — размер возвращает контент
+            VoicePanelGrid.RowDefinitions[0].Height = GridLength.Auto;
+        }
+
+        if (e.Property != Expander.IsExpandedProperty)
+        {
+            return;
+        }
+
+        chatVm = DataContext as ChatViewModel;
+
+        // Схлопывание сжимает панель до заголовка, раскрытие возвращает контент.
+        // Сбрасываем высоту строки в Auto — размер тащит контент, а не след_drag'а сплиттера
+        VoicePanelGrid.RowDefinitions[0].MinHeight = VoicePanelExpander.IsExpanded ?
+                (chatVm?.IsStreamPoppedOut == true ? 240
+                : 140) : 0;
+        VoicePanelGrid.RowDefinitions[0].Height = GridLength.Auto;
     }
 
     /// <inheritdoc />

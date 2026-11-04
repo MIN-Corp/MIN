@@ -13,9 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Helpers\MIN.Helpers.Contracts\MIN.Helpers.Contracts.csproj" />
     <ProjectReference Include="..\MIN.Voice.Events\MIN.Voice.Events.csproj" />
-    <ProjectReference Include="..\MIN.Voice.Services.Contacts\MIN.Voice.Services.Contacts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

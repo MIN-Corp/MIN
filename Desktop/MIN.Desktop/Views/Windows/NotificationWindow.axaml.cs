@@ -80,7 +80,10 @@ public partial class NotificationWindow : Window
         await CloseWithAnimation();
     }
 
-    private async Task CloseWithAnimation()
+    /// <summary>
+    /// Закрыть уведомление
+    /// </summary>
+    public async Task CloseWithAnimation()
     {
         dismissTimer.Stop();
         IsDismissing = true;

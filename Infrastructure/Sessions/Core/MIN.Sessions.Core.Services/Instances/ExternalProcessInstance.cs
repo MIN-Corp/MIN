@@ -106,6 +106,12 @@ public class ExternalProcessInstance : ISessionInstance
         var psi = new ProcessStartInfo
         {
             FileName = fullPath,
+            CreateNoWindow =
+                #if DEBUG
+                    false,
+                #else
+                    Context.Role == SessionInstanceRole.Server,
+                #endif
             UseShellExecute = false,
         };
         psi.ArgumentList.Add(transport.GetConnectionString());

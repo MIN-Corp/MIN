@@ -28,21 +28,24 @@
             <StackPanel Classes="form" Margin="24">
                 <Border Classes="card">
                       <StackPanel Classes="form">
-                        <TextBlock Text="IP адрес" />
-                        <TextBox
-                            MaxLength="120"
-                            MaxWidth="400"
-                            Text="{Binding IpAddress, Converter={converters:TrimConverter}}"
-                            PlaceholderText="Введите IP адрес...">
-                            <Interaction.Behaviors>
-                                <behaviors:FocusOnViewShowBehavior />
-                                <EventTriggerBehavior EventName="LosingFocus">
-                                    <InvokeCommandAction Command="{Binding TryParsePortAndValidateCommand}" />
-                                </EventTriggerBehavior>
-                                <EventTriggerBehavior EventName="GettingFocus">
-                                    <InvokeCommandAction Command="{Binding StartEditingCommand}" />
-                                </EventTriggerBehavior>
-                            </Interaction.Behaviors>
+                          <TextBlock Text="IP адрес" />
+                          <TextBox
+                              MaxLength="120"
+                              MaxWidth="400"
+                              Text="{Binding IpAddress, Converter={converters:TrimConverter}}"
+                              PlaceholderText="Введите IP адрес...">
+                                <Interaction.Behaviors>
+                                    <behaviors:FocusOnViewShowBehavior />
+                                    <EventTriggerBehavior EventName="LosingFocus">
+                                        <InvokeCommandAction Command="{Binding TryParsePortAndValidateCommand}" />
+                                    </EventTriggerBehavior>
+                                    <EventTriggerBehavior EventName="GettingFocus">
+                                        <InvokeCommandAction Command="{Binding StartEditingCommand}" />
+                                    </EventTriggerBehavior>
+                                    <EventTriggerBehavior EventName="PastingFromClipboard">
+                                        <InvokeCommandAction Command="{Binding PasteIpAddressCommand}" />
+                                    </EventTriggerBehavior>
+                                </Interaction.Behaviors>
                         </TextBox>
                         <TextBlock IsVisible="{Binding ErrorMessage,
                             Converter={converters:NonEqualityConverter},

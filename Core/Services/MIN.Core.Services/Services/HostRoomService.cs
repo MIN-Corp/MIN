@@ -16,6 +16,7 @@ using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Events;
+using MIN.Core.Transport.Contracts.Extensions;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Models;
 using MIN.Helpers.Contracts.Interfaces;
@@ -203,7 +204,9 @@ internal sealed class HostRoomService
         {
             existingRoom.IsOnline = true;
             existingRoom.LocalRoomSettings.NetworkOptions = networkOptions;
-            existingRoom.ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken);
+            existingRoom.ConnectionAddresses = MergeCustomEndpoints(
+                await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken),
+                existingRoom.LocalRoomSettings);
             roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             var existingContext = roomFactory.GetOrCreateContext(roomId);
@@ -218,9 +221,12 @@ internal sealed class HostRoomService
         roomInfo.HostParticipant = localParticipant;
         var room = new Room(roomInfo)
         {
-            ConnectionAddresses = await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken)
+            ConnectionAddresses = [],
+            LocalRoomSettings = { NetworkOptions = networkOptions }
         };
-        room.LocalRoomSettings.NetworkOptions = networkOptions;
+        room.ConnectionAddresses = MergeCustomEndpoints(
+            await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken),
+            room.LocalRoomSettings);
 
         roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -260,7 +266,7 @@ internal sealed class HostRoomService
         }
 
         var newEndpoints = await transport.SetUpEndpoints(connectionId, newNetworkOptions, room.LocalRoomSettings.NetworkOptions, cancellationToken);
-        room.ConnectionAddresses = newEndpoints;
+        room.ConnectionAddresses = MergeCustomEndpoints(newEndpoints, room.LocalRoomSettings);
         room.LocalRoomSettings.NetworkOptions = newNetworkOptions;
 
         return room.ConnectionAddresses;
@@ -397,5 +403,13 @@ internal sealed class HostRoomService
         roomFactory.DestroyContext(roomId);
         await eventBus.PublishAsync(new RoomWentOfflineEvent() { RoomId = roomId });
         await eventBus.PublishAsync(new RoomDestroyedEvent() { RoomId = roomId });
+    }
+
+    private static IEnumerable<IEndpoint> MergeCustomEndpoints(IEnumerable<IEndpoint> endpoints, LocalRoomSettings localRoomSettings)
+    {
+        var enumerable = endpoints as IEndpoint[] ?? endpoints.ToArray();
+        return enumerable
+            .Concat(localRoomSettings.CustomEndpoints.Where(custom => !enumerable.Any(saved => saved.SameTarget(custom))))
+            .ToList();
     }
 }
