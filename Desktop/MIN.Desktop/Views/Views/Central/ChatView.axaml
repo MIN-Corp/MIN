@@ -426,15 +426,19 @@
 
                 <!-- Voice chat -->
 
-                <Grid RowDefinitions="Auto,6,*">
+                <Grid x:Name="VoicePanelGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition MaxHeight="540" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
                     <Border Grid.Row="0"
                             Background="{DynamicResource VoiceBackground}"
                             CornerRadius="{DynamicResource CornerRadiusLarge}"
                             Padding="{DynamicResource PaddingTopBar}"
-                            MaxHeight="460"
-                            MinHeight="140"
                             IsVisible="{Binding IsVoiceChatActive}">
-                        <Expander Classes="main" IsExpanded="True">
+                        <Expander x:Name="VoicePanelExpander" Classes="main" IsExpanded="True">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock FontSize="{DynamicResource FontSizeH5}"
@@ -455,12 +459,10 @@
                                 </Style>
                             </Expander.Styles>
 
-                            <Border
-                                CornerRadius="{DynamicResource CornerRadiusLarge}">
-
-                                <StackPanel Margin="0,8,0,0" Spacing="8">
-                                    <ScrollViewer
-                                        scrollBehaviors:PrimaryScrollWheelBehavior.PrimaryScrollWheelDirection="Horizontal">
+                            <Border CornerRadius="{DynamicResource CornerRadiusLarge}">
+                                <Grid Margin="0,8,0,0" RowDefinitions="Auto,*,Auto">
+                                    <ScrollViewer Grid.Row="0"
+                                                  scrollBehaviors:PrimaryScrollWheelBehavior.PrimaryScrollWheelDirection="Horizontal">
                                         <ItemsControl ItemsSource="{Binding VoiceChatParticipants}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
@@ -635,9 +637,7 @@
 
                                     <!-- Демонстрации экрана -->
 
-                                    <!-- Встроенная область демонстрации -->
-
-                                    <Panel>
+                                    <Panel Grid.Row="1">
                                         <ContentControl Content="{Binding ActiveStreamViewModel}"
                                                         IsVisible="{Binding !IsStreamPoppedOut}">
                                             <ContentControl.DataTemplates>
@@ -658,18 +658,23 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <Button Classes="icon small"
+                                        <Button Classes="icon"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Top"
                                                 Margin="4"
                                                 ToolTip.Tip="В отдельное окно"
-                                                IsVisible="{Binding ActiveStreamViewModel, Converter={converters:EqualityConverter}, ConverterParameter={x:Null}, ConverterParameter=Inverse}"
+                                                IsVisible="{Binding ActiveStreamViewModel,
+                                                    Converter={converters:NonEqualityConverter},
+                                                    ConverterParameter={x:Null}}"
                                                 Command="{Binding PopoutActiveStreamCommand}">
                                             <Svg Path="/Assets/Icons/answer.svg" />
                                         </Button>
                                     </Panel>
 
-                                    <StackPanel HorizontalAlignment="Center"
+                                     <!-- Voice button actions -->
+
+                                    <StackPanel Grid.Row="2"
+                                        HorizontalAlignment="Center"
                                         Spacing="8"
                                         Orientation="Horizontal">
 
@@ -741,7 +746,7 @@
                                             <Svg Path="/Assets/Icons/phone-disconnect.svg" />
                                         </Button>
                                     </StackPanel>
-                                </StackPanel>
+                                </Grid>
                             </Border>
                         </Expander>
                     </Border>
@@ -751,13 +756,22 @@
                                   HorizontalAlignment="Stretch"
                                   ResizeDirection="Rows"
                                   ResizeBehavior="PreviousAndNext"
-                                  Background="Transparent" />
+                                  Background="Transparent">
+                        <GridSplitter.IsVisible>
+                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                <Binding Path="IsVoiceChatActive" />
+                                <Binding Path="ActiveStreamViewModel"
+                                         Converter="{converters:NonEqualityConverter}"
+                                         ConverterParameter="{x:Null}" />
+                            </MultiBinding>
+                        </GridSplitter.IsVisible>
+                    </GridSplitter>
 
                     <!-- область сообщений: тот Border/разметка, что раньше заполняла DockPanel -->
 
-                   <!-- Messages -->
+                    <!-- Messages -->
 
-                    <Panel Grid.Row="2" VerticalAlignment="Bottom" >
+                    <Panel Grid.Row="2">
                         <ScrollViewer
                             x:Name="MessagesScroller"
                             ScrollChanged="OnMessagesScrollChanged"

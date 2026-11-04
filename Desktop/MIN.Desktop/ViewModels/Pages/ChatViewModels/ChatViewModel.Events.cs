@@ -132,17 +132,23 @@ public partial class ChatViewModel
         VoiceChatParticipants.Clear();
         callStartedAt = eventMessage.StartedAt;
         IsVoiceChatActive = eventMessage.ActiveSubRoomId != null;
+
         if (IsVoiceChatActive)
         {
             callTimer.Start();
         }
+
         activeVoiceChatSubroomId = eventMessage.ActiveSubRoomId;
         foreach (var participant in eventMessage.CallParticipants)
         {
             AddToVoiceChatParticipant(participant);
         }
+
         loadingTcs?.SetResult();
         loadingTcs = null;
+
+        UpdateActiveStream();
+
         return Task.CompletedTask;
     }
 
@@ -235,20 +241,9 @@ public partial class ChatViewModel
 
     private Task OnScreenDemoStateReceived(ScreenDemoStateReceivedEvent eventMessage, CancellationToken cancellationToken)
     {
-        IsSharingScreen = false;
-
-        foreach (var streamingCard in eventMessage.Demos
-                     .Select(demo => VoiceChatParticipants.FirstOrDefault(x => x.ParticipantId == demo.Sharer.Id))
-                     .OfType<ParticipantVoiceCardViewModel>())
-        {
-            streamingCard.IsStreaming = true;
-        }
-
-        UpdateActiveStream();
-
         loadingTcs?.SetResult();
         loadingTcs = null;
-
+        UpdateActiveStream();
         return Task.CompletedTask;
     }
 
