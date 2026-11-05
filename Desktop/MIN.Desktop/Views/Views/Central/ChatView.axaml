@@ -771,7 +771,7 @@
 
                     <!-- Messages -->
 
-                    <Panel Grid.Row="2">
+                    <Panel Grid.Row="2" VerticalAlignment="Bottom">
                         <ScrollViewer
                             x:Name="MessagesScroller"
                             ScrollChanged="OnMessagesScrollChanged"
