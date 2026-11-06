@@ -82,6 +82,12 @@ public partial class ChatViewModel
     public partial TimeSpan CallDuration { get; set; }
 
     /// <summary>
+    /// Поддерживает ли текущая платформа демонстрацию экрана
+    /// </summary>
+    [ObservableProperty]
+    public partial bool CanShareScreen { get; set; }
+
+    /// <summary>
     /// Демонстрирует ли экран локальный пользователь прямо сейчас
     /// </summary>
     [ObservableProperty]

@@ -19,7 +19,11 @@ using MIN.Desktop.ViewModels.Windows;
 using MIN.Desktop.Views;
 using MIN.Desktop.Views.Base;
 using MIN.DI;
+#if MIN_WINDOWS
 using MIN.ScreenDemo.Capture.Windows;
+#else
+using MIN.ScreenDemo.DI;
+#endif
 using ServiceScan.SourceGenerator;
 
 namespace MIN.Desktop.Infrastructure.Extensions;
@@ -107,7 +111,11 @@ public static partial class ServiceCollectionExtensions
         services.RegisterAsImplementedInterfaces<RoomConnectionUiService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ChatViewsRegistry>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ScreenDemoWindowsService>(ServiceLifetime.Singleton);
+        #if MIN_WINDOWS
         services.RegisterModule<ScreenDemoCaptureWindowsModule>();
+        #else
+        services.RegisterModule<ScreenDemoCaptureUnsupportedModule>();
+        #endif
         services.RegisterModule<MinModule>();
         return services;
     }

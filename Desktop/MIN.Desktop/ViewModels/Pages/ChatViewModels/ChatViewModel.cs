@@ -103,6 +103,8 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
+        CanShareScreen = featureCollection.ScreenDemo.CanShareScreen;
+
         if (Design.IsDesignMode)
         {
             return;

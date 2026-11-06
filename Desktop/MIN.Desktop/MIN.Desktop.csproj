@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
       <OutputType>WinExe</OutputType>
-      <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+      <TargetFrameworks>net8.0-windows10.0.19041.0;net8.0</TargetFrameworks>
       <Nullable>enable</Nullable>
       <LangVersion>preview</LangVersion>
       <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -12,6 +12,7 @@
       <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
       <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
       <IncludeAllContentForSelfExtract>false</IncludeAllContentForSelfExtract>
+      <DefineConstants Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">$(DefineConstants);MIN_WINDOWS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,7 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\DI\MIN.DI\MIN.DI.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\ScreenDemo\Capture\Windows\MIN.ScreenDemo.Capture.Windows\MIN.ScreenDemo.Capture.Windows.csproj" />
+    <ProjectReference Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'" Include="..\..\Infrastructure\ScreenDemo\Capture\Windows\MIN.ScreenDemo.Capture.Windows\MIN.ScreenDemo.Capture.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

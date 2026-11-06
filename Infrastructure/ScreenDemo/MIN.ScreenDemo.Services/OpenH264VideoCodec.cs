@@ -16,6 +16,17 @@ public class OpenH264VideoCodec : IScreenVideoCodec
 
     private RgbImage? decodeOutput;
 
+    static OpenH264VideoCodec()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            _ = WelsGetCodecVersion();
+        }
+    }
+
+    [DllImport("openh264-2.4.1-win64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr WelsGetCodecVersion();
+
     ScreenVideoCodecKind IScreenVideoCodec.Kind => ScreenVideoCodecKind.H264;
 
     void IScreenVideoCodec.Configure(int width, int height, int targetBitrateKbps)

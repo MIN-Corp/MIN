@@ -9,7 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MIN.ScreenDemo.Events\MIN.ScreenDemo.Events.csproj" />
   </ItemGroup>
-    
+
     <ItemGroup>
         <PackageReference Include="H264Sharp" />
     </ItemGroup>

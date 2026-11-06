@@ -701,9 +701,14 @@
                                         </StackPanel>
 
                                         <StackPanel HorizontalAlignment="Center"
-                                                    IsVisible="{Binding IsInVoiceChat}"
                                                     Spacing="8"
                                                     Orientation="Horizontal">
+                                            <StackPanel.IsVisible>
+                                                <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                    <Binding Path="IsInVoiceChat" />
+                                                    <Binding Path="CanShareScreen" />
+                                                </MultiBinding>
+                                            </StackPanel.IsVisible>
                                             <Button Command="{Binding DemonstrateScreenCommand}"
                                                     ToolTip.Tip="Демонстрировать экран"
                                                     IsVisible="{Binding !IsSharingScreen}"
