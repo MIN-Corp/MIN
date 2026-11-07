@@ -1,4 +1,5 @@
-﻿using MIN.Chat.DI.FeatureCollection;
+﻿using MIN.Audio.DI.FeatureCollection;
+using MIN.Chat.DI.FeatureCollection;
 using MIN.Core.DI.FeatureCollection;
 using MIN.Discovery.DI.FeatureCollection;
 using MIN.FileTransfer.DI.FeatureCollection;
@@ -31,6 +32,9 @@ public class MinFeatureCollection : IMinFeatureCollection
     public ISessionFeatureCollection Sessions { get; }
 
     /// <inheritdoc />
+    public IAudioFeatureCollection Audio { get; }
+
+    /// <inheritdoc />
     public IVoiceFeatureCollection Voice { get; }
 
     /// <inheritdoc />
@@ -45,6 +49,7 @@ public class MinFeatureCollection : IMinFeatureCollection
         IFileTransferFeatureCollection fileTransfer,
         IDiscoveryFeatureCollection discovery,
         ISessionFeatureCollection sessions,
+        IAudioFeatureCollection audio,
         IVoiceFeatureCollection voice,
         IScreenDemoFeatureCollection screenDemo)
     {
@@ -54,6 +59,7 @@ public class MinFeatureCollection : IMinFeatureCollection
         FileTransfer = fileTransfer;
         Discovery = discovery;
         Sessions = sessions;
+        Audio = audio;
         Voice = voice;
         ScreenDemo = screenDemo;
     }

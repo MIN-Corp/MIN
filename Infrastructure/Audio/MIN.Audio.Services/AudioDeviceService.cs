@@ -1,9 +1,9 @@
 ﻿using System.Text;
-using MIN.Voice.Services.Contacts.Interfaces;
-using MIN.Voice.Services.Contacts.Models;
+using MIN.Audio.Services.Contracts.Interfaces;
+using MIN.Audio.Services.Contracts.Models;
 using OpenTK.Audio.OpenAL;
 
-namespace MIN.Voice.Services;
+namespace MIN.Audio.Services;
 
 /// <inheritdoc cref="IAudioDeviceService"/>
 public class AudioDeviceService : IAudioDeviceService

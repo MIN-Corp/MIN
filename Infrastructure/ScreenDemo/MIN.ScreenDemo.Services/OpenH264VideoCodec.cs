@@ -20,12 +20,21 @@ public class OpenH264VideoCodec : IScreenVideoCodec
     {
         if (OperatingSystem.IsWindows())
         {
-            _ = WelsGetCodecVersion();
+            _ = WelsGetCodecVersionEx(out _);
         }
     }
 
     [DllImport("openh264-2.4.1-win64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr WelsGetCodecVersion();
+    private static extern IntPtr WelsGetCodecVersionEx(out OpenH264Version version);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct OpenH264Version
+    {
+        public uint Major;
+        public uint Minor;
+        public uint Revision;
+        public uint Reserved;
+    }
 
     ScreenVideoCodecKind IScreenVideoCodec.Kind => ScreenVideoCodecKind.H264;
 

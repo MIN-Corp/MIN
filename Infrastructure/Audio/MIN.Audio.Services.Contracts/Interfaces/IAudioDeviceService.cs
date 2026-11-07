@@ -1,9 +1,9 @@
-﻿using MIN.Voice.Services.Contacts.Models;
+﻿using MIN.Audio.Services.Contracts.Models;
 
-namespace MIN.Voice.Services.Contacts.Interfaces;
+namespace MIN.Audio.Services.Contracts.Interfaces;
 
 /// <summary>
-/// Помошник в выборе звуковое устройство ввода/вывода
+/// Помощник в выборе звуковое устройство ввода/вывода
 /// </summary>
 public interface IAudioDeviceService
 {

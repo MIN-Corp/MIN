@@ -14,5 +14,6 @@ public class ScreenDemoCaptureWindowsModule : Module
     {
         services.RegisterAsImplementedInterfaces<WindowsGraphicsCaptureService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<WindowsScreenSourceService>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<WasapiLoopbackAudioCaptureService>(ServiceLifetime.Singleton);
     }
 }

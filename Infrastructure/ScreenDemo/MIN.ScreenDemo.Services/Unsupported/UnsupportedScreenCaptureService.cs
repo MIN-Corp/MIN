@@ -1,7 +1,7 @@
 ﻿using MIN.ScreenDemo.Services.Contracts.Interfaces;
 using MIN.ScreenDemo.Services.Contracts.Models;
 
-namespace MIN.ScreenDemo.Services;
+namespace MIN.ScreenDemo.Services.Unsupported;
 
 /// <inheritdoc cref="IScreenCaptureService"/> для платформ, не способных к демонстрации экрана
 public class UnsupportedScreenCaptureService : IScreenCaptureService
@@ -13,7 +13,8 @@ public class UnsupportedScreenCaptureService : IScreenCaptureService
         remove { }
     }
 
-    void IScreenCaptureService.Start(ScreenSourceInfo source) => throw new PlatformNotSupportedException();
+    void IScreenCaptureService.Start(ScreenSourceInfo source)
+        => throw new PlatformNotSupportedException();
 
     void IScreenCaptureService.Stop()
     {

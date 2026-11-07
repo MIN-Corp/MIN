@@ -8,6 +8,7 @@ using MIN.ScreenDemo.DI.FeatureCollection;
 using MIN.ScreenDemo.Handlers;
 using MIN.ScreenDemo.Messaging;
 using MIN.ScreenDemo.Services;
+using MIN.ScreenDemo.Services.Unsupported;
 
 namespace MIN.ScreenDemo.DI;
 
@@ -21,5 +22,6 @@ public class ScreenDemoCaptureUnsupportedModule  : Module
     {
         services.RegisterAsImplementedInterfaces<UnsupportedScreenCaptureService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<UnsupportedScreenSourceService>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<UnsupportedSystemAudioCaptureService>(ServiceLifetime.Singleton);
     }
 }

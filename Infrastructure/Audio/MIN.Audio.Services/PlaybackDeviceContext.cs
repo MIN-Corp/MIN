@@ -1,10 +1,10 @@
 ﻿using OpenTK.Audio.OpenAL;
 
-namespace MIN.Voice.Services.Models;
+namespace MIN.Audio.Services;
 
 /// <summary>
 /// Владеет ЕДИНСТВЕННЫМ устройством воспроизведения и ЕДИНСТВЕННЫМ AL-контекстом
-/// для всего приложения. Все <see cref="ParticipantChannel"/> используют общие
+/// для всего приложения. Все звуковые каналы используют общие
 /// device/context и получают только свой собственный source + буферы.
 ///
 /// Это устраняет гонку "текущего контекста" в OpenAL: alcMakeContextCurrent
@@ -14,7 +14,7 @@ namespace MIN.Voice.Services.Models;
 /// </summary>
 public sealed class PlaybackDeviceContext : IDisposable
 {
-    // Все обращения к ALC/AL для смены устройства и обеспечения "текущести"
+    // Все обращения к ALC/AL для смены устройства и обеспечения "текучести"
     // контекста идут через этот lock - это единственное место в приложении,
     // которое трогает alcMakeContextCurrent.
     private readonly object gate = new();
@@ -25,7 +25,7 @@ public sealed class PlaybackDeviceContext : IDisposable
 
     /// <summary>
     /// Срабатывает после успешной смены устройства/контекста. Все существующие
-    /// <see cref="ParticipantChannel"/> должны пересоздать свои source+буферы.
+    /// звуковые каналы должны пересоздать свои source+буферы.
     /// </summary>
     public event Action? DeviceChanged;
 
@@ -68,22 +68,6 @@ public sealed class PlaybackDeviceContext : IDisposable
     }
 
     /// <summary>
-    /// Гарантирует, что общий контекст является текущим для вызывающего потока
-    /// перед выполнением AL-вызовов. Дешёвая идемпотентная операция при
-    /// единственном контексте в приложении - но обязательна, т.к. "текущий
-    /// контекст" глобален и его может (в теории) выставить сторонний код.
-    /// Вызывать держа lock не нужно - берётся
-    /// собственный gate.
-    /// </summary>
-    public void EnsureCurrent()
-    {
-        lock (gate)
-        {
-            ALC.MakeContextCurrent(context);
-        }
-    }
-
-    /// <summary>
     /// Выполняет действие под общим gate, гарантируя текущий контекст.
     /// Используйте для любой последовательности AL-вызовов одного участника,
     /// чтобы никто другой не переключил контекст между вашими вызовами.
@@ -96,6 +80,7 @@ public sealed class PlaybackDeviceContext : IDisposable
             action();
         }
     }
+
     /// <summary>
     /// Выполняет действие под общим gate, гарантируя текущий контекст.
     /// Используйте для любой последовательности AL-вызовов одного участника,

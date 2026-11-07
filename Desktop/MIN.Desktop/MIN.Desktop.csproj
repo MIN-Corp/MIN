@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\DI\MIN.DI\MIN.DI.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Audio\MIN.Audio.DI\MIN.Audio.DI.csproj" />
     <ProjectReference Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'" Include="..\..\Infrastructure\ScreenDemo\Capture\Windows\MIN.ScreenDemo.Capture.Windows\MIN.ScreenDemo.Capture.Windows.csproj" />
   </ItemGroup>
 

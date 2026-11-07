@@ -1,7 +1,7 @@
 ﻿using MIN.ScreenDemo.Services.Contracts.Interfaces;
 using MIN.ScreenDemo.Services.Contracts.Models;
 
-namespace MIN.ScreenDemo.Services;
+namespace MIN.ScreenDemo.Services.Unsupported;
 
 /// <inheritdoc cref="IScreenSourceService"/> для платформ, не способных к демонстрации экрана
 public class UnsupportedScreenSourceService : IScreenSourceService

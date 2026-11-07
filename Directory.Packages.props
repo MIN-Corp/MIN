@@ -44,5 +44,6 @@
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <PackageVersion Include="H264Sharp" Version="1.6.0" />
     <PackageVersion Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageVersion Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 </Project>

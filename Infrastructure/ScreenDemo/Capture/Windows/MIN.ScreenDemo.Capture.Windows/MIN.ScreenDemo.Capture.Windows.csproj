@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Vortice.Direct3D11" />
+        <PackageReference Include="NAudio" />
     </ItemGroup>
 
     <ItemGroup>

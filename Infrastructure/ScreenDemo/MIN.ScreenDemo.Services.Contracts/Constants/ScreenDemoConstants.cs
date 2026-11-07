@@ -46,4 +46,30 @@ public class ScreenDemoConstants
     /// Ключевой кадр 720p при пике ~150 КБ / 8 КБ = ~19 фрагментов — запас достаточен
     /// </summary>
     public const int MaxFragmentsPerFrame = 64;
+
+    /// <summary>
+    /// Частота дискретизации звука демонстрации
+    /// </summary>
+    public const int AudioSampleRate = 48_000;
+
+    /// <summary>
+    /// Число каналов звука демонстрации
+    /// </summary>
+    public const int AudioChannels = 2;
+
+    /// <summary>
+    /// Длительность одного звукового кадра, мс
+    /// </summary>
+    public const int AudioFrameDurationMs = 20;
+
+    /// <summary>
+    /// Размер звукового кадра в байтах: 48000 * 2 канала * 2 байта / 1000 * 20
+    /// </summary>
+    public const int AudioFrameBytes = AudioSampleRate * AudioChannels * 2 / 1000 * AudioFrameDurationMs;
+
+    /// <summary>
+    /// Порог тишины (RMS в отсчётах s16, максимум 32767): кадры тише не отправляются.
+    /// Loopback-тишина — точные нули, порог отсекает только цифровой ноль и мусор.
+    /// </summary>
+    public const int AudioSilenceRms = 2;
 }
