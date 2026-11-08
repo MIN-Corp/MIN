@@ -57,6 +57,15 @@ public partial class ScreenDemoViewerViewModel : ViewModelBase, IDisposable
     partial void OnFrameImageChanged(WriteableBitmap? value) => OnPropertyChanged(nameof(HasFrame));
 
     /// <summary>
+    /// Громкость звука демонстрации (0-100)
+    /// </summary>
+    [ObservableProperty]
+    public partial int SoundVolume { get; set; } = 100;
+
+    partial void OnSoundVolumeChanged(int value)
+        => screenDemoPlaybackService.ChangeStreamVolume(roomId, sharerId, value);
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoViewerViewModel"/>
     /// </summary>
     public ScreenDemoViewerViewModel(IScreenDemoPlaybackService screenDemoPlaybackService,

@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\..\Core\DI\MIN.Core.DI\MIN.Core.DI.csproj" />
+      <ProjectReference Include="..\..\Audio\MIN.Audio.DI\MIN.Audio.DI.csproj" />
     </ItemGroup>
 
 </Project>

@@ -13,9 +13,10 @@ public interface IChatScreenDemoService
     Task RequestDemoStateAsync(Guid roomId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Начать демонстрацию выбранного источника (монитор или окно)
+    /// Начать демонстрацию экрана. При <paramref name="withSound"/> системный звук
+    /// записывается и передаётся зрителям (пока они есть)
     /// </summary>
-    Task StartDemoAsync(Guid roomId, ScreenSourceInfo source, CancellationToken cancellationToken = default);
+    Task StartDemoAsync(Guid roomId, ScreenSourceInfo source, bool withSound, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Присоединиться к демонстрации как зритель

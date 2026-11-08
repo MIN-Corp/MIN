@@ -25,7 +25,6 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
     private BufferedWaveProvider? rawBuffer;
     private ISampleProvider? samplePipeline;
     private int sourceChannels;
-    private Channel<ScreenDemoAudioFrame>? frameQueue;
     private CancellationTokenSource? dispatchCts;
     private AutoResetEvent? dataAvailableSignal;
     private Thread? dispatchThread;
@@ -65,11 +64,6 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
                 };
                 samplePipeline = BuildPipeline(rawBuffer, capture.WaveFormat);
 
-                frameQueue = Channel.CreateBounded<ScreenDemoAudioFrame>(new BoundedChannelOptions(64)
-                {
-                    SingleReader = true,
-                    FullMode = BoundedChannelFullMode.DropOldest,
-                });
                 dataAvailableSignal = new AutoResetEvent(false);
                 dispatchCts = new CancellationTokenSource();
 
@@ -162,7 +156,6 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
         capture = null;
         rawBuffer = null;
         samplePipeline = null;
-        frameQueue = null;
 
         dispatchCts?.Cancel();
         dispatchCts = null;
@@ -272,17 +265,12 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
     }
 
     /// <summary>
-    /// Публикует все накопленные полные 20-мс кадры (кадры тишины пропускаются)
+    /// Публикует все накопленные полные 20-мс кадры (кадры тишины пропускаются).
+    /// Событие поднимается на потоке диспетчеризации; подписчик обязан быть
+    /// неблокирующим (транcмиттер только кладёт кадр в свою очередь)
     /// </summary>
     private void EmitReadyFrames(List<byte> pendingS16)
     {
-        var queue = frameQueue;
-
-        if (queue == null)
-        {
-            return;
-        }
-
         while (pendingS16.Count >= ScreenDemoConstants.AudioFrameBytes)
         {
             if (!IsVoiced(pendingS16, 0, ScreenDemoConstants.AudioFrameBytes))
@@ -296,7 +284,7 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
             pendingS16.RemoveRange(0, ScreenDemoConstants.AudioFrameBytes);
 
             // Печать времени той же монотонной шкалы, что и у видео (Environment.TickCount64)
-            queue.Writer.TryWrite(new ScreenDemoAudioFrame(data, Environment.TickCount64));
+            FrameCaptured?.Invoke(this, new ScreenDemoAudioFrame(data, Environment.TickCount64));
         }
     }
 

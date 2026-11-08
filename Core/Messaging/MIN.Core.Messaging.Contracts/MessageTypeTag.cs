@@ -439,6 +439,12 @@ public enum MessageTypeTag : byte
     /// </summary>
     ScreenDemoStateResponse = 170,
 
+    /// <summary>
+    /// Кадр звука демонстрации экрана (PCM s16le стерео 48 кГц, 20 мс).
+    /// Отправляется только пока есть зрители
+    /// </summary>
+    ScreenDemoAudioData = 171,
+
     // ===== Зарезервировано (175-255) =====
     // Свободные диапазоны для будущих категорий
 }

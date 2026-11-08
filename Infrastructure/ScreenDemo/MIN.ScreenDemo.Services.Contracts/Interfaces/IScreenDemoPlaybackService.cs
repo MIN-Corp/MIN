@@ -24,6 +24,20 @@ public interface IScreenDemoPlaybackService : IDisposable
     void RemoveStream(Guid roomId, Guid sharerId);
 
     /// <summary>
+    /// Передать полученный кадр звука демонстрации (s16le стерео 48 кГц, 20 мс).
+    /// Канал воспроизведения создаётся при первом пакете; кадры переупорядочиваются
+    /// по SequenceNumber, разрывы и отстающие кадры отбрасываются.
+    /// TimestampMs зарезервирован для будущей синхронизации A/V и пока не используется
+    /// </summary>
+    void SubmitAudioSamples(Guid roomId, Guid sharerId, long sequenceNumber, long timestampMs, byte[] data);
+
+    /// <summary>
+    /// Изменить громкость звука демонстрации указанного потока (0-100).
+    /// Применяется и к уже созданному каналу, и запоминается, если канал ещё не создан
+    /// </summary>
+    void ChangeStreamVolume(Guid roomId, Guid sharerId, int volume);
+
+    /// <summary>
     /// Передать полученный фрагмент кадра на сборку и декодирование.
     /// Кадр с недостающими фрагментами отбрасывается целиком — ждём следующий ключевой кадр
     /// </summary>

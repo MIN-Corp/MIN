@@ -274,7 +274,7 @@ public partial class ChatViewModel
             return;
         }
 
-        await featureCollection.Chat.ChatScreenDemoService.StartDemoAsync(RoomId, picked.SelectedSource, roomCts.Token);
+        await featureCollection.Chat.ChatScreenDemoService.StartDemoAsync(RoomId, picked.SelectedSource, picked.WithSound, roomCts.Token);
     }
 
     /// <summary>

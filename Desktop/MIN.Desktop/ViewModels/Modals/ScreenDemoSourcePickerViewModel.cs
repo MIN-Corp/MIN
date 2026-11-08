@@ -25,6 +25,12 @@ public partial class ScreenDemoSourcePickerViewModel : ModalViewModelBase
     public ScreenSourceInfo? SelectedSource { get; private set; }
 
     /// <summary>
+    /// Записывать ли системный звук во время демонстрации
+    /// </summary>
+    [ObservableProperty]
+    public partial bool WithSound { get; set; }
+
+    /// <summary>
     /// Доступные мониторы
     /// </summary>
     [ObservableProperty]

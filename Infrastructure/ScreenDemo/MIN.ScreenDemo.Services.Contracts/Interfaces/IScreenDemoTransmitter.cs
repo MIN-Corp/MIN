@@ -19,7 +19,7 @@ public interface IScreenDemoTransmitter : IDisposable
     /// Начать демонстрацию: захват и кодирование идут сразу (локальный предпросмотр),
     /// но данные в сеть не отправляются, пока нет ни одного зрителя
     /// </summary>
-    void Begin(SubRoomContext subRoomContext, ScreenSourceInfo source);
+    void Begin(SubRoomContext subRoomContext, ScreenSourceInfo source, bool withSound = false);
 
     /// <summary>
     /// Добавить зрителя — с этого момента начинается отправка данных в сеть

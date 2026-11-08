@@ -26,5 +26,21 @@
                Stretch="Uniform"
                MaxHeight="340"
                IsVisible="{Binding HasFrame}" />
+
+        <StackPanel HorizontalAlignment="Left"
+                    VerticalAlignment="Bottom"
+                    Margin="8"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    IsVisible="{Binding !IsOwnStream}">
+            <Svg Path="/Assets/Icons/sound-on.svg"
+                 Width="16" Height="16"
+                 VerticalAlignment="Center" />
+            <Slider Minimum="0"
+                    Maximum="100"
+                    Value="{Binding SoundVolume}"
+                    Width="120"
+                    VerticalAlignment="Center" />
+        </StackPanel>
     </Panel>
 </UserControl>

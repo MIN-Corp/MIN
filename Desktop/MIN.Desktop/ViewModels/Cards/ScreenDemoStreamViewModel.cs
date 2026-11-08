@@ -56,6 +56,15 @@ public partial class ScreenDemoStreamViewModel : ViewModelBase, IDisposable
     partial void OnFrameImageChanged(WriteableBitmap? value) => OnPropertyChanged(nameof(HasFrame));
 
     /// <summary>
+    /// Громкость звука демонстрации (0-100). Только для чужих потоков
+    /// </summary>
+    [ObservableProperty]
+    public partial int SoundVolume { get; set; } = 100;
+
+    partial void OnSoundVolumeChanged(int value)
+        => screenDemoPlaybackService?.ChangeStreamVolume(roomId, SharerId, value);
+
+    /// <summary>
     /// Поток собственного экрана
     /// </summary>
     public ScreenDemoStreamViewModel(Guid roomId, int subRoomId, Guid sharerId, IScreenDemoTransmitter screenDemoTransmitter)

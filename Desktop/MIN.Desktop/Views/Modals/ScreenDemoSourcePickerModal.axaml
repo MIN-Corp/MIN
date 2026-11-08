@@ -64,6 +64,14 @@
                 </Panel>
             </Border>
 
+            <StackPanel DockPanel.Dock="Bottom"
+                        Margin="12,8,12,8"
+                        Orientation="Horizontal">
+                <ToggleSwitch IsChecked="{Binding WithSound}"
+                              Content="Дать доступ к аудио-устройству"
+                              HorizontalContentAlignment="Left" />
+            </StackPanel>
+
             <ScrollViewer Classes="main" MaxHeight="620">
                 <StackPanel Margin="8" Spacing="8">
                     <TextBlock Classes="header4" Text="Мониторы" />

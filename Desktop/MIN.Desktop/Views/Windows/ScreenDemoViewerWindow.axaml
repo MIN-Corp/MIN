@@ -20,12 +20,28 @@
         <DockPanel>
             <Border DockPanel.Dock="Bottom"
                     Classes="footer">
-                <Button
-                    Command="{Binding LeaveDemoCommand}"
-                    Content="Покинуть демонстрацию"
-                    Classes="secondary"
-                    FontWeight="Bold"
-                    HorizontalAlignment="Right" />
+                <Panel>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                        <Svg Path="/Assets/Icons/sound-on.svg"
+                             Width="18" Height="18"
+                             VerticalAlignment="Center" />
+                        <Slider Minimum="0"
+                                Maximum="100"
+                                Value="{Binding SoundVolume}"
+                                Width="140"
+                                VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <Button
+                        Command="{Binding LeaveDemoCommand}"
+                        Content="Покинуть демонстрацию"
+                        Classes="secondary"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Right" />
+                </Panel>
             </Border>
 
             <Border>

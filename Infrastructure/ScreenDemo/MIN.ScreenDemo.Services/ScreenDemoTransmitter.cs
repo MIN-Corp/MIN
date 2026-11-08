@@ -17,6 +17,7 @@ namespace MIN.ScreenDemo.Services;
 public class ScreenDemoTransmitter : IScreenDemoTransmitter
 {
     private readonly IScreenCaptureService screenCaptureService;
+    private readonly ISystemAudioCaptureService systemAudioCaptureService;
     private readonly IScreenVideoCodec codec;
     private readonly IMessageRouter messageRouter;
     private readonly IIdentityService identityService;
@@ -24,29 +25,37 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
 
     private Channel<ScreenFrame> captureQueue = null!;
     private Channel<ScreenDemoFrameDataMessage> sendQueue = null!;
+    private Channel<ScreenDemoAudioDataMessage> audioQueue = null!;
     private CancellationTokenSource? sendCts;
 
     private SubRoomContext context;
     private long frameId;
+    private long audioSequenceNumber;
     private long lastFrameTimestamp;
     private int lastWidth;
     private int lastHeight;
     private volatile bool forceKeyframe;
     private bool isActive;
+    private bool withSound;
 
     private readonly object viewersGate = new();
     private readonly HashSet<Guid> viewers = [];
+
+    private readonly object audioGate = new();
+    private bool audioCaptureRunning;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoTransmitter"/>
     /// </summary>
     public ScreenDemoTransmitter(IScreenCaptureService screenCaptureService,
+        ISystemAudioCaptureService systemAudioCaptureService,
         IScreenVideoCodec codec,
         IMessageRouter messageRouter,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
         this.screenCaptureService = screenCaptureService;
+        this.systemAudioCaptureService = systemAudioCaptureService;
         this.codec = codec;
         this.messageRouter = messageRouter;
         this.identityService = identityService;
@@ -56,7 +65,7 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
     /// <inheritdoc />
     public event EventHandler<ScreenFrame>? FramePreview;
 
-    void IScreenDemoTransmitter.Begin(SubRoomContext subRoomContext, ScreenSourceInfo source)
+    void IScreenDemoTransmitter.Begin(SubRoomContext subRoomContext, ScreenSourceInfo source, bool withSound)
     {
         if (isActive)
         {
@@ -66,10 +75,12 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         context = subRoomContext;
         isActive = true;
         frameId = 0;
+        audioSequenceNumber = 0;
         lastFrameTimestamp = 0;
         lastWidth = 0;
         lastHeight = 0;
         forceKeyframe = true;
+        this.withSound = withSound;
 
         lock (viewersGate)
         {
@@ -87,12 +98,24 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
             FullMode = BoundedChannelFullMode.DropOldest,
         });
 
+        audioQueue = Channel.CreateBounded<ScreenDemoAudioDataMessage>(new BoundedChannelOptions(64)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+        });
+
         sendCts = new CancellationTokenSource();
         _ = ProcessCapturedFramesAsync(sendCts.Token);
         _ = SendPumpAsync(sendCts.Token);
+        _ = AudioSendPumpAsync(sendCts.Token);
 
         screenCaptureService.FrameCaptured += OnFrameCaptured;
         screenCaptureService.Start(source);
+
+        // Звук не захватываем сразу: начнём, когда придёт первый зритель
+        if (withSound)
+        {
+            logger.Log("Демонстрация со звуком: захват начнётся с появлением зрителя");
+        }
     }
 
     void IScreenDemoTransmitter.AddViewer(Guid participantId)
@@ -105,13 +128,23 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
                 forceKeyframe = true;
             }
         }
+
+        EnsureAudioCaptureStarted();
     }
 
     void IScreenDemoTransmitter.RemoveViewer(Guid participantId)
     {
+        bool lastViewerLeft;
+
         lock (viewersGate)
         {
             viewers.Remove(participantId);
+            lastViewerLeft = viewers.Count == 0;
+        }
+
+        if (lastViewerLeft)
+        {
+            StopAudioCapture();
         }
     }
 
@@ -126,6 +159,8 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
 
         isActive = false;
 
+        StopAudioCapture();
+
         screenCaptureService.FrameCaptured -= OnFrameCaptured;
         screenCaptureService.Stop();
 
@@ -133,6 +168,7 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         sendCts = null;
         captureQueue.Writer.TryComplete();
         sendQueue.Writer.TryComplete();
+        audioQueue.Writer.TryComplete();
 
         lock (viewersGate)
         {
@@ -152,6 +188,116 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
             }
         }
     }
+
+    /// <summary>
+    /// Запускает захват системного звука, если он ещё не идёт.
+    /// Захват живёт только пока есть зрители: записывать не для кого
+    /// </summary>
+    private void EnsureAudioCaptureStarted()
+    {
+        if (!withSound || !isActive)
+        {
+            return;
+        }
+
+        lock (audioGate)
+        {
+            if (audioCaptureRunning)
+            {
+                return;
+            }
+
+            audioCaptureRunning = true;
+        }
+
+        try
+        {
+            systemAudioCaptureService.FrameCaptured += OnAudioFrameCaptured;
+            systemAudioCaptureService.Start();
+            logger.Log("Захват системного звука начат (появился зритель)");
+        }
+        catch (Exception ex)
+        {
+            logger.Log($"Звук демонстрации недоступен: {ex.Message}", LogLevel.Warning);
+
+            lock (audioGate)
+            {
+                audioCaptureRunning = false;
+            }
+
+            systemAudioCaptureService.FrameCaptured -= OnAudioFrameCaptured;
+        }
+    }
+
+    /// <summary>
+    /// Останавливает захват системного звука, если он идёт
+    /// </summary>
+    private void StopAudioCapture()
+    {
+        lock (audioGate)
+        {
+            if (!audioCaptureRunning)
+            {
+                return;
+            }
+
+            audioCaptureRunning = false;
+        }
+
+        systemAudioCaptureService.FrameCaptured -= OnAudioFrameCaptured;
+        systemAudioCaptureService.Stop();
+    }
+
+    private void OnAudioFrameCaptured(object? sender, ScreenDemoAudioFrame frame)
+    {
+        if (!isActive || !HasViewers)
+        {
+            return;
+        }
+
+        // Монотонный счётчик на всё время демонстрации: пауза между волнами
+        // зрителей (захвата нет) не сбрасывает нумерацию
+        var sequenceNumber = Interlocked.Increment(ref audioSequenceNumber);
+
+        audioQueue.Writer.TryWrite(new ScreenDemoAudioDataMessage
+        {
+            SubRoomId = context.SubRoomId,
+            SequenceNumber = sequenceNumber,
+            TimestampMs = frame.TimestampMs,
+            Data = frame.Data,
+        });
+    }
+
+    private async Task AudioSendPumpAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var message in audioQueue.Reader.ReadAllAsync(cancellationToken))
+            {
+                try
+                {
+                    await messageRouter.RouteAsync(message, context.RoomId, identityService.SelfParticipant.Id, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    logger.Log($"Ошибка отправки звука демонстрации: {ex.Message}", LogLevel.Error);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            audioQueue.Writer.TryComplete();
+        }
+    }
+
+    // ===== Видео (без изменений) =====
 
     private void OnFrameCaptured(object? sender, ScreenFrame e)
     {

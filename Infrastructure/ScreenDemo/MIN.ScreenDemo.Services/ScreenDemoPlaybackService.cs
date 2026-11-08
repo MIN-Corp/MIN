@@ -1,8 +1,13 @@
-﻿using System.Threading.Channels;
+﻿using System.ComponentModel;
+using System.Threading.Channels;
+using MIN.Audio.Services;
 using MIN.Helpers.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Interfaces.SettingsServices;
+using MIN.Helpers.Contracts.Models;
 using MIN.ScreenDemo.Services.Contracts.Constants;
 using MIN.ScreenDemo.Services.Contracts.Interfaces;
 using MIN.ScreenDemo.Services.Contracts.Models;
+using MIN.ScreenDemo.Services.Models;
 
 namespace MIN.ScreenDemo.Services;
 
@@ -12,12 +17,17 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
     private sealed record DecodedJob(Guid RoomId, Guid SharerId, byte[] EncodedFrame, int Width, int Height);
 
     private readonly IScreenVideoCodec codec;
+    private readonly PlaybackDeviceManager deviceManager;
+    private readonly ISettingsProvider settingsProvider;
     private readonly ILoggerProvider logger;
     private readonly object gate = new();
     private readonly Dictionary<(Guid RoomId, Guid SharerId), DemoStreamState> streams = [];
+    private readonly Dictionary<(Guid RoomId, Guid SharerId), DemoAudioChannel> audioChannels = [];
+    private readonly Dictionary<(Guid RoomId, Guid SharerId), float> requestedStreamVolumes = [];
     private readonly Channel<DecodedJob> decodeQueue;
     private readonly CancellationTokenSource decodeCts = new();
     private readonly Thread decodeThread;
+    private float appVolume;
 
     /// <inheritdoc />
     public event EventHandler<ScreenDemoFrameDecodedEventArgs>? FrameDecoded;
@@ -25,15 +35,22 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ScreenDemoPlaybackService"/>
     /// </summary>
-    public ScreenDemoPlaybackService(IScreenVideoCodec codec, ILoggerProvider logger)
+    public ScreenDemoPlaybackService(IScreenVideoCodec codec,
+        PlaybackDeviceManager deviceManager,
+        ISettingsProvider settingsProvider,
+        ILoggerProvider logger)
     {
         this.codec = codec;
+        this.deviceManager = deviceManager;
+        this.settingsProvider = settingsProvider;
         this.logger = logger;
+
+        appVolume = settingsProvider.GetSettings().OutputDeviceVolume / 100.0f;
 
         decodeQueue = Channel.CreateBounded<DecodedJob>(new BoundedChannelOptions(4)
         {
             SingleReader = true,
-            FullMode = BoundedChannelFullMode.DropOldest, // отстаём — декодируем более свежий кадр, старый роняем
+            FullMode = BoundedChannelFullMode.DropOldest,
         });
 
         decodeThread = new Thread(DecodeLoop)
@@ -42,6 +59,10 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
             IsBackground = true,
         };
         decodeThread.Start();
+
+        // Живая смена громкости приложения без пересохранения настроек
+        settingsProvider.GetSettings().PropertyChanged += OnSettingsPropertyChanged;
+        settingsProvider.OnSettingsSaved += OnSettingsSaved;
     }
 
     void IScreenDemoPlaybackService.AddStream(Guid roomId, Guid sharerId)
@@ -140,19 +161,115 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
         decodeQueue.Writer.TryWrite(new DecodedJob(roomId, sharerId, assembled, state.StreamWidth, state.StreamHeight));
     }
 
-    void IScreenDemoPlaybackService.Clear()
+     void IScreenDemoPlaybackService.SubmitAudioSamples(Guid roomId, Guid sharerId, long sequenceNumber, long timestampMs, byte[] data)
+    {
+        if (data.Length == 0 || data.Length % 4 != 0)
+        {
+            return;
+        }
+
+        DemoAudioChannel? channel;
+
+        lock (gate)
+        {
+            // Канал создаётся лениво при первом пакете звука — поток уже смотрится,
+            // но о наличии звука зритель узнаёт только по факту прихода пакетов
+            if (!audioChannels.TryGetValue((roomId, sharerId), out channel))
+            {
+                var deviceContext = deviceManager.GetOrCreate();
+                if (deviceContext == null)
+                {
+                    logger.Log($"Не удалось создать канал звука демонстрации для {sharerId}: устройство воспроизведения не инициализировано");
+                    return;
+                }
+
+                var streamVolume = requestedStreamVolumes.GetValueOrDefault((roomId, sharerId), 1f);
+
+                try
+                {
+                    channel = new DemoAudioChannel(deviceContext, appVolume, streamVolume);
+                    audioChannels[(roomId, sharerId)] = channel;
+                }
+                catch (Exception ex)
+                {
+                    logger.Log($"Не удалось создать канал звука демонстрации для {sharerId}: {ex.Message}");
+                    return;
+                }
+            }
+        }
+
+        channel.Enqueue(sequenceNumber, data);
+    }
+
+    void IScreenDemoPlaybackService.ChangeStreamVolume(Guid roomId, Guid sharerId, int volume)
+    {
+        var clamped = Math.Clamp(volume, 0, 100) / 100.0f;
+
+        DemoAudioChannel? channel;
+        lock (gate)
+        {
+            // Запоминаем даже если канала ещё нет — применится при создании
+            requestedStreamVolumes[(roomId, sharerId)] = clamped;
+            audioChannels.TryGetValue((roomId, sharerId), out channel);
+        }
+
+        channel?.ChangeVolume(appVolume, clamped);
+    }
+
+    /// <inheritdoc />
+    public void Clear()
     {
         lock (gate)
         {
             streams.Clear();
+
+            foreach (var channel in audioChannels.Values)
+            {
+                channel.Dispose();
+            }
+
+            audioChannels.Clear();
+            requestedStreamVolumes.Clear();
         }
     }
 
     void IDisposable.Dispose()
     {
+        settingsProvider.GetSettings().PropertyChanged -= OnSettingsPropertyChanged;
+        settingsProvider.OnSettingsSaved -= OnSettingsSaved;
+
+        Clear();
         decodeCts.Cancel();
         decodeThread.Join();
         decodeCts.Dispose();
+    }
+    private void OnSettingsSaved()
+    {
+        UpdateAppVolume();
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Settings.OutputDeviceVolume))
+        {
+            UpdateAppVolume();
+        }
+    }
+
+    private void UpdateAppVolume()
+    {
+        DemoAudioChannel[] channelsSnapshot;
+
+        lock (gate)
+        {
+            appVolume = settingsProvider.GetSettings().OutputDeviceVolume / 100.0f;
+            channelsSnapshot = [.. audioChannels.Values];
+        }
+
+        foreach (var channel in channelsSnapshot)
+        {
+            channel.ChangeVolume(appVolume, channel.StreamVolume);
+        }
     }
 
     private void DecodeLoop()

@@ -25,9 +25,10 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
     private readonly ILoggerProvider logger;
 
     /// <summary>
-    /// Источник, выбранный в диалоге, который ждёт подтверждения демонстрации (roomId -> источник)
+    /// Источник, выбранный в диалоге, который ждёт подтверждения демонстрации
+    /// (roomId -> источник и признак записи звука)
     /// </summary>
-    private readonly Dictionary<Guid, ScreenSourceInfo> pendingSources = [];
+    private readonly Dictionary<Guid, (ScreenSourceInfo Source, bool WithSound)> pendingSources = [];
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="ChatScreenDemoService"/>
@@ -54,9 +55,9 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
     async Task IChatScreenDemoService.RequestDemoStateAsync(Guid roomId, CancellationToken cancellationToken)
         => await SendAsync(new ScreenDemoStateRequestMessage(), roomId, cancellationToken);
 
-    async Task IChatScreenDemoService.StartDemoAsync(Guid roomId, ScreenSourceInfo source, CancellationToken cancellationToken)
+    async Task IChatScreenDemoService.StartDemoAsync(Guid roomId, ScreenSourceInfo source, bool withSound, CancellationToken cancellationToken)
     {
-        pendingSources[roomId] = source;
+        pendingSources[roomId] = (source, withSound);
 
         await SendAsync(new ScreenDemoStartRequestMessage(), roomId, cancellationToken);
     }
@@ -104,9 +105,9 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
         if (e.SharerId == selfId)
         {
             // Подтверждена моя демонстрация — начинаю захват и локальный предпросмотр
-            if (pendingSources.Remove(e.RoomId, out var source))
+            if (pendingSources.Remove(e.RoomId, out var pending))
             {
-                screenDemoTransmitter.Begin(new SubRoomContext(e.RoomId, e.SubRoomId), source);
+                screenDemoTransmitter.Begin(new SubRoomContext(e.RoomId, e.SubRoomId), pending.Source, pending.WithSound);
             }
         }
         else
@@ -148,7 +149,7 @@ public sealed class ChatScreenDemoService : IChatScreenDemoService
         }
         catch (Exception ex)
         {
-            // комната могла уже уйти в оффлайн — локальная очистка уже выполнена
+            // комната могла уже уйти в офлайн — локальная очистка уже выполнена
             logger.Log($"Не удалось отправить {message.GetType().Name} (комната {roomId}): {ex.Message}", LogLevel.Warning);
         }
     }
