@@ -1,6 +1,6 @@
-﻿using System.Threading.Channels;
-using MIN.Helpers.Contracts.Interfaces;
+﻿using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
+using MIN.ScreenDemo.Capture.Windows.Internal;
 using MIN.ScreenDemo.Services.Contracts.Constants;
 using MIN.ScreenDemo.Services.Contracts.Interfaces;
 using MIN.ScreenDemo.Services.Contracts.Models;
@@ -24,6 +24,7 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
     private WasapiLoopbackCapture? capture;
     private BufferedWaveProvider? rawBuffer;
     private ISampleProvider? samplePipeline;
+    private readonly AudioFrameComposer composer = new();
     private int sourceChannels;
     private CancellationTokenSource? dispatchCts;
     private AutoResetEvent? dataAvailableSignal;
@@ -31,7 +32,7 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
     private volatile bool isStarted;
 
     /// <inheritdoc />
-    public event EventHandler<ScreenDemoAudioFrame>? FrameCaptured;
+    public event Action<ScreenDemoAudioFrame>? FrameCaptured;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="WasapiLoopbackAudioCaptureService"/>
@@ -189,7 +190,6 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
         var cancellationToken = (CancellationToken)state!;
         // Вычитка произвольного размера — конвертер и аккумулятор режут на кадры сами
         var readBuffer = new float[ReadFloatCount];
-        var pendingS16 = new List<byte>(ScreenDemoConstants.AudioFrameBytes * 2);
 
         try
         {
@@ -210,17 +210,22 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
                     return;
                 }
 
-                if (buffer.BufferedBytes > 0)
+                if (buffer.BufferedBytes <= 0)
                 {
-                    var read = pipeline.Read(readBuffer, 0, readBuffer.Length);
-
-                    if (read > 0)
-                    {
-                        ConvertAndAccumulate(readBuffer, read, pendingS16);
-                    }
+                    continue;
                 }
 
-                EmitReadyFrames(pendingS16);
+                var read = pipeline.Read(readBuffer, 0, readBuffer.Length);
+
+                if (read > 0)
+                {
+                    composer.AddFloats(
+                        readBuffer,
+                        read,
+                        sourceChannels,
+                        Environment.TickCount64,
+                        frame => FrameCaptured?.Invoke(frame));
+                }
             }
         }
         catch (ObjectDisposedException)
@@ -231,79 +236,5 @@ public class WasapiLoopbackAudioCaptureService : ISystemAudioCaptureService
         {
             logger.Log($"Поток диспетчеризации звука завершился с ошибкой: {ex}", LogLevel.Error);
         }
-    }
-
-    /// <summary>
-    /// Конвертирует прочитанный блок interleaved float-сэмплов (все каналы источника)
-    /// в s16le стерео и дописывает в аккумулятор
-    /// </summary>
-    private void ConvertAndAccumulate(float[] source, int sourceFloatCount, List<byte> pendingS16)
-    {
-        var frames = sourceFloatCount / sourceChannels;
-        var chunk = new byte[frames * ScreenDemoConstants.AudioChannels * 2];
-        var outSample = 0;
-
-        for (var frame = 0; frame < frames; frame++)
-        {
-            var baseIndex = frame * sourceChannels;
-            var left = source[baseIndex];
-            var right = sourceChannels == 1 ? left : source[baseIndex + 1];
-
-            WriteSample(chunk, ref outSample, left);
-            WriteSample(chunk, ref outSample, right);
-        }
-
-        pendingS16.AddRange(chunk);
-    }
-
-    private static void WriteSample(byte[] target, ref int sampleIndex, float value)
-    {
-        var s = (short)Math.Clamp(value * short.MaxValue, short.MinValue, short.MaxValue);
-        target[sampleIndex * 2] = (byte)(s & 0xFF);
-        target[sampleIndex * 2 + 1] = (byte)((s >> 8) & 0xFF);
-        sampleIndex++;
-    }
-
-    /// <summary>
-    /// Публикует все накопленные полные 20-мс кадры (кадры тишины пропускаются).
-    /// Событие поднимается на потоке диспетчеризации; подписчик обязан быть
-    /// неблокирующим (транcмиттер только кладёт кадр в свою очередь)
-    /// </summary>
-    private void EmitReadyFrames(List<byte> pendingS16)
-    {
-        while (pendingS16.Count >= ScreenDemoConstants.AudioFrameBytes)
-        {
-            if (!IsVoiced(pendingS16, 0, ScreenDemoConstants.AudioFrameBytes))
-            {
-                pendingS16.RemoveRange(0, ScreenDemoConstants.AudioFrameBytes);
-                continue;
-            }
-
-            var data = new byte[ScreenDemoConstants.AudioFrameBytes];
-            pendingS16.CopyTo(0, data, 0, ScreenDemoConstants.AudioFrameBytes);
-            pendingS16.RemoveRange(0, ScreenDemoConstants.AudioFrameBytes);
-
-            // Печать времени той же монотонной шкалы, что и у видео (Environment.TickCount64)
-            FrameCaptured?.Invoke(this, new ScreenDemoAudioFrame(data, Environment.TickCount64));
-        }
-    }
-
-    /// <summary>
-    /// Проверка «кадр не тишина» без аллокаций: RMS по s16-сэмплам среза
-    /// </summary>
-    private static bool IsVoiced(List<byte> data, int offset, int count)
-    {
-        double sumSquares = 0;
-        var sampleCount = count / 2;
-
-        for (var i = 0; i < sampleCount; i++)
-        {
-            var index = offset + i * 2;
-            var s = (short)(data[index] | (data[index + 1] << 8));
-            sumSquares += (double)s * s;
-        }
-
-        var rms = Math.Sqrt(sumSquares / sampleCount);
-        return rms > ScreenDemoConstants.AudioSilenceRms;
     }
 }

@@ -63,6 +63,14 @@ public partial class ChatViewModel
     [ObservableProperty]
     public partial bool IsVoiceChatActive { get; set; }
 
+    partial void OnIsVoiceChatActiveChanged(bool value)
+        => IsVoiceChatActiveChanged?.Invoke(value);
+
+    /// <summary>
+    /// Голосовой чат начался/закончился
+    /// </summary>
+    public Action<bool>? IsVoiceChatActiveChanged { get; set; }
+
     /// <summary>
     /// Находится ли локальный пользователь в звонке
     /// </summary>
@@ -88,16 +96,32 @@ public partial class ChatViewModel
     public partial bool CanShareScreen { get; set; }
 
     /// <summary>
-    /// Демонстрирует ли экран локальный пользователь прямо сейчас
+    /// Демонстрирует ли или смотрит экран локальный пользователь прямо сейчас
     /// </summary>
     [ObservableProperty]
     public partial bool IsSharingScreen { get; set; }
+
+    partial void OnIsSharingScreenChanged(bool value)
+        => IsSharingScreenChanged?.Invoke();
+
+    /// <summary>
+    /// Вид модельки демонстрации поменялся
+    /// </summary>
+    public Action? IsSharingScreenChanged { get; set; }
 
     /// <summary>
     /// Поток демонстрации вынесен в отдельное окно (встроенная область показывает заглушку)
     /// </summary>
     [ObservableProperty]
     public partial bool IsStreamPoppedOut { get; set; }
+
+    partial void OnIsStreamPoppedOutChanged(bool value)
+        => IsStreamPoppedOutChanged?.Invoke();
+
+    /// <summary>
+    /// Вид модельки демонстрации поменялся
+    /// </summary>
+    public Action? IsStreamPoppedOutChanged { get; set; }
 
     /// <summary>
     /// Активный поток демонстрации, показываемый во встроенной области

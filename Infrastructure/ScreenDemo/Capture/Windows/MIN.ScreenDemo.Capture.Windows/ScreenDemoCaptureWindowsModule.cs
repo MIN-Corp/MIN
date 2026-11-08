@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Windows.UI.WebUI;
+using Microsoft.Extensions.DependencyInjection;
 using MIN.Common.Mvc;
 using MIN.Common.Mvc.Extensions;
 
@@ -14,6 +15,6 @@ public class ScreenDemoCaptureWindowsModule : Module
     {
         services.RegisterAsImplementedInterfaces<WindowsGraphicsCaptureService>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<WindowsScreenSourceService>(ServiceLifetime.Singleton);
-        services.RegisterAsImplementedInterfaces<WasapiLoopbackAudioCaptureService>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<WindowsSystemAudioCaptureService>(ServiceLifetime.Singleton);
     }
 }

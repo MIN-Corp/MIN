@@ -9,7 +9,7 @@ namespace MIN.ScreenDemo.Services.Unsupported;
 public class UnsupportedSystemAudioCaptureService : ISystemAudioCaptureService
 {
     /// <inheritdoc />
-    public event EventHandler<ScreenDemoAudioFrame>? FrameCaptured
+    public event Action<ScreenDemoAudioFrame>? FrameCaptured
     {
         add { }
         remove { }

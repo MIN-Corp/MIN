@@ -67,9 +67,14 @@
             <StackPanel DockPanel.Dock="Bottom"
                         Margin="12,8,12,8"
                         Orientation="Horizontal">
-                <ToggleSwitch IsChecked="{Binding WithSound}"
-                              Content="Дать доступ к аудио-устройству"
-                              HorizontalContentAlignment="Left" />
+                    <TextBlock
+                        FontSize="{DynamicResource FontSizeH5}"
+                        FontWeight="Bold"
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0"
+                        Text="Дать доступ к звуку" />
+                    <ToggleSwitch
+                        IsChecked="{Binding WithSound}" />
             </StackPanel>
 
             <ScrollViewer Classes="main" MaxHeight="620">

@@ -24,7 +24,7 @@
         <Image x:Name="StreamImage"
                Source="{Binding FrameImage}"
                Stretch="Uniform"
-               MaxHeight="340"
+               MaxHeight="460"
                IsVisible="{Binding HasFrame}" />
 
         <StackPanel HorizontalAlignment="Left"

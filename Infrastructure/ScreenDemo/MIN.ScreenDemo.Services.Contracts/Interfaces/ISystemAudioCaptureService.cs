@@ -21,5 +21,5 @@ public interface ISystemAudioCaptureService : IDisposable
     /// <summary>
     /// Готовый кадр PCM: s16le, стерео, 48 кГц, ровно 20 мс
     /// </summary>
-    event EventHandler<ScreenDemoAudioFrame>? FrameCaptured;
+    event Action<ScreenDemoAudioFrame>? FrameCaptured;
 }

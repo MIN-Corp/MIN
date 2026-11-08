@@ -248,7 +248,7 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
         systemAudioCaptureService.Stop();
     }
 
-    private void OnAudioFrameCaptured(object? sender, ScreenDemoAudioFrame frame)
+    private void OnAudioFrameCaptured(ScreenDemoAudioFrame frame)
     {
         if (!isActive || !HasViewers)
         {
