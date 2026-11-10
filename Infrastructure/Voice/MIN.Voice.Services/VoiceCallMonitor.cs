@@ -71,9 +71,10 @@ public class VoiceCallMonitor : IHostedService
 
     private async Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
     {
-        var voiceContext = voiceCallStateService.GetRoomVoiceCallContext();
+        var context = roomFactory.GetOrCreateContext(e.RoomId);
 
-        if (voiceContext != null && e.RoomId == voiceContext.Value.RoomId)
+        var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive).ToList();
+        foreach (var subRoom in activeSubRooms)
         {
             voiceCallStateService.UnregisterVoiceCall();
             audioCaptureService.Stop();
@@ -82,8 +83,10 @@ public class VoiceCallMonitor : IHostedService
 
             await messageRouter.PublishLocally(new VoiceCallEndedMessage()
             {
-                SubRoomId = voiceContext.Value.SubRoomId,
-            }, voiceContext.Value.RoomId, null, cancellationToken);
+                SubRoomId = subRoom.Id,
+            }, e.RoomId, null, cancellationToken);
+
+            context.SubRooms.RemoveSubRoom(subRoom.Id);
         }
     }
 

@@ -334,7 +334,7 @@ public partial class ChatViewModel
 
     /// <summary>
     /// Синхронизировать карточки участников с состоянием демонстраций
-    /// и пересчитать активный поток: просматриваемый ?? собственный
+    /// и пересчитать активный поток: просматриваемый ?? Собственный
     /// </summary>
     private void UpdateActiveStream()
     {
@@ -560,6 +560,8 @@ public partial class ChatViewModel
         activeVoiceChatSubroomId = null;
         IsInVoiceChat = false;
         IsVoiceChatActive = false;
+        IsSharingScreen = false;
+        IsStreamPoppedOut = false;
 
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;

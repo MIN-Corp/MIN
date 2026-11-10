@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using MIN.Chat.Events;
 using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Entities;
@@ -102,52 +103,62 @@ public partial class ChatViewModel
 
     #region Voice chat related
 
-    private async Task OnVoiceCallStarted(VoiceCallStartedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnVoiceCallStarted(VoiceCallStartedEvent eventMessage, CancellationToken cancellationToken)
     {
-        IsVoiceChatActive = true;
-        CallDuration = TimeSpan.Zero;
-        callStartedAt = DateTime.Now;
-        callTimer.Start();
-        activeVoiceChatSubroomId = eventMessage.Message.SubRoomId;
-        IsInVoiceChat = eventMessage.Participant.Id == localParticipant.Id;
-        AddToVoiceChatParticipant(eventMessage.Participant);
-        await AddToChatFlowAndNotify(eventMessage.Message, cancellationToken);
+        Dispatcher.UIThread.Post(async void () =>
+        {
+            IsVoiceChatActive = true;
+            CallDuration = TimeSpan.Zero;
+            callStartedAt = DateTime.Now;
+            callTimer.Start();
+            activeVoiceChatSubroomId = eventMessage.Message.SubRoomId;
+            IsInVoiceChat = eventMessage.Participant.Id == localParticipant.Id;
+            AddToVoiceChatParticipant(eventMessage.Participant);
+            await AddToChatFlowAndNotify(eventMessage.Message, cancellationToken);
+        });
+        return Task.CompletedTask;
     }
 
     private Task OnVoiceCallEnded(VoiceCallEndedEvent eventMessage, CancellationToken cancellationToken)
     {
-        VoiceChatParticipants.Clear();
-        IsMuted = false;
-        callTimer.Stop();
-        activeVoiceChatSubroomId = null;
-        IsInVoiceChat = false;
-        IsVoiceChatActive = false;
-        IsSharingScreen = false;
-        UpdateActiveStream();
+        Dispatcher.UIThread.Post(() =>
+        {
+            VoiceChatParticipants.Clear();
+            IsMuted = false;
+            callTimer.Stop();
+            activeVoiceChatSubroomId = null;
+            IsInVoiceChat = false;
+            IsVoiceChatActive = false;
+            IsSharingScreen = false;
+            UpdateActiveStream();
+        });
         return Task.CompletedTask;
     }
 
     private Task VoiceCallStateReceived(VoiceCallStateReceivedEvent eventMessage, CancellationToken cancellationToken)
     {
-        VoiceChatParticipants.Clear();
-        callStartedAt = eventMessage.StartedAt;
-        IsVoiceChatActive = eventMessage.ActiveSubRoomId != null;
-
-        if (IsVoiceChatActive)
+        Dispatcher.UIThread.Post(() =>
         {
-            callTimer.Start();
-        }
+            VoiceChatParticipants.Clear();
+            callStartedAt = eventMessage.StartedAt;
+            IsVoiceChatActive = eventMessage.ActiveSubRoomId != null;
 
-        activeVoiceChatSubroomId = eventMessage.ActiveSubRoomId;
-        foreach (var participant in eventMessage.CallParticipants)
-        {
-            AddToVoiceChatParticipant(participant);
-        }
+            if (IsVoiceChatActive)
+            {
+                callTimer.Start();
+            }
 
-        loadingTcs?.SetResult();
-        loadingTcs = null;
+            activeVoiceChatSubroomId = eventMessage.ActiveSubRoomId;
+            foreach (var participant in eventMessage.CallParticipants)
+            {
+                AddToVoiceChatParticipant(participant);
+            }
 
-        UpdateActiveStream();
+            loadingTcs?.SetResult();
+            loadingTcs = null;
+
+            UpdateActiveStream();
+        });
 
         return Task.CompletedTask;
     }
@@ -418,15 +429,19 @@ public partial class ChatViewModel
 
     private Task OnRoomWentOffline(RoomWentOfflineEvent eventMessage, CancellationToken cancellationToken)
     {
-        IsOnline = false;
-        chatSideBarViewModel.IsOnline = false;
-        DisableAllConnectionActions();
-        if (!string.IsNullOrEmpty(eventMessage.Reason))
+        Dispatcher.UIThread.Post(() =>
         {
+            IsOnline = false;
+            chatSideBarViewModel.IsOnline = false;
+            DisableAllConnectionActions();
+            if (string.IsNullOrEmpty(eventMessage.Reason))
+            {
+                return;
+            }
+
             NotifyIfNeeded(eventMessage.Reason);
             InAppNotifier.Info(eventMessage.Reason);
-        }
-
+        });
         return Task.CompletedTask;
     }
 
