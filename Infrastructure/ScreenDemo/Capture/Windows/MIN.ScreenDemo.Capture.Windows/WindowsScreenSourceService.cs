@@ -38,7 +38,7 @@ public class WindowsScreenSourceService : IScreenSourceService
         }, IntPtr.Zero);
 
         // ===== Окна =====
-        EnumWindows((hWnd, _) =>
+        EnumWindows((hWnd, lParam) =>
         {
             if (!IsWindowVisible(hWnd) || IsIconic(hWnd))
             {

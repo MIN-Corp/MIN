@@ -49,6 +49,7 @@ public partial class ChatViewModel
     private CancellationTokenSource? updatingRoomCts;
 
     // Voice chat
+
     private readonly DispatcherTimer callTimer = new(TimeSpan.FromSeconds(1), DispatcherPriority.Background, Dispatcher.UIThread);
     private DateTime callStartedAt;
 
@@ -341,7 +342,6 @@ public partial class ChatViewModel
         var activeDemos = featureCollection.ScreenDemo.ScreenDemoState.GetActiveDemos(RoomId);
         var selfId = localParticipant.Id;
 
-        // 1. Карточки — из состояния демонстраций (устойчиво к пересборке карточек)
         foreach (var card in VoiceChatParticipants)
         {
             var demo = activeDemos.FirstOrDefault(x => x.Sharer.Id == card.ParticipantId);
@@ -351,7 +351,6 @@ public partial class ChatViewModel
             card.IsWatchingDemo = demo != null && demo.ViewerIds.Contains(selfId);
         }
 
-        // 2. Активный поток
         var watchedCard = VoiceChatParticipants.FirstOrDefault(x => x.IsWatchingDemo);
         var ownCard = VoiceChatParticipants.FirstOrDefault(x => x.IsSelf && x.IsStreaming);
         var activeCard = watchedCard ?? (IsSharingScreen ? ownCard : null);
