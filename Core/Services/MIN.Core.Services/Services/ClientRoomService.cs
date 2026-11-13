@@ -17,6 +17,7 @@ using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Events;
+using MIN.Core.Transport.Contracts.Extensions;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Models.Enums;
@@ -128,9 +129,18 @@ internal sealed class ClientRoomService
                     ConnectionAddresses = [endpoint]
                 };
 
-            if (!roomExistedBefore)
+            switch (roomExistedBefore)
             {
-                roomStore.Register(room);
+                case true:
+                    // Адрес, по которому реально подключились, всегда первый; остальные — запасные
+                    room.ConnectionAddresses = new[] { endpoint }
+                        .Concat(room.ConnectionAddresses.Where(saved => !saved.SameTarget(endpoint)))
+                        .ToList();
+                    break;
+
+                case false:
+                    roomStore.Register(room);
+                    break;
             }
 
             logger.Log($"Подключились к комнате с id {connectionResult.RoomId}, соединение с id {connectionResult.ConnectionId}");

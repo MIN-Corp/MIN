@@ -47,14 +47,14 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     readonly protected string CachedFormat;
 
     /// <summary>
-    /// Подкиска на прогресс скачивание
+    /// Подписка на прогресс скачивание
     /// </summary>
-    protected IDisposable FileTransferProgressSubsciptionToken = null!;
+    protected IDisposable FileTransferProgressSubscriptionToken = null!;
 
     /// <summary>
     /// Сообщение файла
     /// </summary>
-    public FileMetadataMessage FileMetadataMessage { get; init; }
+    public FileMetadataMessage FileMetadataMessage { get; }
 
     [ObservableProperty]
     public partial int DownloadProgress { get; set; }
@@ -63,7 +63,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     public partial bool IsTransferring { get; set; }
 
     [ObservableProperty]
-    public partial bool IsAssembling { get; set; }
+    protected partial bool IsAssembling { get; set; }
 
     [ObservableProperty]
     public partial bool Downloaded { get; set; }
@@ -75,7 +75,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     public partial FileDownloadState FileDownloadState { get; set; } = FileDownloadState.None;
 
     /// <summary>
-    /// Запрос на скавивания
+    /// Запрос на скачивание
     /// </summary>
     public event Func<Task>? OnDownloadRequested;
 
@@ -133,7 +133,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
     }
 
     /// <summary>
-    /// Заолнить поля
+    /// Заполнить поля
     /// </summary>
     protected virtual void FillLabels() { }
 
@@ -190,14 +190,15 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
 
         IsTransferring = true;
 
-        FileTransferProgressSubsciptionToken = RoomScope.Subscribe((FileTransferProgressEvent e, CancellationToken _) =>
+        FileTransferProgressSubscriptionToken = RoomScope.Subscribe((FileTransferProgressEvent e, CancellationToken _) =>
         {
             if (eventMessage.FileMetadataId != FileMetadataMessage.Id)
             {
                 return Task.CompletedTask;
             }
 
-            var progress = 100 * e.BytesReceived / FileMetadataMessage.FileSize;
+            var fileSize = FileMetadataMessage.FileSize;
+            var progress = fileSize > 0 ? 100 * e.BytesReceived / fileSize : 100;
             DownloadProgress = (int)Math.Min(progress, 100);
             OnTransferProgressUpdated(
                 FileTransferFeatureCollection.FileHelperService.FormatFileSize(e.BytesReceived),
@@ -226,7 +227,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
         UpdateDownloadState();
         OnTransferFailed(eventMessage.ErrorMessage ?? string.Empty);
 
-        FileTransferProgressSubsciptionToken.Dispose();
+        FileTransferProgressSubscriptionToken.Dispose();
         return Task.CompletedTask;
     }
 
@@ -255,7 +256,7 @@ public abstract partial class ChatFileBaseMessageViewModel : BaseTextContentChat
 
         Downloaded = true;
         FileMetadataMessage.FilePath ??= eventMessage.FilePath;
-        FileTransferProgressSubsciptionToken.Dispose();
+        FileTransferProgressSubscriptionToken.Dispose();
 
         IsTransferring = false;
         IsAssembling = false;

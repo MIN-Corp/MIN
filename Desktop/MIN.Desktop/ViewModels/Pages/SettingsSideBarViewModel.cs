@@ -127,13 +127,13 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
 
         appCts = ctsProvider.AppCts;
 
-        var inputDeviceNames = featureCollection.Voice.AudioDeviceService.GetInputDevices(asDecoded: true).Select(x => x.Name);
+        var inputDeviceNames = featureCollection.Audio.AudioDeviceService.GetInputDevices(asDecoded: true).Select(x => x.Name);
         foreach (var name in inputDeviceNames)
         {
             InputDevices.Add(name);
         }
 
-        var outputDeviceNames = featureCollection.Voice.AudioDeviceService.GetOutputDevices(asDecoded: true).Select(x => x.Name);
+        var outputDeviceNames = featureCollection.Audio.AudioDeviceService.GetOutputDevices(asDecoded: true).Select(x => x.Name);
         foreach (var name in outputDeviceNames)
         {
             OutputDevices.Add(name);

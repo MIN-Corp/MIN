@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using MIN.Audio.Services;
 using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces.SettingsServices;
 using MIN.Helpers.Contracts.Models;
@@ -12,23 +13,22 @@ public class VoicePlaybackService : IVoicePlaybackService
 {
     private readonly Dictionary<Guid, ParticipantVoiceEntry> channels = [];
     private readonly IVoiceCodec codec;
-    private readonly IAudioDeviceService audioDeviceService;
+    private readonly PlaybackDeviceManager deviceManager;
     private readonly ISettingsProvider settingsProvider;
     private readonly ILoggerProvider logger;
     private readonly object sync = new();
-    private PlaybackDeviceContext? deviceContext;
     private float appVolume;
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="VoicePlaybackService"/>
     /// </summary>
     public VoicePlaybackService(IVoiceCodec codec,
-        IAudioDeviceService audioDeviceService,
+        PlaybackDeviceManager deviceManager,
         ISettingsProvider settingsProvider,
         ILoggerProvider logger)
     {
         this.codec = codec;
-        this.audioDeviceService = audioDeviceService;
+        this.deviceManager = deviceManager;
         this.settingsProvider = settingsProvider;
         this.logger = logger;
 
@@ -36,54 +36,9 @@ public class VoicePlaybackService : IVoicePlaybackService
         {
             lock (sync)
             {
-                var currentSettings = settingsProvider.GetSettings();
-                appVolume = currentSettings.OutputDeviceVolume / 100.0f;
-
-                var outputDevices = audioDeviceService.GetOutputDevices();
-                if (currentSettings.OutputDeviceNumber < 0 || currentSettings.OutputDeviceNumber >= outputDevices.Count)
-                {
-                    return;
-                }
-
-                var device = outputDevices[currentSettings.OutputDeviceNumber];
-
-                try
-                {
-                    deviceContext?.ChangeDevice(device.Name);
-                }
-                catch (Exception ex)
-                {
-                    logger.Log($"Не удалось сменить устройство воспроизведения: {ex.Message}");
-                }
+                appVolume = settingsProvider.GetSettings().OutputDeviceVolume / 100.0f;
             }
         };
-    }
-
-    private PlaybackDeviceContext? EnsureDeviceContext()
-    {
-        if (deviceContext != null)
-        {
-            return deviceContext;
-        }
-
-        var settings = settingsProvider.GetSettings();
-        appVolume = settings.OutputDeviceVolume / 100.0f;
-
-        try
-        {
-            var outputDevices = audioDeviceService.GetOutputDevices();
-            var deviceName = settings.OutputDeviceNumber >= 0 && settings.OutputDeviceNumber < outputDevices.Count
-                ? outputDevices[settings.OutputDeviceNumber].Name
-                : null;
-
-            deviceContext = new PlaybackDeviceContext(deviceName);
-            return deviceContext;
-        }
-        catch (Exception ex)
-        {
-            logger.Log($"Не удалось инициализировать устройство воспроизведения: {ex.Message}");
-        }
-        return null;
     }
 
     /// <inheritdoc />
@@ -96,7 +51,7 @@ public class VoicePlaybackService : IVoicePlaybackService
                 return;
             }
 
-            var context = EnsureDeviceContext();
+            var context = deviceManager.GetOrCreate();
             if (context == null)
             {
                 logger.Log($"Не удалось создать канал воспроизведения для {participantId}: устройство воспроизведения не инициализировано");
@@ -162,7 +117,7 @@ public class VoicePlaybackService : IVoicePlaybackService
             ParticipantChannel? channel;
             lock (sync)
             {
-                EnsureDeviceContext();
+                deviceManager.GetOrCreate();
                 channels.TryGetValue(participantId, out var entry);
                 channel = entry?.Channel;
             }
@@ -196,6 +151,5 @@ public class VoicePlaybackService : IVoicePlaybackService
     public void Dispose()
     {
         Clear();
-        deviceContext?.Dispose();
     }
 }

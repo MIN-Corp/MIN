@@ -8,6 +8,8 @@
              xmlns:messagesVmFiles="using:MIN.Desktop.ViewModels.Cards.Messages.Files"
              xmlns:messagesVmSessions="using:MIN.Desktop.ViewModels.Cards.Messages.Sessions"
              xmlns:messagesVmVoices="using:MIN.Desktop.ViewModels.Cards.Messages.Voice"
+             xmlns:cardsVm="using:MIN.Desktop.ViewModels.Cards"
+             xmlns:cards="using:MIN.Desktop.Views.Cards"
              xmlns:designer="using:MIN.Desktop.Contracts.Designer"
              xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -79,7 +81,7 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                      <MenuItem IsVisible="{Binding !IsVoiceChatActive}"
-                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            IsEnabled="{Binding IsAvailableForNetwork}"
                                             Header="Начать звонок"
                                             Command="{Binding StartVoiceCallClickCommand}">
                                         <MenuItem.Icon>
@@ -175,204 +177,6 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Voice chat -->
-
-                <Border DockPanel.Dock="Top"
-                    Background="{DynamicResource VoiceBackground}"
-                    CornerRadius="{DynamicResource CornerRadiusLarge}"
-                    Padding="{DynamicResource PaddingTopBar}"
-                    IsVisible="{Binding IsVoiceChatActive}">
-                    <Expander Classes="main" IsExpanded="True">
-                        <Expander.Header>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock FontSize="{DynamicResource FontSizeH5}"
-                                    Text="Идёт звонок - " />
-                                <TextBlock FontSize="{DynamicResource FontSizeH5}"
-                                    Classes.callTimer-in="{Binding IsInVoiceChat}"
-                                    Text="{Binding CallDuration, StringFormat='hh\\:mm\\:ss'}" />
-                            </StackPanel>
-                        </Expander.Header>
-
-                        <Expander.Styles>
-                            <Style Selector="Button.talking">
-                                <Setter Property="BorderBrush" Value="{DynamicResource VoiceTalking}" />
-                            </Style>
-
-                            <Style Selector="TextBlock.callTimer-in">
-                                <Setter Property="Foreground" Value="{DynamicResource VoiceTimerOn}" />
-                            </Style>
-                        </Expander.Styles>
-
-                        <Border
-                            CornerRadius="{DynamicResource CornerRadiusLarge}">
-
-                            <StackPanel Margin="0,8,0,0" Spacing="8">
-                                <ScrollViewer
-                                    scrollBehaviors:PrimaryScrollWheelBehavior.PrimaryScrollWheelDirection="Horizontal">
-                                    <ItemsControl ItemsSource="{Binding VoiceChatParticipants}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Center"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Panel Margin="4">
-                                                    <Button Classes="card appear-from-top"
-                                                        Classes.talking="{Binding Talking}"
-                                                        BorderThickness="4">
-                                                        <TextBlock HorizontalAlignment="Center"
-                                                            Classes="header4"
-                                                            Text="{Binding ParticipantName,
-                                                                Converter={converters:TruncateWithEllipsisConverter},
-                                                                ConverterParameter=20}">
-                                                        </TextBlock>
-
-                                                        <Button.Flyout>
-                                                            <Flyout Placement="Bottom" FlyoutPresenterClasses="cardDetails">
-                                                                <Border>
-                                                                    <StackPanel Spacing="8">
-                                                                        <TextBlock
-                                                                            HorizontalAlignment="Center"
-                                                                            Classes="header5"
-                                                                            Text="{Binding ParticipantName,
-                                                                            Converter={converters:TruncateWithEllipsisConverter},
-                                                                            ConverterParameter=20}" />
-
-                                                                        <StackPanel Spacing="8"
-                                                                            IsVisible="{Binding !IsSelf}">
-                                                                            <Button Classes="no-background"
-                                                                                IsVisible="{Binding ForceMuted}"
-                                                                                Command="{Binding ToggleMuteCommand}">
-                                                                                <StackPanel Orientation="Horizontal"
-                                                                                    Spacing="8">
-                                                                                    <Svg Path="/Assets/Icons/sound-on.svg" />
-                                                                                    <TextBlock VerticalAlignment="Center"
-                                                                                        Text="Разглушить участника" />
-                                                                                </StackPanel>
-                                                                            </Button>
-
-                                                                            <Button Classes="no-background"
-                                                                                IsVisible="{Binding !ForceMuted}"
-                                                                                Command="{Binding ToggleMuteCommand}">
-                                                                                <StackPanel Orientation="Horizontal"
-                                                                                    Spacing="8">
-                                                                                    <Svg Path="/Assets/Icons/sound-off.svg" />
-                                                                                    <TextBlock VerticalAlignment="Center"
-                                                                                        Text="Заглушить участника" />
-                                                                                </StackPanel>
-                                                                            </Button>
-
-                                                                            <TextBlock Text="{Binding #outputVolumeSlider.Value, StringFormat='Громкость участника: {0:F0}%'}" />
-                                                                            <Slider x:Name="outputVolumeSlider" Minimum="0" Maximum="200" Value="{Binding DesiredVolume}" />
-                                                                        </StackPanel>
-                                                                    </StackPanel>
-                                                                </Border>
-                                                            </Flyout>
-                                                        </Button.Flyout>
-                                                    </Button>
-
-                                                    <Border
-                                                        VerticalAlignment="Bottom"
-                                                        HorizontalAlignment="Right"
-                                                        Width="28"
-                                                        Height="28"
-                                                        Margin="-2"
-                                                        Opacity="{Binding MicMuted,
-                                                            Converter={converters:BoolToOpacityConverter}}"
-                                                        CornerRadius="{DynamicResource CornerRadiusLarge}"
-                                                        Background="{DynamicResource VoiceMuted}">
-                                                        <Border.Transitions>
-                                                            <Transitions>
-                                                                <DoubleTransition Duration="0:0:.1" Property="Opacity" />
-                                                            </Transitions>
-                                                        </Border.Transitions>
-
-                                                        <Svg Path="/Assets/Icons/microphone-mute.svg" />
-                                                    </Border>
-
-                                                    <Border
-                                                        VerticalAlignment="Top"
-                                                        HorizontalAlignment="Right"
-                                                        Width="24"
-                                                        Height="24"
-                                                        Margin="-2"
-                                                        Opacity="{Binding ForceMuted,
-                                                            Converter={converters:BoolToOpacityConverter}}"
-                                                        CornerRadius="{DynamicResource CornerRadiusLarge}"
-                                                        Background="{DynamicResource VoiceMuted}">
-                                                        <Border.Transitions>
-                                                            <Transitions>
-                                                                <DoubleTransition Duration="0:0:.1" Property="Opacity" />
-                                                            </Transitions>
-                                                        </Border.Transitions>
-
-                                                        <Svg Path="/Assets/Icons/sound-off.svg" />
-                                                    </Border>
-                                                </Panel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-
-                                <StackPanel HorizontalAlignment="Center"
-                                    Spacing="8"
-                                    Orientation="Horizontal">
-
-                                    <!-- Microphone -->
-
-                                    <StackPanel HorizontalAlignment="Center"
-                                        IsVisible="{Binding IsInVoiceChat}"
-                                        Spacing="8"
-                                        Orientation="Horizontal">
-                                        <Button Command="{Binding ToggleMuteCommand}"
-                                            ToolTip.Tip="Включить микрофон"
-                                            IsVisible="{Binding IsMuted}"
-                                            Classes="icon close"
-                                            Background="{DynamicResource VoiceMuted}">
-                                            <Svg Path="/Assets/Icons/microphone-mute.svg" />
-                                        </Button>
-
-                                         <Button Command="{Binding ToggleMuteCommand}"
-                                            ToolTip.Tip="Выключить микрофон"
-                                            IsVisible="{Binding !IsMuted}"
-                                            Classes="icon">
-                                            <Svg Path="/Assets/Icons/microphone.svg" />
-                                        </Button>
-                                    </StackPanel>
-
-                                    <Button Command="{Binding JoinVoiceCallCommand}"
-                                        ToolTip.Tip="Присоединиться к звонку"
-                                        Classes="icon"
-                                        Background="{DynamicResource VoiceAccept}">
-                                        <Button.IsVisible>
-                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
-                                                <Binding Path="!IsInVoiceChat" />
-                                                <Binding Path="IsAvaibleForNetwork" />
-                                            </MultiBinding>
-                                        </Button.IsVisible>
-                                        <Svg Path="/Assets/Icons/phone.svg" />
-                                    </Button>
-
-                                    <Button Command="{Binding LeaveVoiceCallCommand}"
-                                        ToolTip.Tip="Покинуть"
-                                        Classes="icon"
-                                        Background="{DynamicResource VoiceReject}">
-                                        <Button.IsVisible>
-                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
-                                                <Binding Path="IsInVoiceChat" />
-                                                <Binding Path="IsAvaibleForNetwork" />
-                                            </MultiBinding>
-                                        </Button.IsVisible>
-                                        <Svg Path="/Assets/Icons/phone-disconnect.svg" />
-                                    </Button>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </Expander>
-                </Border>
-
                 <!-- TextBox and actions -->
 
                 <Border DockPanel.Dock="Bottom"
@@ -466,14 +270,14 @@
                                 <Button.Flyout>
                                     <MenuFlyout Placement="TopEdgeAlignedLeft">
                                         <MenuItem Header="Отправить файл"
-                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            IsEnabled="{Binding IsAvailableForNetwork}"
                                             Command="{Binding UploadFileClickCommand}">
                                             <MenuItem.Icon>
                                                 <Svg Path="/Assets/Icons/file-upload.svg" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Начать активность"
-                                            IsEnabled="{Binding IsAvaibleForNetwork}"
+                                            IsEnabled="{Binding IsAvailableForNetwork}"
                                             Command="{Binding StartSessionClickCommand}">
                                             <MenuItem.Icon>
                                                 <Svg Path="/Assets/Icons/rocket.svg" />
@@ -486,7 +290,7 @@
                             <Button
                                 Command="{Binding SendMessageCommand}"
                                 VerticalAlignment="Bottom"
-                                IsEnabled="{Binding IsAvaibleForNetwork}"
+                                IsEnabled="{Binding IsAvailableForNetwork}"
                                 ToolTip.Tip="Отправить"
                                 Classes="icon primary"
                                 DockPanel.Dock="Right"
@@ -528,39 +332,63 @@
                     </StackPanel>
                  </Border>
 
-                <Button DockPanel.Dock="Bottom"
+                <SplitButton DockPanel.Dock="Bottom"
                     Classes="appear-from-bottom"
+                    HorizontalAlignment="Stretch"
                     Command="{Binding ReconnectCommand}"
                     Opacity="{Binding !IsOnline,
                         Converter={converters:BoolToOpacityConverter}}">
 
-                    <StackPanel Orientation="Horizontal"
-                                Spacing="8">
+                    <Panel>
                         <TextBlock IsVisible="{Binding !IsConnecting}"
-                                VerticalAlignment="Center"
-                                Text="Подключиться" />
-                        <TextBlock IsVisible="{Binding IsConnecting}"
-                                VerticalAlignment="Center"
-                                Text="Отмена" />
-                         <Svg IsVisible="{Binding IsConnecting}"
-                            Path="/Assets/Icons/loading.svg"
-                            Height="21"
-                            Classes="rotating" />
-                    </StackPanel>
+                           HorizontalAlignment="Center"
+                           Text="{Binding SideBar.ReconnectButtonText}" />
+                        <StackPanel IsVisible="{Binding IsConnecting}"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="Отмена" />
+                            <Svg Path="/Assets/Icons/loading.svg"
+                                Height="21"
+                                Classes="rotating" />
+                        </StackPanel>
+                    </Panel>
 
-                    <Button.Transitions>
-                        <Transitions>
-                            <DoubleTransition Duration="0:0:.2" Property="Opacity" />
-                        </Transitions>
-                    </Button.Transitions>
+                    <SplitButton.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel>
+                                <Button Classes="no-background"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Command="{Binding SideBar.ChooseConnectAddressCommand}"
+                                        CommandParameter="{x:Null}">
+                                    <TextBlock Text="Автоматически" />
+                                </Button>
 
-                     <Button.IsVisible>
+                                <ItemsControl ItemsSource="{Binding ConnectableAddresses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="cardsVm:ConnectionAddressViewModel">
+                                            <Button Classes="no-background"
+                                                    Classes.selected="{Binding IsChosen}"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    Command="{Binding SetChosenCommand}">
+                                                <TextBlock Text="{Binding Address}" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Flyout>
+                    </SplitButton.Flyout>
+
+                    <SplitButton.IsVisible>
                         <MultiBinding Converter="{StaticResource AndMultiConverter}">
                             <Binding Path="!IsOnline" />
                             <Binding Path="!IsHost" />
                         </MultiBinding>
-                    </Button.IsVisible>
-                </Button>
+                    </SplitButton.IsVisible>
+                </SplitButton>
 
                 <Button DockPanel.Dock="Bottom"
                     Classes="appear-from-bottom"
@@ -596,87 +424,431 @@
                     </Button.IsVisible>
                 </Button>
 
-                <!-- Messages -->
+                <Grid x:Name="VoicePanelGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition MaxHeight="660" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                <Panel VerticalAlignment="Bottom" >
-                    <ScrollViewer
-                        x:Name="MessagesScroller"
-                        ScrollChanged="OnMessagesScrollChanged"
-                        scrollBehaviors:AutoScrollToBottomBehavior.AutoScrollBottom="{Binding AutoScrollBottom}"
-                        Classes="main">
-                        <ItemsControl x:Name="MessagesControl" ItemsSource="{Binding Messages}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel CacheLength="1" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <designer:MultiDataTemplate UseCache="False">
-                                    <DataTemplate x:DataType="messagesVm:SystemChatMessageViewModel">
-                                       <messages:SystemChatMessageView />
-                                    </DataTemplate>
+                    <!-- Voice chat -->
 
-                                    <DataTemplate x:DataType="messagesVm:ChatTextMessageViewModel">
-                                       <messages:ChatTextMessageView />
-                                    </DataTemplate>
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource VoiceBackground}"
+                            CornerRadius="{DynamicResource CornerRadiusLarge}"
+                            Padding="{DynamicResource PaddingTopBar}"
+                            IsVisible="{Binding IsVoiceChatActive}">
+                        <Expander x:Name="VoicePanelExpander"
+                                  Classes="main"
+                                  IsExpanded="True">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontSize="{DynamicResource FontSizeH5}"
+                                        Text="Идёт звонок - " />
+                                    <TextBlock FontSize="{DynamicResource FontSizeH5}"
+                                        Classes.callTimer-in="{Binding IsInVoiceChat}"
+                                        Text="{Binding CallDuration, StringFormat='hh\\:mm\\:ss'}" />
+                                </StackPanel>
+                            </Expander.Header>
 
-                                    <DataTemplate x:DataType="messagesVmFiles:ChatFileMessageViewModel">
-                                       <messages:ChatFileMessageView />
-                                    </DataTemplate>
+                            <Expander.Styles>
+                                <Style Selector="Button.talking">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource VoiceTalking}" />
+                                </Style>
 
-                                    <DataTemplate x:DataType="messagesVmFiles:ChatFileImagePreviewMessageViewModel">
-                                       <messages:ChatFileImagePreviewMessageView />
-                                    </DataTemplate>
+                                <Style Selector="TextBlock.callTimer-in">
+                                    <Setter Property="Foreground" Value="{DynamicResource VoiceTimerOn}" />
+                                </Style>
+                            </Expander.Styles>
 
-                                    <DataTemplate x:DataType="messagesVmSessions:ChatSessionMessageViewModel">
-                                       <messages:ChatSessionMessageView />
-                                    </DataTemplate>
+                            <Grid Margin="0,8,0,0" RowDefinitions="Auto,*,Auto">
+                                <ScrollViewer Grid.Row="0"
+                                    scrollBehaviors:PrimaryScrollWheelBehavior.PrimaryScrollWheelDirection="Horizontal">
+                                    <ItemsControl ItemsSource="{Binding VoiceChatParticipants}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Center"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Panel Margin="4">
+                                                    <StackPanel Spacing="4">
 
-                                     <DataTemplate x:DataType="messagesVmVoices:ChatVoiceCallMessageViewModel">
-                                       <messages:ChatVoiceCallMessageView />
-                                    </DataTemplate>
-                                </designer:MultiDataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                                                        <Button Classes="card appear-from-top"
+                                                                Classes.talking="{Binding Talking}"
+                                                                BorderThickness="4">
+                                                            <TextBlock HorizontalAlignment="Center"
+                                                                Classes="header4"
+                                                                Text="{Binding ParticipantName,
+                                                                    Converter={converters:TruncateWithEllipsisConverter},
+                                                                    ConverterParameter=20}">
+                                                            </TextBlock>
 
-                    <Button Classes="icon"
-                            ToolTip.Tip="Пролистать вниз"
-                            IsVisible="{Binding !IsAtBottom}"
-                            Opacity="{Binding !IsAtBottom,
-                                Converter={converters:BoolToOpacityConverter}}"
-                            Background="{DynamicResource SurfaceCard}"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Bottom"
-                            Command="{Binding ScrollToBottomCommand}">
-                        <Button.Transitions>
-                             <Transitions>
-                                <DoubleTransition Duration="0:0:.2" Property="Opacity" />
-                            </Transitions>
-                        </Button.Transitions>
+                                                            <Button.Flyout>
+                                                                <Flyout Placement="Bottom" FlyoutPresenterClasses="cardDetails">
+                                                                    <Border>
+                                                                        <StackPanel Spacing="8">
+                                                                            <TextBlock
+                                                                                HorizontalAlignment="Center"
+                                                                                Classes="header5"
+                                                                                Text="{Binding ParticipantName,
+                                                                                Converter={converters:TruncateWithEllipsisConverter},
+                                                                                ConverterParameter=20}" />
 
-                        <Panel>
-                            <Svg Margin="{DynamicResource PaddingCard}"
-                                Path="/Assets/Icons/arrow-down.svg" />
+                                                                            <StackPanel Spacing="8"
+                                                                                IsVisible="{Binding !IsSelf}">
+                                                                                <Button Classes="no-background"
+                                                                                    IsVisible="{Binding ForceMuted}"
+                                                                                    Command="{Binding ToggleMuteCommand}">
+                                                                                    <StackPanel Orientation="Horizontal"
+                                                                                        Spacing="8">
+                                                                                        <Svg Path="/Assets/Icons/sound-on.svg" />
+                                                                                        <TextBlock VerticalAlignment="Center"
+                                                                                            Text="Размьютить участника" />
+                                                                                    </StackPanel>
+                                                                                </Button>
 
-                            <Border
-                                VerticalAlignment="Top"
+                                                                                <Button Classes="no-background"
+                                                                                    IsVisible="{Binding !ForceMuted}"
+                                                                                    Command="{Binding ToggleMuteCommand}">
+                                                                                    <StackPanel Orientation="Horizontal"
+                                                                                        Spacing="8">
+                                                                                        <Svg Path="/Assets/Icons/sound-off.svg" />
+                                                                                        <TextBlock VerticalAlignment="Center"
+                                                                                            Text="Заглушить участника" />
+                                                                                    </StackPanel>
+                                                                                </Button>
+
+                                                                                <TextBlock Text="{Binding #outputVolumeSlider.Value, StringFormat='Громкость участника: {0:F0}%'}" />
+                                                                                <Slider x:Name="outputVolumeSlider" Minimum="0" Maximum="200" Value="{Binding DesiredVolume}" />
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+
+                                                        <Button Classes="small"
+                                                                HorizontalAlignment="Center"
+                                                                ToolTip.Tip="Смотреть демонстрацию"
+                                                                Command="{Binding $parent[ItemsControl].((vm:ChatViewModel)DataContext).JoinScreenDemoCommand}"
+                                                                CommandParameter="{Binding DemoSubRoomId}">
+                                                                <Button.IsVisible>
+                                                                    <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                                        <Binding Path="IsStreaming" />
+                                                                        <Binding Path="!IsSelf" />
+                                                                        <Binding Path="!IsWatchingDemo" />
+                                                                    </MultiBinding>
+                                                                </Button.IsVisible>
+                                                                <TextBlock Text="Смотреть" FontWeight="Bold" />
+                                                            </Button>
+
+                                                            <Button Classes="small"
+                                                                HorizontalAlignment="Center"
+                                                                ToolTip.Tip="Покинуть демонстрацию"
+                                                                Command="{Binding $parent[ItemsControl].((vm:ChatViewModel)DataContext).LeaveScreenDemoCommand}"
+                                                                CommandParameter="{Binding DemoSubRoomId}">
+                                                                <Button.IsVisible>
+                                                                    <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                                        <Binding Path="IsStreaming" />
+                                                                        <Binding Path="IsWatchingDemo" />
+                                                                    </MultiBinding>
+                                                                </Button.IsVisible>
+                                                                <TextBlock Text="Покинуть" FontWeight="Bold" />
+                                                            </Button>
+
+                                                            <Button Classes="small"
+                                                                HorizontalAlignment="Center"
+                                                                ToolTip.Tip="Остановить демонстрацию"
+                                                                Command="{Binding $parent[ItemsControl].((vm:ChatViewModel)DataContext).StopSharingScreenCommand}">
+                                                                <Button.IsVisible>
+                                                                    <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                                        <Binding Path="IsStreaming" />
+                                                                        <Binding Path="IsSelf" />
+                                                                    </MultiBinding>
+                                                                </Button.IsVisible>
+                                                                <TextBlock Text="Остановить" FontWeight="Bold" />
+                                                            </Button>
+                                                        </StackPanel>
+                                                    <Border
+                                                        VerticalAlignment="Bottom"
+                                                        HorizontalAlignment="Right"
+                                                        Width="28"
+                                                        Height="28"
+                                                        Margin="-2"
+                                                        Opacity="{Binding MicMuted,
+                                                            Converter={converters:BoolToOpacityConverter}}"
+                                                        CornerRadius="{DynamicResource CornerRadiusLarge}"
+                                                        Background="{DynamicResource VoiceMuted}">
+                                                        <Border.Transitions>
+                                                            <Transitions>
+                                                                <DoubleTransition Duration="0:0:.1" Property="Opacity" />
+                                                            </Transitions>
+                                                        </Border.Transitions>
+
+                                                        <Svg Path="/Assets/Icons/microphone-mute.svg" />
+                                                    </Border>
+
+                                                    <Border
+                                                        VerticalAlignment="Top"
+                                                        HorizontalAlignment="Right"
+                                                        Width="24"
+                                                        Height="24"
+                                                        Margin="-2"
+                                                        Opacity="{Binding ForceMuted,
+                                                            Converter={converters:BoolToOpacityConverter}}"
+                                                        CornerRadius="{DynamicResource CornerRadiusLarge}"
+                                                        Background="{DynamicResource VoiceMuted}">
+                                                        <Border.Transitions>
+                                                            <Transitions>
+                                                                <DoubleTransition Duration="0:0:.1" Property="Opacity" />
+                                                            </Transitions>
+                                                        </Border.Transitions>
+
+                                                        <Svg Path="/Assets/Icons/sound-off.svg" />
+                                                    </Border>
+
+                                                    <Border
+                                                        VerticalAlignment="Top"
+                                                        HorizontalAlignment="Left"
+                                                        Width="24"
+                                                        Height="24"
+                                                        Margin="-4"
+                                                        Opacity="{Binding IsStreaming,
+                                                            Converter={converters:BoolToOpacityConverter}}"
+                                                        CornerRadius="{DynamicResource CornerRadiusLarge}"
+                                                        Background="{DynamicResource VoiceAccept}">
+                                                        <Border.Transitions>
+                                                            <Transitions>
+                                                                <DoubleTransition Duration="0:0:.1" Property="Opacity" />
+                                                            </Transitions>
+                                                        </Border.Transitions>
+
+                                                        <Svg Width="20"
+                                                             Height="20"
+                                                             Path="/Assets/Icons/monitor.svg" />
+                                                    </Border>
+                                                </Panel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <!-- Демонстрации экрана -->
+
+                                <Panel Grid.Row="1" VerticalAlignment="Center">
+                                    <ContentControl Content="{Binding ActiveStreamViewModel}"
+                                                    IsVisible="{Binding !IsStreamPoppedOut}">
+                                        <ContentControl.DataTemplates>
+                                            <DataTemplate x:DataType="cardsVm:ScreenDemoStreamViewModel">
+                                                <cards:ScreenDemoStreamView />
+                                            </DataTemplate>
+                                        </ContentControl.DataTemplates>
+                                    </ContentControl>
+
+                                    <Border Classes="card"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Padding="12"
+                                            IsVisible="{Binding IsStreamPoppedOut}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Svg Path="/Assets/Icons/monitor.svg" Width="20" Height="20" />
+                                            <TextBlock VerticalAlignment="Center" Text="Демонстрация открыта в отдельном окне" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button Classes="icon"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="4"
+                                            ToolTip.Tip="В отдельное окно"
+                                            IsVisible="{Binding ActiveStreamViewModel,
+                                                Converter={converters:NonEqualityConverter},
+                                                ConverterParameter={x:Null}}"
+                                            Command="{Binding PopoutActiveStreamCommand}">
+                                        <Svg Path="/Assets/Icons/answer.svg" />
+                                    </Button>
+                                </Panel>
+
+                                <!-- Voice button actions -->
+
+                                <StackPanel Grid.Row="2"
+                                            VerticalAlignment="Bottom"
+                                            HorizontalAlignment="Center"
+                                            Spacing="8"
+                                            Orientation="Horizontal">
+
+                                    <!-- Microphone -->
+
+                                    <StackPanel HorizontalAlignment="Center"
+                                        IsVisible="{Binding IsInVoiceChat}"
+                                        Spacing="8"
+                                        Orientation="Horizontal">
+                                        <Button Command="{Binding ToggleMuteCommand}"
+                                            ToolTip.Tip="Включить микрофон"
+                                            IsVisible="{Binding IsMuted}"
+                                            Classes="icon close"
+                                            Background="{DynamicResource VoiceMuted}">
+                                            <Svg Path="/Assets/Icons/microphone-mute.svg" />
+                                        </Button>
+
+                                         <Button Command="{Binding ToggleMuteCommand}"
+                                            ToolTip.Tip="Выключить микрофон"
+                                            IsVisible="{Binding !IsMuted}"
+                                            Classes="icon">
+                                            <Svg Path="/Assets/Icons/microphone.svg" />
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel HorizontalAlignment="Center"
+                                                Spacing="8"
+                                                Orientation="Horizontal">
+                                        <StackPanel.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="IsInVoiceChat" />
+                                                <Binding Path="CanShareScreen" />
+                                            </MultiBinding>
+                                        </StackPanel.IsVisible>
+                                        <Button Command="{Binding DemonstrateScreenCommand}"
+                                                ToolTip.Tip="Демонстрировать экран"
+                                                IsVisible="{Binding !IsSharingScreen}"
+                                                Classes="icon">
+                                            <Svg Path="/Assets/Icons/monitor.svg" />
+                                        </Button>
+
+                                        <Button Command="{Binding DemonstrateScreenCommand}"
+                                                ToolTip.Tip="Прекратить демонстрацию экрана"
+                                                IsVisible="{Binding IsSharingScreen}"
+                                                Background="{DynamicResource VoiceMuted}"
+                                                Classes="icon close">
+                                            <Svg Path="/Assets/Icons/monitor.svg" />
+                                        </Button>
+                                    </StackPanel>
+
+                                    <Button Command="{Binding JoinVoiceCallCommand}"
+                                        ToolTip.Tip="Присоединиться к звонку"
+                                        Classes="icon"
+                                        Background="{DynamicResource VoiceAccept}">
+                                        <Button.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="!IsInVoiceChat" />
+                                                <Binding Path="IsAvailableForNetwork" />
+                                            </MultiBinding>
+                                        </Button.IsVisible>
+                                        <Svg Path="/Assets/Icons/phone.svg" />
+                                    </Button>
+
+                                    <Button Command="{Binding LeaveVoiceCallCommand}"
+                                        ToolTip.Tip="Покинуть"
+                                        Classes="icon"
+                                        Background="{DynamicResource VoiceReject}">
+                                        <Button.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AndMultiConverter}">
+                                                <Binding Path="IsInVoiceChat" />
+                                                <Binding Path="IsAvailableForNetwork" />
+                                            </MultiBinding>
+                                        </Button.IsVisible>
+                                        <Svg Path="/Assets/Icons/phone-disconnect.svg" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Expander>
+                    </Border>
+
+                    <GridSplitter Grid.Row="1"
+                                  Height="6"
+                                  IsVisible="{Binding IsVoiceChatActive}"
+                                  HorizontalAlignment="Stretch"
+                                  ResizeDirection="Rows"
+                                  ResizeBehavior="PreviousAndNext"
+                                  Background="Transparent" />
+
+                    <!-- область сообщений: тот Border/разметка, что раньше заполняла DockPanel -->
+
+                    <!-- Messages -->
+
+                    <Panel Grid.Row="2" VerticalAlignment="Bottom">
+                        <ScrollViewer
+                            x:Name="MessagesScroller"
+                            ScrollChanged="OnMessagesScrollChanged"
+                            scrollBehaviors:AutoScrollToBottomBehavior.AutoScrollBottom="{Binding AutoScrollBottom}"
+                            Classes="main">
+                            <ItemsControl x:Name="MessagesControl" ItemsSource="{Binding Messages}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <VirtualizingStackPanel CacheLength="1" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <designer:MultiDataTemplate UseCache="False">
+                                        <DataTemplate x:DataType="messagesVm:SystemChatMessageViewModel">
+                                           <messages:SystemChatMessageView />
+                                        </DataTemplate>
+
+                                        <DataTemplate x:DataType="messagesVm:ChatTextMessageViewModel">
+                                           <messages:ChatTextMessageView />
+                                        </DataTemplate>
+
+                                        <DataTemplate x:DataType="messagesVmFiles:ChatFileMessageViewModel">
+                                           <messages:ChatFileMessageView />
+                                        </DataTemplate>
+
+                                        <DataTemplate x:DataType="messagesVmFiles:ChatFileImagePreviewMessageViewModel">
+                                           <messages:ChatFileImagePreviewMessageView />
+                                        </DataTemplate>
+
+                                        <DataTemplate x:DataType="messagesVmSessions:ChatSessionMessageViewModel">
+                                           <messages:ChatSessionMessageView />
+                                        </DataTemplate>
+
+                                         <DataTemplate x:DataType="messagesVmVoices:ChatVoiceCallMessageViewModel">
+                                           <messages:ChatVoiceCallMessageView />
+                                        </DataTemplate>
+                                    </designer:MultiDataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <Button Classes="icon"
+                                ToolTip.Tip="Пролистать вниз"
+                                IsVisible="{Binding !IsAtBottom}"
+                                Opacity="{Binding !IsAtBottom,
+                                    Converter={converters:BoolToOpacityConverter}}"
+                                Background="{DynamicResource SurfaceCard}"
                                 HorizontalAlignment="Right"
-                                Width="24"
-                                Height="24"
-                                Margin="-6"
-                                IsVisible="{Binding MissedMessagesCount,
-                                    Converter={converters:NumericComparisonConverter},
-                                    ConverterParameter=>0}"
-                                CornerRadius="{DynamicResource CornerRadiusLarge}"
-                                Background="{DynamicResource Primary}">
-                                <TextBlock VerticalAlignment="Center"
-                                           Text="{Binding MissedMessagesCount}"
-                                           TextAlignment="Center" />
-                            </Border>
-                        </Panel>
-                    </Button>
-                </Panel>
+                                VerticalAlignment="Bottom"
+                                Command="{Binding ScrollToBottomCommand}">
+                            <Button.Transitions>
+                                 <Transitions>
+                                    <DoubleTransition Duration="0:0:.2" Property="Opacity" />
+                                </Transitions>
+                            </Button.Transitions>
+
+                            <Panel>
+                                <Svg Margin="{DynamicResource PaddingCard}"
+                                    Path="/Assets/Icons/arrow-down.svg" />
+
+                                <Border
+                                    VerticalAlignment="Top"
+                                    HorizontalAlignment="Right"
+                                    Width="24"
+                                    Height="24"
+                                    Margin="-6"
+                                    IsVisible="{Binding MissedMessagesCount,
+                                        Converter={converters:NumericComparisonConverter},
+                                        ConverterParameter=>0}"
+                                    CornerRadius="{DynamicResource CornerRadiusLarge}"
+                                    Background="{DynamicResource Primary}">
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{Binding MissedMessagesCount}"
+                                               TextAlignment="Center" />
+                                </Border>
+                            </Panel>
+                        </Button>
+                    </Panel>
+                </Grid>
             </DockPanel>
         </Border>
 

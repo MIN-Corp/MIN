@@ -1,5 +1,5 @@
-﻿using MIN.Common.Core.Contracts.Interfaces;
-using MIN.Core.Entities.Contracts.Enums;
+﻿using MIN.Audio.Services;
+using MIN.Common.Core.Contracts.Interfaces;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Identity.Contracts.Interfaces;
@@ -26,13 +26,14 @@ public class VoiceCallMonitor : IHostedService
     private readonly IAudioCaptureService audioCaptureService;
     private readonly IVoiceDataTransmitter voiceDataTransmitter;
     private readonly IVoiceCallStateService voiceCallStateService;
+    private readonly PlaybackDeviceManager deviceManager;
     private readonly IIdentityService identityService;
     private readonly ILoggerProvider logger;
 
     int IHostedService.Priority => 0;
 
     /// <summary>
-    /// Инициализирует новый экзепмляр <see cref="VoiceCallMonitor"/>
+    /// Инициализирует новый экземпляр <see cref="VoiceCallMonitor"/>
     /// </summary>
     public VoiceCallMonitor(IRoomFactory roomFactory,
         IEventBus eventBus,
@@ -42,6 +43,7 @@ public class VoiceCallMonitor : IHostedService
         IAudioCaptureService audioCaptureService,
         IVoiceDataTransmitter voiceDataTransmitter,
         IVoiceCallStateService voiceCallStateService,
+        PlaybackDeviceManager deviceManager,
         IIdentityService identityService,
         ILoggerProvider logger)
     {
@@ -53,6 +55,7 @@ public class VoiceCallMonitor : IHostedService
         this.audioCaptureService = audioCaptureService;
         this.voiceDataTransmitter = voiceDataTransmitter;
         this.voiceCallStateService = voiceCallStateService;
+        this.deviceManager = deviceManager;
         this.identityService = identityService;
         this.logger = logger;
     }
@@ -68,9 +71,10 @@ public class VoiceCallMonitor : IHostedService
 
     private async Task OnRoomWentOffline(RoomWentOfflineEvent e, CancellationToken cancellationToken)
     {
-        var voiceContext = voiceCallStateService.GetRoomVoiceCallContext();
+        var context = roomFactory.GetOrCreateContext(e.RoomId);
 
-        if (voiceContext != null && e.RoomId == voiceContext.Value.RoomId)
+        var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive).ToList();
+        foreach (var subRoom in activeSubRooms)
         {
             voiceCallStateService.UnregisterVoiceCall();
             audioCaptureService.Stop();
@@ -79,8 +83,10 @@ public class VoiceCallMonitor : IHostedService
 
             await messageRouter.PublishLocally(new VoiceCallEndedMessage()
             {
-                SubRoomId = voiceContext.Value.SubRoomId,
-            }, voiceContext.Value.RoomId, Role.Host, null, cancellationToken);
+                SubRoomId = subRoom.Id,
+            }, e.RoomId, null, cancellationToken);
+
+            context.SubRooms.RemoveSubRoom(subRoom.Id);
         }
     }
 
@@ -109,23 +115,25 @@ public class VoiceCallMonitor : IHostedService
         var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive);
         foreach (var subRoom in activeSubRooms)
         {
-            if (context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
+            if (!context.SubRooms.IsInSubRoom(subRoom.Id, participantId))
             {
-                var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
+                continue;
+            }
 
-                await messageRouter.RouteAsync(new VoiceParticipantLeftMessage()
+            var isLast = !context.SubRooms.LeaveSubRoom(subRoom.Id, participantId);
+
+            await messageRouter.RouteAsync(new VoiceParticipantLeftMessage()
+            {
+                SubRoomId = subRoom.Id,
+                Participant = e.Message.Participant,
+            }, roomId, identityService.SelfParticipant.Id, cancellationToken);
+
+            if (isLast)
+            {
+                await messageRouter.RouteAsync(new VoiceCallEndedMessage()
                 {
                     SubRoomId = subRoom.Id,
-                    Participant = e.Message.Participant,
                 }, roomId, identityService.SelfParticipant.Id, cancellationToken);
-
-                if (isLast)
-                {
-                    await messageRouter.RouteAsync(new VoiceCallEndedMessage()
-                    {
-                        SubRoomId = subRoom.Id,
-                    }, roomId, identityService.SelfParticipant.Id, cancellationToken);
-                }
             }
         }
     }
@@ -160,6 +168,7 @@ public class VoiceCallMonitor : IHostedService
         audioCaptureService.Stop();
         voiceDataTransmitter.End();
         voicePlaybackService.Dispose();
+        deviceManager.Dispose();
 
         return Task.CompletedTask;
     }

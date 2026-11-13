@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Avalonia.Collections;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,11 +17,11 @@ using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Models.ReferenceCommands.Layout;
 using MIN.Desktop.Infrastructure.Extensions;
 using MIN.Desktop.Infrastructure.Services;
-using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.Desktop.ViewModels.Modals;
 using MIN.Desktop.Views;
 using MIN.Sessions.Core.Services.Contracts.Enums;
+using Timer = System.Timers.Timer;
 
 namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 
@@ -31,7 +30,7 @@ namespace MIN.Desktop.ViewModels.Pages.ChatViewModels;
 /// </summary>
 public partial class ChatViewModel
 {
-    private System.Timers.Timer? typingTimer;
+    private Timer? typingTimer;
     private bool isParentWindowActive = true;
     private bool isParentWindowClosed = true;
     private int? activeVoiceChatSubroomId;
@@ -50,6 +49,7 @@ public partial class ChatViewModel
     private CancellationTokenSource? updatingRoomCts;
 
     // Voice chat
+
     private readonly DispatcherTimer callTimer = new(TimeSpan.FromSeconds(1), DispatcherPriority.Background, Dispatcher.UIThread);
     private DateTime callStartedAt;
 
@@ -64,6 +64,14 @@ public partial class ChatViewModel
     [ObservableProperty]
     public partial bool IsVoiceChatActive { get; set; }
 
+    partial void OnIsVoiceChatActiveChanged(bool value)
+        => IsVoiceChatActiveChanged?.Invoke(value);
+
+    /// <summary>
+    /// Голосовой чат начался/закончился
+    /// </summary>
+    public Action<bool>? IsVoiceChatActiveChanged { get; set; }
+
     /// <summary>
     /// Находится ли локальный пользователь в звонке
     /// </summary>
@@ -71,7 +79,7 @@ public partial class ChatViewModel
     public partial bool IsInVoiceChat { get; set; }
 
     /// <summary>
-    /// Выключил ли микрофон локальный пользователь
+    /// Выключен ли у пользователя микрофон
     /// </summary>
     [ObservableProperty]
     public partial bool IsMuted { get; set; }
@@ -81,6 +89,46 @@ public partial class ChatViewModel
     /// </summary>
     [ObservableProperty]
     public partial TimeSpan CallDuration { get; set; }
+
+    /// <summary>
+    /// Поддерживает ли текущая платформа демонстрацию экрана
+    /// </summary>
+    [ObservableProperty]
+    public partial bool CanShareScreen { get; set; }
+
+    /// <summary>
+    /// Демонстрирует ли или смотрит экран локальный пользователь прямо сейчас
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsSharingScreen { get; set; }
+
+    partial void OnIsSharingScreenChanged(bool value)
+        => IsSharingScreenChanged?.Invoke();
+
+    /// <summary>
+    /// Вид модельки демонстрации поменялся
+    /// </summary>
+    public Action? IsSharingScreenChanged { get; set; }
+
+    /// <summary>
+    /// Поток демонстрации вынесен в отдельное окно (встроенная область показывает заглушку)
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsStreamPoppedOut { get; set; }
+
+    partial void OnIsStreamPoppedOutChanged(bool value)
+        => IsStreamPoppedOutChanged?.Invoke();
+
+    /// <summary>
+    /// Вид модельки демонстрации поменялся
+    /// </summary>
+    public Action? IsStreamPoppedOutChanged { get; set; }
+
+    /// <summary>
+    /// Активный поток демонстрации, показываемый во встроенной области
+    /// </summary>
+    [ObservableProperty]
+    public partial ScreenDemoStreamViewModel? ActiveStreamViewModel { get; set; }
 
     #region Layouting
 
@@ -96,6 +144,11 @@ public partial class ChatViewModel
 
         this.RegisterMessageListener<LayoutModeChangedReferenceCommand, ChatViewModel>((msg, _) =>
             CurrentLayout = msg.Layout);
+    }
+
+    private void InitializeDemoWindows()
+    {
+        screenDemoWindowsService.DemoWindowClosed += OnDemoWindowClosed;
     }
 
     [RelayCommand]
@@ -123,8 +176,8 @@ public partial class ChatViewModel
 
     private void InitializeTimers()
     {
-        typingTimer = new() { Interval = 3000 };
-        typingTimer.Elapsed += (s, e) => OnTypingTimerStop();
+        typingTimer = new Timer { Interval = 3000 };
+        typingTimer.Elapsed += (_, _) => OnTypingTimerStop();
         callTimer.Tick += OnCallTimerTick;
     }
 
@@ -192,11 +245,11 @@ public partial class ChatViewModel
                 return;
             }
 
-            if (choosingForm!.SelectedSession!.Kind == SessionKind.Process)
+            if (choosingForm.SelectedSession!.Kind == SessionKind.Process)
             {
-                InAppNotifier.Info($"Сессия \"{choosingForm!.SelectedSession!.Name}\" запускается, это может занять некоторе время");
+                InAppNotifier.Info($"Сессия \"{choosingForm.SelectedSession!.Name}\" запускается, это может занять некоторое время");
             }
-            await SendSessionStartMessage(choosingForm!.SelectedSession!);
+            await SendSessionStartMessage(choosingForm.SelectedSession!);
         }
     }
 
@@ -213,6 +266,117 @@ public partial class ChatViewModel
         }
 
         await OnVoiceCallJoinRequested(activeVoiceChatSubroomId.Value);
+    }
+
+    private void MoveStreamingParticipantFirst(Guid sharerId)
+    {
+        var card = VoiceChatParticipants.FirstOrDefault(x => x.ParticipantId == sharerId);
+
+        if (card == null || VoiceChatParticipants.IndexOf(card) == 0)
+        {
+            return;
+        }
+
+        VoiceChatParticipants.Remove(card);
+        VoiceChatParticipants.Insert(0, card);
+    }
+
+    [RelayCommand]
+    private async Task DemonstrateScreen()
+    {
+        var ownDemo = featureCollection.ScreenDemo.ScreenDemoState.GetOwnDemo(RoomId, localParticipant.Id);
+
+        if (ownDemo != null)
+        {
+            await StopSharingScreen();
+            return;
+        }
+
+        var picked = await dialogService.ShowDialogAsync<ScreenDemoSourcePickerViewModel>();
+
+        if (!picked || picked?.SelectedSource == null)
+        {
+            return;
+        }
+
+        await featureCollection.Chat.ChatScreenDemoService.StartDemoAsync(RoomId, picked.SelectedSource, picked.WithSound, roomCts.Token);
+    }
+
+    /// <summary>
+    /// Вынести активный поток в отдельное окно
+    /// </summary>
+    [RelayCommand]
+    private void PopoutActiveStream()
+    {
+        if (ActiveStreamViewModel == null || IsStreamPoppedOut)
+        {
+            return;
+        }
+
+        IsStreamPoppedOut = true;
+
+        if (ActiveStreamViewModel.IsOwnStream)
+        {
+            screenDemoWindowsService.ShowPreviewWindow(RoomId, ActiveStreamViewModel.SubRoomId);
+        }
+        else
+        {
+            screenDemoWindowsService.ShowViewerWindow(RoomId, ActiveStreamViewModel.SubRoomId, ActiveStreamViewModel.SharerId);
+        }
+    }
+
+    private void OnDemoWindowClosed(Guid roomId, int subRoomId)
+    {
+        if (roomId == RoomId)
+        {
+            IsStreamPoppedOut = false;
+        }
+    }
+
+    /// <summary>
+    /// Синхронизировать карточки участников с состоянием демонстраций
+    /// и пересчитать активный поток: просматриваемый ?? Собственный
+    /// </summary>
+    private void UpdateActiveStream()
+    {
+        var activeDemos = featureCollection.ScreenDemo.ScreenDemoState.GetActiveDemos(RoomId);
+        var selfId = localParticipant.Id;
+
+        foreach (var card in VoiceChatParticipants)
+        {
+            var demo = activeDemos.FirstOrDefault(x => x.Sharer.Id == card.ParticipantId);
+
+            card.IsStreaming = demo != null;
+            card.DemoSubRoomId = demo?.SubRoomId;
+            card.IsWatchingDemo = demo != null && demo.ViewerIds.Contains(selfId);
+        }
+
+        var watchedCard = VoiceChatParticipants.FirstOrDefault(x => x.IsWatchingDemo);
+        var ownCard = VoiceChatParticipants.FirstOrDefault(x => x.IsSelf && x.IsStreaming);
+        var activeCard = watchedCard ?? (IsSharingScreen ? ownCard : null);
+
+        if (activeCard == null)
+        {
+            ActiveStreamViewModel?.Dispose();
+            ActiveStreamViewModel = null;
+            return;
+        }
+
+        var isOwn = activeCard.IsSelf;
+        var subRoomId = activeCard.DemoSubRoomId!.Value;
+
+        if (ActiveStreamViewModel != null
+            && ActiveStreamViewModel.SubRoomId == subRoomId
+            && ActiveStreamViewModel.IsOwnStream == isOwn)
+        {
+            return;
+        }
+
+        ActiveStreamViewModel?.Dispose();
+
+        ActiveStreamViewModel = isOwn
+            ? new ScreenDemoStreamViewModel(RoomId, subRoomId, activeCard.ParticipantId, featureCollection.ScreenDemo.ScreenDemoTransmitter)
+            : new ScreenDemoStreamViewModel(RoomId, subRoomId, activeCard.ParticipantId, featureCollection.ScreenDemo.ScreenDemoPlayback);
     }
 
     [RelayCommand]
@@ -395,10 +559,15 @@ public partial class ChatViewModel
         activeVoiceChatSubroomId = null;
         IsInVoiceChat = false;
         IsVoiceChatActive = false;
+        IsSharingScreen = false;
+        IsStreamPoppedOut = false;
 
         parentWindow.Activated -= Parent_Activated;
         parentWindow.Deactivated -= Parent_Deactivate;
         mainWindowViewModel.OnMinimizedToTray -= Parent_OnMinimizedToTray;
+
+        screenDemoWindowsService.DemoWindowClosed -= OnDemoWindowClosed;
+        ActiveStreamViewModel?.Dispose();
 
         featureCollection.Helper.NotificationService.OnNotificationClick -= OnNotificationClick;
         featureCollection.Helper.NotificationService.NotificationTurnOffClicked -= NotificationTurnOffClicked;
@@ -424,7 +593,7 @@ public partial class ChatViewModel
     }
 
     [RelayCommand]
-    private async Task PasteData() => await PasteDataFromClipboard(false);
+    private async Task PasteData() => await PasteDataFromClipboard();
 
     [RelayCommand]
     private async Task PasteDataWithText() => await PasteDataFromClipboard(true);
@@ -459,7 +628,7 @@ public partial class ChatViewModel
         {
             if (formats.Contains(DataFormat.Text))
             {
-                if (await clipboard.TryGetTextAsync() is string text)
+                if (await clipboard.TryGetTextAsync() is { } text)
                 {
                     SendingMessage = SendingMessage.Insert(CaretIndex, text);
                     CaretIndex += text.Length;
@@ -469,11 +638,11 @@ public partial class ChatViewModel
         }
 
         var image = await clipboard.TryGetBitmapAsync();
-        if (image is Bitmap bitmap)
+        if (image != null)
         {
             var timestamp = DateTime.Now.ToString("yyyy-dd-MM-HH-mm-ss-fffff");
             var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{timestamp}.png");
-            bitmap.Save(tempPath);
+            image.Save(tempPath);
             UploadFile(tempPath);
         }
     }

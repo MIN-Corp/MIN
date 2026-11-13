@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using MIN.Audio.Services;
 using MIN.Voice.Services.Contacts.Constants;
 using MIN.Voice.Services.Contacts.Interfaces;
 using OpenTK.Audio.OpenAL;
@@ -137,14 +138,16 @@ internal sealed class ParticipantChannel : IDisposable
     private void UpdateFreeBuffers()
     {
         AL.GetSource(sourceId, ALGetSourcei.BuffersProcessed, out var processed);
-        if (processed > 0)
+        if (processed <= 0)
         {
-            var processedBufs = new int[processed];
-            AL.SourceUnqueueBuffers(sourceId, processed, processedBufs);
-            foreach (var buf in processedBufs)
-            {
-                freeBuffers.Enqueue(buf);
-            }
+            return;
+        }
+
+        var processedBuffers = new int[processed];
+        AL.SourceUnqueueBuffers(sourceId, processed, processedBuffers);
+        foreach (var buf in processedBuffers)
+        {
+            freeBuffers.Enqueue(buf);
         }
     }
 
@@ -211,8 +214,8 @@ internal sealed class ParticipantChannel : IDisposable
                 AL.GetSource(sourceId, ALGetSourcei.BuffersQueued, out var queued);
                 if (queued > 0)
                 {
-                    var queuedBufs = new int[queued];
-                    AL.SourceUnqueueBuffers(sourceId, queued, queuedBufs);
+                    var queuedBuffers = new int[queued];
+                    AL.SourceUnqueueBuffers(sourceId, queued, queuedBuffers);
                 }
                 AL.DeleteSource(sourceId);
                 foreach (var buf in bufferIds)

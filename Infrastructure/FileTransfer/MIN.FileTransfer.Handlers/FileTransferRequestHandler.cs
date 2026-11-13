@@ -199,7 +199,9 @@ internal sealed class FileTransferRequestHandler : BaseHandler
 
         if (metadata.AsDownloaded)
         {
-            return fileStorageService.GetFilePath(roomId, metadata.FileName);
+            return metadata.FilePath != null && File.Exists(metadata.FilePath)
+                ? metadata.FilePath
+                : fileStorageService.GetFilePath(roomId, metadata.FileName);
         }
 
         return metadata.FilePath != null && File.Exists(metadata.FilePath) ? metadata.FilePath : null;
@@ -234,14 +236,14 @@ internal sealed class FileTransferRequestHandler : BaseHandler
 
         if (!fileTransferService.TryGetTransferInfo(request.TransferId, out var info))
         {
-            LogWarning($"Не найдена информация о передаче {request.TransferId} во время стриминга файла");
+            LogWarning($"Не найдена информация о передаче {request.TransferId} во время передачи файла");
             return;
         }
 
         info.CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
 
         var fileSize = new FileInfo(filePath).Length;
-        LogInfo($"Начинаю стриминг файла {Path.GetFileName(filePath)} ({fileSize} байт)");
+        LogInfo($"Начинаю передачу файла {Path.GetFileName(filePath)} ({fileSize} байт)");
 
         try
         {
@@ -251,6 +253,13 @@ internal sealed class FileTransferRequestHandler : BaseHandler
         catch (Exception ex)
         {
             LogError($"Произошла ошибка во время самой передачи файла с id {request.TransferId}");
+
+            await messageSender.SendAsync(new FileTransferResponseMessage
+            {
+                TransferId = request.TransferId,
+                Success = false,
+                ErrorMessage = $"Ошибка при передаче файла: {ex.Message}",
+            }, roomId, context.ConnectionId, context.CancellationToken);
 
             await eventBus.PublishAsync(new FileTransferFailedEvent
             {

@@ -7,9 +7,6 @@ namespace MIN.Voice.DI.FeatureCollection;
 /// </summary>
 public interface IVoiceFeatureCollection
 {
-    /// <inheritdoc cref="IAudioDeviceService"/>
-    IAudioDeviceService AudioDeviceService { get; }
-
     /// <inheritdoc cref="IMuteService"/>
     IMuteService MuteService { get; }
 

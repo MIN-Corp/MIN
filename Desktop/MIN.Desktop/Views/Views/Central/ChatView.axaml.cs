@@ -29,6 +29,34 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChangedEvent;
+        VoicePanelGrid.RowDefinitions[0].Height = GridLength.Auto;
+        VoicePanelExpander.PropertyChanged += OnVoicePanelPropertyChanged;
+    }
+
+    private void OnVoicePanelPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Expander.IsExpandedProperty)
+        {
+            VoicePanelGrid.RowDefinitions[0].Height = GridLength.Auto;
+        }
+
+        if (e.Property != Expander.IsExpandedProperty)
+        {
+            return;
+        }
+
+        UpdateVoicePanelGridMinHeight();
+    }
+
+    private void UpdateVoicePanelGridMinHeight()
+    {
+        chatVm = DataContext as ChatViewModel;
+
+        VoicePanelGrid.RowDefinitions[0].MinHeight = VoicePanelExpander.IsExpanded ?
+            chatVm?.IsStreamPoppedOut == true ? 240
+                : chatVm?.IsSharingScreen == true ? 360
+            : 144 : 0;
+        VoicePanelGrid.RowDefinitions[0].Height = GridLength.Auto;
     }
 
     /// <inheritdoc />
@@ -51,6 +79,22 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
         chatVm.HistoryPrependStarted += OnHistoryPrependStarted;
         chatVm.HistoryPrependCompleted += OnHistoryPrependCompleted;
         chatVm.ScrollRestoreRequested += OnScrollRestoreRequested;
+        chatVm.IsVoiceChatActiveChanged += IsVoiceChatActiveChanged;
+        chatVm.IsSharingScreenChanged += UpdateVoicePanelGridMinHeight;
+        chatVm.IsStreamPoppedOutChanged += UpdateVoicePanelGridMinHeight;
+    }
+
+    private void IsVoiceChatActiveChanged(bool isActive)
+    {
+        switch (isActive)
+        {
+            case true:
+                UpdateVoicePanelGridMinHeight();
+                break;
+            case false:
+                VoicePanelGrid.RowDefinitions[0].MinHeight = 0;
+                break;
+        }
     }
 
     private void UnsubscribeFromViewModel()
@@ -63,6 +107,9 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
         chatVm.HistoryPrependStarted -= OnHistoryPrependStarted;
         chatVm.HistoryPrependCompleted -= OnHistoryPrependCompleted;
         chatVm.ScrollRestoreRequested -= OnScrollRestoreRequested;
+        chatVm.IsVoiceChatActiveChanged -= IsVoiceChatActiveChanged;
+        chatVm.IsSharingScreenChanged -= UpdateVoicePanelGridMinHeight;
+        chatVm.IsStreamPoppedOutChanged -= UpdateVoicePanelGridMinHeight;
         chatVm = null;
     }
 

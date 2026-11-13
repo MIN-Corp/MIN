@@ -48,7 +48,7 @@ public sealed class MessageRouter : IMessageRouter
             // Regardless of recipient - they had to put recipientId and public = false if they wanted it to be private
             // So basically dispatcher will handle all of it
 
-            await PublishLocally(message, roomId, role, broadcastExcludeIds, cancellationToken).ConfigureAwait(false);
+            await PublishLocally(message, roomId, broadcastExcludeIds, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -56,7 +56,7 @@ public sealed class MessageRouter : IMessageRouter
 
             if (message.RequiresLocalDuplication)
             {
-                await PublishLocally(message, roomId, role, null, cancellationToken).ConfigureAwait(false);
+                await PublishLocally(message, roomId, null, cancellationToken).ConfigureAwait(false);
             }
 
             var hostId = roomStore.GetRoomHostParticipantId(roomId);
@@ -66,9 +66,9 @@ public sealed class MessageRouter : IMessageRouter
     }
 
     /// <inheritdoc />
-    public async Task PublishLocally(IMessage message, Guid roomId, Role role,
+    public async Task PublishLocally(IMessage message, Guid roomId,
         IEnumerable<Guid>? broadcastExcludeIds, CancellationToken cancellationToken)
-        => await eventBus.PublishAsync(new LocalMessageReceivedEvent(message, roomId, role, broadcastExcludeIds),
+        => await eventBus.PublishAsync(new LocalMessageReceivedEvent(message, roomId, registry.GetRole(roomId), broadcastExcludeIds),
             cancellationToken).ConfigureAwait(false);
 
     private Guid GetHostConnectionId(Guid roomId, Guid hostId)

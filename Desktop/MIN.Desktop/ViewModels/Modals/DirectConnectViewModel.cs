@@ -44,7 +44,7 @@ public partial class DirectConnectViewModel : ModalViewModelBase
     /// <summary>
     /// Полученная конечная точка
     /// </summary>
-    public TcpEndpoint Endpoint { get; set; } = new();
+    public TcpEndpoint Endpoint { get; } = new();
 
     /// <summary>
     /// Событие по нажатию на кнопку
@@ -75,6 +75,13 @@ public partial class DirectConnectViewModel : ModalViewModelBase
 
         IsConnecting = true;
         OnConnect?.Invoke();
+    }
+
+    [RelayCommand]
+    private async Task PasteIpAddress()
+    {
+        await Task.Yield();
+        await TryParsePortAndValidate();
     }
 
     [RelayCommand]
