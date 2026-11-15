@@ -95,7 +95,7 @@ public class UdpTransport : IAsyncDisposable
     /// <summary>
     /// Отправить данные
     /// </summary>
-    public async Task SendAsync(byte[] data, Guid recipientConnectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
+    public async Task SendAsync(ReadOnlyMemory<byte> data, Guid recipientConnectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
     {
         if (clients.TryGetValue(recipientConnectionId, out var client))
         {
@@ -116,7 +116,7 @@ public class UdpTransport : IAsyncDisposable
     /// <summary>
     /// Разослать данные по всем соединениям
     /// </summary>
-    public async Task BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, CancellationToken cancellationToken)
+    public async Task BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, CancellationToken cancellationToken)
     {
         var excludeSet = excludeConnections?.ToHashSet() ?? [];
 
@@ -187,8 +187,7 @@ public class UdpTransport : IAsyncDisposable
             await PortForwardingHelper.UnmapPortAsync(server.Port, Protocol.Udp, cancellationToken);
         }
 
-        var includeVpns = oldNetworkOptions == null && networkOptions.EnableRadmin
-            || oldNetworkOptions.HasValue && networkOptions.EnableRadmin && !oldNetworkOptions.Value.EnableRadmin;
+        var includeVpns = networkOptions.EnableRadmin;
 
         IEnumerable<MachineKnownIp> knownIps = [];
 
@@ -214,6 +213,11 @@ public class UdpTransport : IAsyncDisposable
                 NetworkName = ip.NetworkName,
                 Port = server.Port
             }).ToList();
+
+        if (networkOptions.EnablePortForwarding && endpoints.All(ep => ep.Origin != AddressOrigin.Wan))
+        {
+            logger.Log("Порт проброшен на роутере, но публичный IP-адрес не определён (двойной NAT/CGNAT или сервисы определения IP недоступны). Подключения из интернета будут невозможны", LogLevel.Warning);
+        }
 
         cachedServerEndpoints[connectionId] = endpoints;
 

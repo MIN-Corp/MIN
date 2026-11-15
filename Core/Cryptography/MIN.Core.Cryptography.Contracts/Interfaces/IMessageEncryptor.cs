@@ -6,11 +6,6 @@
 public interface IMessageEncryptor
 {
     /// <summary>
-    /// Проверить, инициализирована ли сессия с собеседником
-    /// </summary>
-    bool IsSessionInitialized(Guid partnerId);
-
-    /// <summary>
     /// Вызывается при первом контакте с собеседником
     /// </summary>
     /// <param name="partnerId">Идентификатор партнёра (участника)</param>
@@ -39,16 +34,22 @@ public interface IMessageEncryptor
     byte[] ComputeKeyFingerprint(byte[] publicKey);
 
     /// <summary>
-    /// Закодировать сообщение
+    /// Зашифровать сообщение
     /// </summary>
     /// <param name="data">Информация для зашифровки</param>
     /// <param name="partnerId">Идентификатор партнёра (участника)</param>
     byte[] EncryptMessage(byte[] data, Guid partnerId);
 
     /// <summary>
-    /// Раскодировать сообщение
+    /// Зашифровать на месте: буфер формата [IV(12)][plaintext][tag(16)]
+    /// </summary>
+    /// <remarks>IV и tag заполняются методом, plaintext перезаписывается шифротекстом (in-place)</remarks>
+    void EncryptMessageInPlace(Span<byte> ivPlaintextTag, Guid partnerId);
+
+    /// <summary>
+    /// Расшифровать сообщение: [IV(12)][ciphertext][authTag(16)] -> plaintext
     /// </summary>
     /// <param name="encryptedData">Информация для расшифровки</param>
     /// <param name="partnerId">Идентификатор партнёра (участника)</param>
-    byte[] DecryptMessage(byte[] encryptedData, Guid partnerId);
+    byte[] DecryptMessage(ReadOnlyMemory<byte> encryptedData, Guid partnerId);
 }

@@ -132,7 +132,7 @@ public abstract partial class BaseChatMessageViewModel : CardViewModelBase
     /// Удалить сообщение
     /// </summary>
     [RelayCommand(CanExecute = nameof(IsAvailableForNetwork))]
-    protected virtual async Task DeleteMessage()
+    protected async Task DeleteMessage()
     {
         if (dialogService == null)
         {

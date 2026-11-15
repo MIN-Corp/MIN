@@ -18,6 +18,7 @@ internal sealed class UdpSocketClient : IAsyncDisposable
 
     private IPEndPoint? hostEndPoint;
     private Task? receiveLoop;
+    private byte[] datagramBuffer = [];
     private bool disposed;
 
     /// <summary>
@@ -29,11 +30,6 @@ internal sealed class UdpSocketClient : IAsyncDisposable
     /// Идентификатор соединения. Один на обе ноги (TCP+UDP) — задаёт ChannelTransport
     /// </summary>
     public Guid ConnectionId { get; }
-
-    /// <summary>
-    /// Локальная точка (уйдёт в UdpAnnounceMessage)
-    /// </summary>
-    public string? LocalEndPoint => client.Client.LocalEndPoint?.ToString();
 
     public UdpSocketClient(Guid connectionId, ILoggerProvider logger)
     {
@@ -85,7 +81,7 @@ internal sealed class UdpSocketClient : IAsyncDisposable
         }
     }
 
-    public async Task SendAsync(byte[] data, CancellationToken cancellationToken = default)
+    public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
         if (hostEndPoint == null)
         {
@@ -93,10 +89,17 @@ internal sealed class UdpSocketClient : IAsyncDisposable
         }
 
         await writeLock.WaitAsync(cancellationToken);
+
         try
         {
-            var datagram = UdpMessage.Wrap(ConnectionId, data);
-            await client.SendAsync(datagram, hostEndPoint, cancellationToken);
+            var total = UdpMessage.ConnectionIdSize + data.Length;
+            if (datagramBuffer.Length < total)
+            {
+                datagramBuffer = new byte[total];
+            }
+
+            UdpMessage.Wrap(ConnectionId, data.Span, datagramBuffer);
+            await client.SendAsync(datagramBuffer.AsMemory(0, total), hostEndPoint, cancellationToken);
         }
         finally
         {

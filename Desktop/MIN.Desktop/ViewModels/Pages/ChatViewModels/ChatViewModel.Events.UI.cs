@@ -464,20 +464,16 @@ public partial class ChatViewModel
 
             try
             {
-                var oldNetworkOptions = room.LocalRoomSettings.NetworkOptions;
-
                 await featureCollection.Chat.ChatRoomService.UpdateNetworkOutOfSettings(editFormResult.Room,
                     room.ConnectionAddresses, editFormResult.NetworkOptions, room.LocalRoomSettings.NetworkOptions, updatingRoomCts.Token);
 
                 if (editFormResult.Room.Name != room.Name
-                    || editFormResult.Room.MaximumParticipants != room.MaximumParticipants
-                    || room.LocalRoomSettings.NetworkOptions != oldNetworkOptions)
+                    || editFormResult.Room.MaximumParticipants != room.MaximumParticipants)
                 {
                     await featureCollection.Chat.ChatRoomService.SendUpdatedRoomInfoAsync(editFormResult.Room, room.ConnectionAddresses, updatingRoomCts.Token);
                 }
 
                 chatSideBarViewModel.UpdateStats(room);
-
                 InAppNotifier.Success("Комната успешно была обновлена!");
             }
             catch (OperationCanceledException)

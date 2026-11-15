@@ -8,12 +8,23 @@ static internal class UdpMessage
 {
     public const int ConnectionIdSize = 16;
 
+    /// <summary>
+    /// Обернуть массив байтов
+    /// </summary>
     public static byte[] Wrap(Guid connectionId, byte[] payload)
     {
         var datagram = new byte[ConnectionIdSize + payload.Length];
-        connectionId.TryWriteBytes(datagram);
-        Buffer.BlockCopy(payload, 0, datagram, ConnectionIdSize, payload.Length);
+        Wrap(connectionId, payload, datagram);
         return datagram;
+    }
+
+    /// <summary>
+    /// Обернуть срез байтов
+    /// </summary>
+    public static void Wrap(Guid connectionId, ReadOnlySpan<byte> payload, Span<byte> destination)
+    {
+        connectionId.TryWriteBytes(destination);
+        payload.CopyTo(destination[ConnectionIdSize..]);
     }
 
     public static (Guid ConnectionId, byte[] Payload) Parse(byte[] datagram)

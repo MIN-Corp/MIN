@@ -364,7 +364,8 @@ public partial class ChatViewModel
                 {
                     try
                     {
-                        using var bitmap = new Bitmap(fileAttachment.File.FilePath);
+                        await using var fileStream = File.OpenRead(fileAttachment.File.FilePath);
+                        using var bitmap = Bitmap.DecodeToWidth(fileStream, 1);
                     }
                     catch
                     {

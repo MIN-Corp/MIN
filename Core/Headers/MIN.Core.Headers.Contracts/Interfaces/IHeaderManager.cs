@@ -8,7 +8,7 @@ namespace MIN.Core.Headers.Contracts.Interfaces;
 /// </summary>
 /// <remarks>
 /// <para><b>Незашифрованное сообщение (Plain):</b> [0x00][сериализованные_данные]</para>
-/// <para><b>Зашифрованное сообщение:</b> [0x01][IV(12)][зашиифрованные_данные][authTag(16)]</para>
+/// <para><b>Зашифрованное сообщение:</b> [0x01][IV(12)][зашифрованные_данные][authTag(16)]</para>
 /// <para><b>Пакет потока:</b> [0x10 + flags(0x0F)][streamId(16)][index(4)][total(4)][сериализованные_данные]</para>
 /// <para><b>ACK:</b> [0x80][streamId(16)][index(4)]</para>
 /// </remarks>
@@ -22,32 +22,28 @@ public interface IHeaderManager
     /// <summary>
     /// Проверяет по заголовку, зашифровано ли сообщение
     /// </summary>
-    bool IsEncrypted(byte[] data);
+    bool IsEncrypted(ReadOnlySpan<byte> data);
 
     /// <summary>
     /// Проверяет по заголовку, является ли сообщение подтверждением пакета потока
     /// </summary>
-    bool IsAck(byte[] data);
+    bool IsAck(ReadOnlySpan<byte> data);
 
     /// <summary>
-    /// Убрать заголовок шифрования
+    /// Убрать тип-заголовок (первый байт) без копирования — возвращает срез исходного массива
     /// </summary>
-    byte[] RemoveEncryptionHeader(byte[] data);
-
-    /// <summary>
-    /// Получить тип сообщения из заголовка
-    /// </summary>
-    HeaderMessageType GetMessageType(byte[] data);
+    /// <remarks>Срез валиден, пока валиден исходный буфер <paramref name="data"/></remarks>
+    Memory<byte> StripTypeHeader(byte[] data);
 
     /// <summary>
     /// Проверяет по заголовку, является ли сообщение пакетом потока
     /// </summary>
-    bool IsStreamChunk(byte[] data);
+    bool IsStreamChunk(ReadOnlySpan<byte> data);
 
     /// <summary>
     /// Получить заголовки пакета потока
     /// </summary>
-    StreamChunkFlags GetStreamFlags(byte[] data);
+    StreamChunkFlags GetStreamFlags(ReadOnlySpan<byte> data);
 
     /// <summary>
     /// Создать заголовок для пакета потока
@@ -55,7 +51,12 @@ public interface IHeaderManager
     byte[] BuildStreamChunkHeader(StreamChunkFlags flags, Guid streamId, int index, int total);
 
     /// <summary>
+    /// Записать заголовок пакета потока в подготовленный буфер
+    /// </summary>
+    void WriteStreamChunkHeader(Span<byte> destination, StreamChunkFlags flags, Guid streamId, int index, int total);
+
+    /// <summary>
     /// Распарсить заголовок пакета потока
     /// </summary>
-    StreamChunkHeader ParseStreamChunkHeader(byte[] data);
+    StreamChunkHeader ParseStreamChunkHeader(ReadOnlySpan<byte> data);
 }

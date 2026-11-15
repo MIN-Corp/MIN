@@ -12,14 +12,14 @@ public interface IRawMessageHandler
     /// Расшифровать входящие данные
     /// </summary>
     /// <returns>
-    /// null - данные следует отбросить (неизвестный отправитель)
+    /// Null - данные следует отбросить (неизвестный отправитель)
     /// </returns>
-    byte[]? TryDecrypt(RoomRawMessageReceivedEventArgs e);
+    ReadOnlyMemory<byte>? TryDecrypt(RoomRawMessageReceivedEventArgs e);
 
     /// <summary>
     /// Десериализовать и отправить в диспетчер обычное сообщение
     /// </summary>
-    Task HandleRawAsync(RoomRawMessageReceivedEventArgs e, byte[] plainData, CancellationToken cancellationToken);
+    Task HandleRawAsync(RoomRawMessageReceivedEventArgs e, ReadOnlyMemory<byte> plainData, CancellationToken cancellationToken);
 
     /// <summary>
     /// Десериализовать и отправить в диспетчер сообщение, собранное из пакетов потока

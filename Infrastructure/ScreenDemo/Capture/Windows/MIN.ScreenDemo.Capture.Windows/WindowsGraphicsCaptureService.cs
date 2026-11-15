@@ -288,15 +288,8 @@ public class WindowsGraphicsCaptureService : IScreenCaptureService
                     }
                 }
 
-                try
-                {
-                    lastFrameTimestamp = Environment.TickCount64;
-                    FrameCaptured?.Invoke(this, new ScreenFrame(width, height, frameBytes, lastFrameTimestamp));
-                }
-                finally
-                {
-                    d3dContext.Unmap(staging, 0);
-                }
+                lastFrameTimestamp = Environment.TickCount64;
+                FrameCaptured?.Invoke(this, new ScreenFrame(width, height, frameBytes, lastFrameTimestamp));
             }
             finally
             {

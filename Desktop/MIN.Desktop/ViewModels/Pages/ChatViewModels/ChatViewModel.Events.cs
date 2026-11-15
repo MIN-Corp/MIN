@@ -15,6 +15,7 @@ using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Models.Statuses;
 using MIN.Desktop.Infrastructure.Events;
 using MIN.Desktop.Infrastructure.Services;
+using MIN.Desktop.Infrastructure.Extensions;
 using MIN.Desktop.ViewModels.Cards;
 using MIN.FileTransfer.Events;
 using MIN.FileTransfer.Services.Contracts.Models.Enums;
@@ -217,24 +218,30 @@ public partial class ChatViewModel
 
     private Task OnScreenDemoStarted(ScreenDemoStartedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.SharerId == localParticipant.Id)
+        Dispatcher.UIThread.Post(() =>
         {
-            IsSharingScreen = true;
-        }
+            if (eventMessage.SharerId == localParticipant.Id)
+            {
+                IsSharingScreen = true;
+            }
 
-        MoveStreamingParticipantFirst(eventMessage.SharerId);
-        UpdateActiveStream();
+            MoveStreamingParticipantFirst(eventMessage.SharerId);
+            UpdateActiveStream();
+        });
         return Task.CompletedTask;
     }
 
     private Task OnScreenDemoEnded(ScreenDemoEndedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.SharerId == localParticipant.Id)
+        Dispatcher.UIThread.Post(() =>
         {
-            IsSharingScreen = false;
-        }
+            if (eventMessage.SharerId == localParticipant.Id)
+            {
+                IsSharingScreen = false;
+            }
 
-        UpdateActiveStream();
+            UpdateActiveStream();
+        });
         return Task.CompletedTask;
     }
 
@@ -371,7 +378,7 @@ public partial class ChatViewModel
     {
         RemoveLoadMoreLabel();
         DisposeMessageCards();
-        Messages.Clear();
+        Messages.ClearAndDispose();
         renderedMessageCount = 0;
         MissedMessagesCount = 0;
         maxRenderedMessages = StoreConstants.MessagesPageSize;

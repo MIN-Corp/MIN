@@ -10,6 +10,7 @@ using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
+using MIN.Desktop.Infrastructure.Extensions;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Windows;
@@ -149,7 +150,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
         RemoveLoadMoreLabel();
         DisposeMessageCards();
-        Messages.Clear();
+        Messages.ClearAndDispose();
         await RenderMessages(lastHistory);
 
         if (lastHistory.Count > 0)
@@ -173,13 +174,15 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
     private void ActionOnNavigatedFrom(object? sender, EventArgs e)
     {
-        if (hasScrolledHistory)
+        if (!hasScrolledHistory)
         {
-            DisposeMessageCards();
-            Messages.Clear();
-            renderedMessageCount = 0;
-            RemoveLoadMoreLabel();
+            return;
         }
+
+        DisposeMessageCards();
+        Messages.ClearAndDispose();
+        renderedMessageCount = 0;
+        RemoveLoadMoreLabel();
     }
 
     /// <inheritdoc />

@@ -14,7 +14,7 @@ namespace MIN.Core.Serialization.Json;
 public sealed class JsonMessageSerializer : IMessageSerializer
 {
     private readonly IEnumerable<IMessage> messageTypes;
-    private readonly ConcurrentDictionary<MessageTypeTag, Func<byte[], IMessage>> deserializers = new();
+    private readonly ConcurrentDictionary<MessageTypeTag, Func<ReadOnlyMemory<byte>, IMessage>> deserializers = new();
     private readonly JsonSerializerOptions serializerOptions;
 
     JsonSerializerOptions IMessageSerializer.SerializerOptions => serializerOptions;
@@ -57,7 +57,7 @@ public sealed class JsonMessageSerializer : IMessageSerializer
     byte[] IMessageSerializer.Serialize(IMessage message)
         => JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), serializerOptions);
 
-    IMessage IMessageSerializer.Deserialize(byte[] data)
+    IMessage IMessageSerializer.Deserialize(ReadOnlyMemory<byte> data)
     {
         using var doc = JsonDocument.Parse(data);
         var root = doc.RootElement;
@@ -75,6 +75,6 @@ public sealed class JsonMessageSerializer : IMessageSerializer
             : deserializer(data);
     }
 
-    private Func<byte[], IMessage> CreateDeserializer(Type messageType)
-        => data => (IMessage)JsonSerializer.Deserialize(data, messageType, serializerOptions)!;
+    private Func<ReadOnlyMemory<byte>, IMessage> CreateDeserializer(Type messageType)
+        => data => (IMessage)JsonSerializer.Deserialize(data.Span, messageType, serializerOptions)!;
 }

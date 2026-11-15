@@ -32,4 +32,10 @@ public interface IScreenVideoCodec : IDisposable
     /// Возвращает false, если картинки ещё нет (норма до первого ключевого кадра)
     /// </summary>
     bool Decode(byte[] encoded, int expectedWidth, int expectedHeight, byte[] targetBuffer);
+
+    /// <summary>
+    /// Освободить нативные ресурсы до следующей Configure/Decode.
+    /// Вызывается при завершении демонстрации; безопасен при активном воспроизведении
+    /// </summary>
+    void Reset();
 }

@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Input.Platform;
-using Avalonia.Labs.Gif;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,12 +20,12 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     private readonly IClipboard? clipboard;
 
     private FileStream? gifStream;
-    private GifStreamSource gifSessionImage = null!;
+    private GifHeaderSource gifSessionImage = null!;
 
     /// <summary>
     /// Сессия
     /// </summary>
-    public Session? Session { get; set; }
+    public Session? Session { get; }
 
     /// <summary>
     /// Имя сессии
@@ -47,7 +46,7 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     public partial string Version { get; set; } = string.Empty;
 
     /// <summary>
-    /// Инфа о максимальном кол-ве участников
+    /// Информация о максимальном кол-ве участников
     /// </summary>
     [ObservableProperty]
     public partial string MaximumParticipantInfo { get; set; } = string.Empty;
@@ -94,7 +93,7 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     /// <summary>
     /// .gif Изображение сессии
     /// </summary>
-    public GifStreamSource GifSessionImage
+    public GifHeaderSource GifSessionImage
     {
         get => gifSessionImage;
         private set
@@ -124,7 +123,7 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     private void FillLabels()
     {
         SessionName = IsCreateTunnelCard
-            ? "Cвоя сессия"
+            ? "Своя сессия"
             : Session!.Name;
 
         SessionDescription = IsCreateTunnelCard
@@ -140,30 +139,27 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
         Version = $"Версия: {Session.Version}";
         MaximumParticipantInfo = "Максимум участников: " + (Session.MaximumParticipants.HasValue
             ? Session.MaximumParticipants.Value
-            : "Неограничено");
+            : "Неограниченно");
 
-        if (Session.ThumbnailFileName != null)
+        if (Session.ThumbnailFileName == null)
         {
-            var bytes = File.ReadAllBytes(Session.GetThumbnailPath());
-            using var ms = new MemoryStream(bytes);
+            return;
+        }
 
-            var format = Path.GetExtension(Session.ThumbnailFileName);
+        var format = Path.GetExtension(Session.ThumbnailFileName);
 
-            gifStream?.Dispose();
-            gifStream = null;
+        gifStream?.Dispose();
+        gifStream = null;
 
-            if (format == "gif")
-            {
-                GifSessionImage = GifStreamSource.FromStream(ms);
-            }
-            else if (format == "svg")
-            {
-                SessionImage = ImageHelper.SvgToBitmap(ms);
-            }
-            else
-            {
-                SessionImage = new Bitmap(ms);
-            }
+        if (format == "gif")
+        {
+            gifStream = File.OpenRead(Session.GetThumbnailPath());
+            GifSessionImage = GifHeaderSource.FromStream(gifStream);
+        }
+        else
+        {
+            using var ms = File.OpenRead(Session.GetThumbnailPath());
+            SessionImage = format == "svg" ? ImageHelper.SvgToBitmap(ms) : new Bitmap(ms);
         }
     }
 
@@ -198,7 +194,10 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
             await clipboard.SetTextAsync(Session!.DownloadLink);
             DownloadLink = "Скопировано!";
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
     }
 
 
@@ -217,6 +216,7 @@ public partial class DownloadedSessionViewModel : CardViewModelBase, IDisposable
     /// <inheritdoc cref="IDisposable.Dispose"/>
     public override void Dispose()
     {
+        SessionImage?.Dispose();
         gifStream?.Dispose();
         gifStream = null;
 

@@ -75,9 +75,17 @@ public class ScreenDemoPlaybackService : IScreenDemoPlaybackService
 
     void IScreenDemoPlaybackService.RemoveStream(Guid roomId, Guid sharerId)
     {
+        DemoAudioChannel? channel;
+
         lock (gate)
         {
             streams.Remove((roomId, sharerId));
+            requestedStreamVolumes.Remove((roomId, sharerId));
+
+            if (audioChannels.Remove((roomId, sharerId), out channel))
+            {
+                channel.Dispose();
+            }
         }
     }
 

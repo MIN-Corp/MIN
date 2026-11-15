@@ -23,4 +23,16 @@ public static class AvaloniaListExtensions
         list.Clear();
         list.AddRange(sorted);
     }
+
+    /// <summary>
+    /// Очистить список, освободив ресурсы элементов
+    /// </summary>
+    public static void ClearAndDispose<T>(this AvaloniaList<T> list) where T : IDisposable
+    {
+        foreach (var item in list)
+        {
+            item.Dispose();
+        }
+        list.Clear();
+    }
 }

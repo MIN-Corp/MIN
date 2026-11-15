@@ -197,7 +197,7 @@ internal sealed class HostRoomService
 
         var localParticipant = identityService.SelfParticipant.ToParticipantInfo();
 
-        var connectionId = await transport.StartHostingAsync(prefferedPort: networkOptions.PrefferredPort,
+        var connectionId = await transport.StartHostingAsync(preferredPort: networkOptions.PrefferredPort,
             sequentialAttempts: ServicesConstants.MaximumRoomHosts, cancellationToken: cancellationToken);
 
         if (roomStore.TryGetRoom(roomId, out var existingRoom))
@@ -405,7 +405,7 @@ internal sealed class HostRoomService
         await eventBus.PublishAsync(new RoomDestroyedEvent() { RoomId = roomId });
     }
 
-    private static IEnumerable<IEndpoint> MergeCustomEndpoints(IEnumerable<IEndpoint> endpoints, LocalRoomSettings localRoomSettings)
+    private static List<IEndpoint> MergeCustomEndpoints(IEnumerable<IEndpoint> endpoints, LocalRoomSettings localRoomSettings)
     {
         var enumerable = endpoints as IEndpoint[] ?? endpoints.ToArray();
         return enumerable

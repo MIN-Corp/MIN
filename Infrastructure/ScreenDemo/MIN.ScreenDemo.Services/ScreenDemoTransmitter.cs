@@ -163,6 +163,7 @@ public class ScreenDemoTransmitter : IScreenDemoTransmitter
 
         screenCaptureService.FrameCaptured -= OnFrameCaptured;
         screenCaptureService.Stop();
+        codec.Reset();
 
         sendCts?.Cancel();
         sendCts = null;

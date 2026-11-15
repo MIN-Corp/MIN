@@ -15,6 +15,7 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
     private readonly NetworkStream stream;
     private readonly SemaphoreSlim writeLock = new(1, 1);
     private readonly CancellationTokenSource cancellationTokenSource = new();
+    private readonly byte[] lengthPrefixBuffer = new byte[4];
 
     private Task? receiveLoop;
     private DisconnectReason disconnectReason = DisconnectReason.None;
@@ -39,7 +40,7 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
     /// <summary>
     /// Активно ли соединение
     /// </summary>
-    public override bool IsConnected => client.Connected && stream != null && !disposed;
+    public override bool IsConnected => client.Connected && !disposed;
 
     /// <summary>
     /// Событие получения сообщения
@@ -117,7 +118,7 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
     /// <summary>
     /// Отправляет данные
     /// </summary>
-    public async Task SendAsync(byte[] data, CancellationToken cancellationToken = default)
+    public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
         if (!IsConnected)
         {
@@ -127,8 +128,8 @@ internal sealed class TcpSocketConnection : BaseConnection, IAsyncDisposable
         await writeLock.WaitAsync(cancellationToken);
         try
         {
-            var lengthPrefix = BitConverter.GetBytes(data.Length);
-            await stream.WriteAsync(lengthPrefix, cancellationToken);
+            BitConverter.TryWriteBytes(lengthPrefixBuffer, data.Length);
+            await stream.WriteAsync(lengthPrefixBuffer, cancellationToken);
             await stream.WriteAsync(data, cancellationToken);
             await stream.FlushAsync(cancellationToken);
         }

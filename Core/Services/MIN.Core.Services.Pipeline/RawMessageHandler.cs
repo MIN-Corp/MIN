@@ -50,31 +50,27 @@ public sealed class RawMessageHandler : IRawMessageHandler
         this.logger = logger;
     }
 
-    byte[]? IRawMessageHandler.TryDecrypt(RoomRawMessageReceivedEventArgs e)
+    ReadOnlyMemory<byte>? IRawMessageHandler.TryDecrypt(RoomRawMessageReceivedEventArgs e)
     {
-        var context = roomFactory.GetOrCreateContext(e.RoomId);
-        context.Connections.TryGetParticipantFromConnectionId(e.ConnectionId, out var participantInfo);
-
-        var body = headerManager.RemoveEncryptionHeader(e.Data);
-
-        if (headerManager.IsEncrypted(e.Data) && e.ConnectionId != CoreRegistryConstants.LocalConnectionId)
+        if (!headerManager.IsEncrypted(e.Data) || e.ConnectionId == CoreRegistryConstants.LocalConnectionId)
         {
-            if (participantInfo == null)
-            {
-                logger.Log($"Получили зашифрованное сообщение от неизвестного соединения с id {e.ConnectionId}, игнорю");
-                return null;
-            }
-            return encryptor.DecryptMessage(body, participantInfo.Id);
+            return e.Data.AsMemory(1);
         }
 
-        return body;
+        var context = roomFactory.GetOrCreateContext(e.RoomId);
+        if (context.Connections.TryGetParticipantFromConnectionId(e.ConnectionId, out var participantInfo))
+        {
+            return encryptor.DecryptMessage(e.Data.AsMemory(1), participantInfo.Id);
+        }
+
+        logger.Log($"Получили зашифрованное сообщение от неизвестного соединения с id {e.ConnectionId}, игнорю");
+        return null;
     }
 
-    async Task IRawMessageHandler.HandleRawAsync(RoomRawMessageReceivedEventArgs e, byte[] plainData, CancellationToken cancellationToken)
+    async Task IRawMessageHandler.HandleRawAsync(RoomRawMessageReceivedEventArgs e, ReadOnlyMemory<byte> plainData, CancellationToken cancellationToken)
     {
         var context = roomFactory.GetOrCreateContext(e.RoomId);
-        var actualData = plainData.AsSpan(1).ToArray();
-        var message = serializer.Deserialize(actualData);
+        var message = serializer.Deserialize(plainData[1..]);
         await dispatcher.DispatchAsync(message, new MessageContext(context, identityService.SelfParticipant.Id,
             e.ConnectionId, registry.GetRole(e.RoomId), cancellationToken));
     }

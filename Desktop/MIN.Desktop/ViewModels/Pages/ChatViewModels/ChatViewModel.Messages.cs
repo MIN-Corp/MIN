@@ -11,6 +11,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.RoomRelated;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
+using MIN.Desktop.Infrastructure.Extensions;
 using MIN.Desktop.ViewModels.Cards.Messages;
 using MIN.Desktop.ViewModels.Cards.Messages.Base;
 using MIN.Desktop.ViewModels.Cards.Messages.Files;
@@ -151,7 +152,7 @@ public partial class ChatViewModel
     private async Task UpdateChatFlow()
     {
         DisposeMessageCards();
-        Messages.Clear();
+        Messages.ClearAndDispose();
         RemoveLoadMoreLabel();
         hasScrolledHistory = false;
         renderedMessageCount = 0;
