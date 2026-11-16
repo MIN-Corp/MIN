@@ -2,4 +2,4 @@
 
 namespace MIN.Desktop.Contracts.Designer;
 
-internal class DesignerSettingsViewModel() : SettingsSideBarViewModel(null!, null!, null!);
+internal class DesignerSettingsViewModel() : SettingsSideBarViewModel(null!, null!);

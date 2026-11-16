@@ -221,6 +221,8 @@ public partial class ChatViewModel
     [RelayCommand]
     private async Task StartSessionClick()
     {
+        await featureCollection.Chat.ChatSessionService.ScanDownloadedSessions(roomCts.Token);
+
         if (!IsHost && featureCollection.Sessions.SessionScanner.DownloadedSessions.Count == 0)
         {
             InAppNotifier.Info("У вас не установлена ни одна сессия!");

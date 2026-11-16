@@ -121,19 +121,6 @@
                     <TextBlock Text="{Binding #OutputVolumeSlider.Value, StringFormat='Громкость динамиков: {0:F0}%'}" />
                     <Slider x:Name="OutputVolumeSlider" Minimum="0" Maximum="100" Value="{Binding Settings.OutputDeviceVolume}" />
 
-                    <!-- Scan sessions -->
-
-                    <Button
-                        Command="{Binding ScanSessionsCommand}"
-                        VerticalAlignment="Center">
-                        Обновить список сессий
-                    </Button>
-
-                    <TextBlock Classes="info"
-                               VerticalAlignment="Center">
-                        Когда вы установили новую сессию
-                    </TextBlock>
-
                     <!-- Logs -->
 
                     <Button
