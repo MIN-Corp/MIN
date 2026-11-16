@@ -1,8 +1,10 @@
-﻿using MIN.Chat.DI.FeatureCollection;
+﻿using MIN.Audio.DI.FeatureCollection;
+using MIN.Chat.DI.FeatureCollection;
 using MIN.Core.DI.FeatureCollection;
 using MIN.Discovery.DI.FeatureCollection;
 using MIN.FileTransfer.DI.FeatureCollection;
 using MIN.Helpers.DI.FeatureCollection;
+using MIN.ScreenDemo.DI.FeatureCollection;
 using MIN.Sessions.Core.DI.FeatureCollection;
 using MIN.Voice.DI.FeatureCollection;
 
@@ -31,6 +33,12 @@ public interface IMinFeatureCollection
     /// <inheritdoc cref="ISessionFeatureCollection"/>
     ISessionFeatureCollection Sessions { get; }
 
+    /// <inheritdoc cref="IAudioFeatureCollection"/>
+    IAudioFeatureCollection Audio { get; }
+
     /// <inheritdoc cref="IVoiceFeatureCollection"/>
     IVoiceFeatureCollection Voice { get; }
+
+    /// <inheritdoc cref="IScreenDemoFeatureCollection"/>
+    IScreenDemoFeatureCollection ScreenDemo { get; }
 }

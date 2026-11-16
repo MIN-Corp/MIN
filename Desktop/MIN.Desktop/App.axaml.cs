@@ -20,9 +20,9 @@ namespace MIN.Desktop;
 /// <summary>
 /// Приложение
 /// </summary>
-public partial class App : Application
+public class App : Application
 {
-    static internal Func<Window> StartupWindowFactory = null!;
+    private static Func<Window> startupWindowFactory = null!;
 
     private static Window? mainWindow;
 
@@ -54,7 +54,7 @@ public partial class App : Application
     /// </summary>
     public static AppBuilder Create()
     {
-        StartupWindowFactory = () =>
+        startupWindowFactory = () =>
         {
             var services = new ServiceCollection()
                 .AddAppServices();
@@ -63,8 +63,6 @@ public partial class App : Application
 
             var appLifeTimeCts = serviceProvider.GetRequiredService<ICtsProvider>().AppCts;
             var logger = serviceProvider.GetRequiredService<ILoggerProvider>();
-
-            var profiling = Profiling.IsEnabled;
 
             if (Profiling.IsEnabled)
             {
@@ -90,7 +88,7 @@ public partial class App : Application
                     {
                         logger.Log(ex.Message, Helpers.Contracts.Models.Enums.LogLevel.Error);
                     }
-                });
+                }, appLifeTimeCts.Token);
             }
 
             return serviceProvider.GetRequiredService<Func<Window>>()();
@@ -111,7 +109,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = StartupWindowFactory();
+            desktop.MainWindow = startupWindowFactory();
             mainWindow = desktop.MainWindow;
         }
 

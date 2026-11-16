@@ -18,53 +18,42 @@ public class HeaderManager : IHeaderManager
         return result;
     }
 
-    byte[] IHeaderManager.RemoveEncryptionHeader(byte[] data)
-        => data.Length > 1 ? data.AsSpan(1).ToArray() : [];
+    Memory<byte> IHeaderManager.StripTypeHeader(byte[] data)
+        => data.Length > 1 ? data.AsMemory(1) : Memory<byte>.Empty;
 
-    HeaderMessageType IHeaderManager.GetMessageType(byte[] data)
-    {
-        if (data.Length == 0)
-        {
-            return HeaderMessageType.Plain;
-        }
-        return (HeaderMessageType)(data[0] & 0x8F);
-    }
+    bool IHeaderManager.IsEncrypted(ReadOnlySpan<byte> data)
+        => !data.IsEmpty && (data[0] & (byte)HeaderMessageType.Encrypted) != 0;
 
-    bool IHeaderManager.IsEncrypted(byte[] data)
-        => data.Length > 0 && (data[0] & (byte)HeaderMessageType.Encrypted) != 0;
+    bool IHeaderManager.IsAck(ReadOnlySpan<byte> data)
+        => !data.IsEmpty && (data[0] & (byte)HeaderMessageType.Ack) != 0;
 
-    bool IHeaderManager.IsAck(byte[] data)
-        => data.Length > 0 && (data[0] & (byte)HeaderMessageType.Ack) != 0;
-
-    bool IHeaderManager.IsStreamChunk(byte[] data)
-        => data.Length > 0 && (data[0] & (byte)HeaderMessageType.StreamChunk) != 0;
+    bool IHeaderManager.IsStreamChunk(ReadOnlySpan<byte> data)
+        => !data.IsEmpty && (data[0] & (byte)HeaderMessageType.StreamChunk) != 0;
 
     /// <inheritdoc />
-    public StreamChunkFlags GetStreamFlags(byte[] data)
-    {
-        if (data.Length == 0)
-        {
-            return StreamChunkFlags.None;
-        }
-        return (StreamChunkFlags)(data[0] & 0xFF);
-    }
+    public StreamChunkFlags GetStreamFlags(ReadOnlySpan<byte> data)
+        => data.IsEmpty ? StreamChunkFlags.None : (StreamChunkFlags)(data[0] & 0xFF);
 
     byte[] IHeaderManager.BuildStreamChunkHeader(StreamChunkFlags flags, Guid streamId, int index, int total)
     {
         var header = new byte[HeadersConstants.StreamHeaderSize];
-        header[0] = (byte)((byte)HeaderMessageType.StreamChunk | (byte)flags);
-        streamId.TryWriteBytes(new Span<byte>(header, 1, 16));
-        BitConverter.GetBytes(index).CopyTo(header, 17);
-        BitConverter.GetBytes(total).CopyTo(header, 21);
-
+        ((IHeaderManager)this).WriteStreamChunkHeader(header, flags, streamId, index, total);
         return header;
     }
 
-    StreamChunkHeader IHeaderManager.ParseStreamChunkHeader(byte[] data)
+    void IHeaderManager.WriteStreamChunkHeader(Span<byte> destination, StreamChunkFlags flags, Guid streamId, int index, int total)
+    {
+        destination[0] = (byte)((byte)HeaderMessageType.StreamChunk | (byte)flags);
+        streamId.TryWriteBytes(destination.Slice(1, 16));
+        BitConverter.TryWriteBytes(destination.Slice(17, 4), index);
+        BitConverter.TryWriteBytes(destination.Slice(21, 4), total);
+    }
+
+    StreamChunkHeader IHeaderManager.ParseStreamChunkHeader(ReadOnlySpan<byte> data)
         => new(
-            GetStreamFlags(data),
-            new Guid(data.AsSpan(1, 16)),
-            BitConverter.ToInt32(data, 17),
-            BitConverter.ToInt32(data, 21)
+            ((IHeaderManager)this).GetStreamFlags(data),
+            new Guid(data.Slice(1, 16)),
+            BitConverter.ToInt32(data.Slice(17, 4)),
+            BitConverter.ToInt32(data.Slice(21, 4))
         );
 }

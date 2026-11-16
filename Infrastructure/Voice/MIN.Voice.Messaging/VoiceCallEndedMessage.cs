@@ -17,5 +17,5 @@ public sealed class VoiceCallEndedMessage : BaseMessage
     /// <summary>
     /// Идентификатор подкомнаты
     /// </summary>
-    public int SubRoomId { get; set; }
+    public int SubRoomId { get; init; }
 }

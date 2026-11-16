@@ -24,6 +24,8 @@
 - [Security](#-security)
 - [Connection Protocol](#-connection-protocol)
 - [Multiplayer Sessions](#-multiplayer-sessions)
+- [Port Tunnel Sessions](#-port-tunnel-sessions)
+- [Screen Demo](#-screen-demo)
 - [Port Forwarding](#-port-forwarding)
 - [Direct Connection](#-direct-connection)
 - [Interface](#-interface)
@@ -44,6 +46,8 @@
 | **Text Messages** | Sending and receiving messages in real time |
 | **Rooms** | Creating and joining chat rooms |
 | **Multiplayer Sessions** | Download and run game sessions from other resources |
+| **Port Tunnel Sessions** | Play unmodified multiplayer games via a generic encrypted TCP tunnel |
+| **Screen Demo** | Share a monitor or an app window with room participants, with system sound |
 | **Voice calls** | Start voice calls in room with all participants in it |
 | **Desktop UI** | Intuitive interface using Avalonia |
 
@@ -59,6 +63,7 @@ MIN provides a modern interface for:
 | **Chat** | Real-time communication |
 | **Files** | Transfer with progress display |
 | **Voice calls** | Talk with your friends using room voice calls |
+| **Screen demo** | Share your screen and watch other participants' streams |
 | **Participants** | Online/offline statuses |
 
 ![Screen](https://raw.githubusercontent.com/MIN-Corp/MIN/main/Desktop/MIN.Desktop/Assets/Images/screen.png)
@@ -87,7 +92,9 @@ flowchart TB
         C["Chat Services<br>Messages and statuses"]
         D["Discovery Services<br>UDP Broadcast Discovery"]
         E["FileTransfer Services<br>Streaming transfer"]
-        F["Session Services<br>Multiplayer sessions"]
+        F["Session Services<br>Multiplayer sessions and tunnels"]
+        SD["ScreenDemo Services<br>Screen sharing"]
+        AU["Audio Services<br>Audio playback"]
         V["Voice Services<br>Voice calls and voice managment"]
     end
     
@@ -106,7 +113,7 @@ flowchart TB
     end
     
     class A highlight;
-    class B,C,D,E,F,V,G,H,I,J,K,L,M,N,O,P component
+    class B,C,D,E,F,V,SD,AU,G,H,I,J,K,L,M,N,O,P component
     class UI uiLayer;
     class INF infraLayer;
     class CORE coreLayer
@@ -141,7 +148,9 @@ flowchart TB
 | `MIN.Chat` | Chats and messages |
 | `MIN.Discovery` | Room discovery via UDP Broadcast |
 | `MIN.FileTransfer` | File transfer |
-| `MIN.Sessions` | Multiplayer session management |
+| `MIN.Sessions` | Multiplayer session management (process sessions and port tunnels) |
+| `MIN.ScreenDemo` | Screen demo: capture, encoding, streaming and playback |
+| `MIN.Audio` | Audio playback services |
 | `MIN.Voice` | Voice calls |
 
 #### Desktop (UI)
@@ -170,6 +179,8 @@ flowchart TB
 | Transport | TCP / UDP | Network communication |
 | UPnP | Open.Nat | Port forwarding for external connections |
 | Voice calls | OpenAL | Cross-Platform voice recording and playback |
+| Video encoding | OpenH264 | Screen demo video encoding and decoding |
+| Screen capture | Windows Graphics Capture / WASAPI | Screen demo capture and system sound (Windows) |
 | Noise reduction | Onnx | Reducing background noise |
 | Modularity | MIN.Common.Mvc | Custom module/plugin system |
 | Style | .editorconfig | Unified code style |
@@ -327,6 +338,11 @@ This ensures:
 
 MIN supports downloadable game sessions that run as separate processes alongside the messenger. These sessions enable multiplayer gaming within chat rooms.
 
+There are two kinds of sessions:
+
+- **Process sessions** — downloaded session packages with `presenter.json`, `server.exe` and `client.exe` (described below)
+- **Port tunnel sessions** — a generic TCP tunnel for running unmodified multiplayer games as-is (see [Port Tunnel Sessions](#port-tunnel-sessions))
+
 ### How Sessions Work
 
 ```mermaid
@@ -392,6 +408,64 @@ MIN/
 - Communication between MIN and session processes uses **IPC transports** (Named Pipes or TCP Loopback)
 - Sessions operate within **SubRooms** — isolated sub-contexts inside a chat room
 - Version compatibility is checked before joining a session
+
+---
+
+## Port Tunnel Sessions
+
+Port tunnel sessions let you play **unmodified multiplayer games** through MIN. Instead of packaging a game as a downloadable session, the host specifies the port of an already running game server, and MIN tunnels every participant's game traffic to it over the encrypted MIN transport.
+
+### How It Works
+
+```mermaid
+flowchart LR
+    A["Game client<br>connects to 127.0.0.1:port"] --> B["MIN tunnel listener<br>on participant side"]
+    B -->|"Encrypted<br>MIN transport"| C["MIN tunnel<br>on host side"]
+    C --> D["Game server<br>host's port"]
+```
+
+1. The **host** creates a tunnel session and specifies the port the game server listens on (e.g., `7777`), then starts the game server as usual
+2. **Participants** join the session from the chat — MIN on their side starts listening on a free local port
+3. The game client connects to `127.0.0.1:<port>` instead of the real server address
+4. All game traffic is relayed through the encrypted MIN transport to the host, which forwards it to the actual game server port
+
+### Creating a Tunnel Session
+
+1. Open the session panel in the chat and click the **"Own session"** card
+2. Fill in the name, description, version, maximum number of players (1–256) and the **game server port** (1024–65535)
+3. Optionally add a thumbnail image (up to 2 MB)
+4. Start the session from the chat like any other session
+
+> [!TIP]
+> Tunnel sessions are a lightweight alternative to virtual networks (Radmin, Hamachi) for games that connect by IP and port: participants simply point the game client at `127.0.0.1` and the session port.
+
+---
+
+## Screen Demo
+
+Participants can demonstrate their screen to the whole room — a screen sharing feature built into the voice call panel.
+
+### How to Use
+
+1. Join a voice call in the room and click the **monitor icon** button
+2. Pick a source: a whole **monitor** or an **application window**
+3. Optionally enable **system sound** sharing
+4. Other participants see the stream in the chat and can open it in a separate window; your own stream is available in a preview window
+
+### Technical Details
+
+| Parameter | Value |
+|-----------|-------|
+| Capture | Windows Graphics Capture (monitors and windows) |
+| Video codec | OpenH264 |
+| Frame rate | up to 30 FPS |
+| Resolution | up to 1080p height, aspect ratio preserved |
+| Target bitrate | ~3000 kbps |
+| Keyframes | every 2 seconds |
+| Audio | WASAPI loopback, 48 kHz stereo, silence suppression |
+
+> [!NOTE]
+> Screen capture is currently implemented for Windows only (Windows Graphics Capture + WASAPI loopback). On other platforms MIN runs with capture stubs, so starting a demo there is unavailable.
 
 ---
 

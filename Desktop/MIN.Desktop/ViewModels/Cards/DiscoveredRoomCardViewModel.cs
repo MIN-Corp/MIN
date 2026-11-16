@@ -115,7 +115,7 @@ public partial class DiscoveredRoomCardViewModel : CardViewModelBase
 
         foreach (var endpoint in endpoints)
         {
-            ConnectionAddresses.Add(new ConnectionAddressViewModel(endpoint, clipboard));
+            ConnectionAddresses.Add(new ConnectionAddressViewModel(endpoint, clipboard, null));
         }
     }
 

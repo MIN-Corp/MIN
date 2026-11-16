@@ -22,8 +22,8 @@ public sealed class StreamChunkHandler : IStreamChunkHandler
         this.chunkBufferAssembler = chunkBufferAssembler;
     }
 
-    bool IStreamChunkHandler.CanHandle(byte[] plainData) => headerManager.IsStreamChunk(plainData);
+    bool IStreamChunkHandler.CanHandle(ReadOnlySpan<byte> plainData) => headerManager.IsStreamChunk(plainData);
 
-    Task IStreamChunkHandler.HandleAsync(byte[] plainData, RoomRawMessageReceivedEventArgs e, CancellationToken cancellationToken)
+    Task IStreamChunkHandler.HandleAsync(ReadOnlyMemory<byte> plainData, RoomRawMessageReceivedEventArgs e, CancellationToken cancellationToken)
         => chunkBufferAssembler.ProcessStreamChunk(plainData, e.RoomId, e.ConnectionId, e.ServerConnectionId, cancellationToken);
 }

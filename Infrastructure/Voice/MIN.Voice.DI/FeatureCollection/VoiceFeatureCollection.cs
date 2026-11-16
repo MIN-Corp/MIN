@@ -5,9 +5,6 @@ namespace MIN.Voice.DI.FeatureCollection;
 /// <inheritdoc cref="IVoiceFeatureCollection"/>
 public class VoiceFeatureCollection : IVoiceFeatureCollection
 {
-    /// <inheritdoc cref="IAudioDeviceService"/>
-    public IAudioDeviceService AudioDeviceService { get; }
-
     /// <inheritdoc cref="IMuteService"/>
     public IMuteService MuteService { get; }
 
@@ -17,9 +14,8 @@ public class VoiceFeatureCollection : IVoiceFeatureCollection
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="VoiceFeatureCollection"/>
     /// </summary>
-    public VoiceFeatureCollection(IAudioDeviceService audioDeviceService, IMuteService muteService, IVoicePlaybackService voicePlayback)
+    public VoiceFeatureCollection(IMuteService muteService, IVoicePlaybackService voicePlayback)
     {
-        AudioDeviceService = audioDeviceService;
         MuteService = muteService;
         VoicePlayback = voicePlayback;
     }

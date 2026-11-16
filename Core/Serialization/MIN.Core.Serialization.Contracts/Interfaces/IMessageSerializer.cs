@@ -21,5 +21,5 @@ public interface IMessageSerializer
     /// <summary>
     /// Десериализует массив байтов в сообщение
     /// </summary>
-    IMessage Deserialize(byte[] data);
+    IMessage Deserialize(ReadOnlyMemory<byte> data);
 }

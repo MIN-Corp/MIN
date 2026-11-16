@@ -64,7 +64,7 @@ public sealed class InboundMessagePipeline : IHostedService, IAsyncDisposable
     {
         cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         localRawMessageToken = eventBus.Subscribe<RoomRawMessageReceivedEvent>(OnRoomRawMessageReceived);
-        localMessageToken = eventBus.Subscribe<LocalMessageReceivedEvent>(OnLocalMessageRecieved);
+        localMessageToken = eventBus.Subscribe<LocalMessageReceivedEvent>(OnLocalMessageReceived);
         chunkBufferAssembler.MessageAssembled += OnMessageAssembled;
         return Task.CompletedTask;
     }
@@ -87,13 +87,13 @@ public sealed class InboundMessagePipeline : IHostedService, IAsyncDisposable
                 return;
             }
 
-            if (streamChunkHandler.CanHandle(plainData))
+            if (streamChunkHandler.CanHandle(plainData.Value.Span))
             {
-                await streamChunkHandler.HandleAsync(plainData, e, cancellationToken);
+                await streamChunkHandler.HandleAsync(plainData.Value, e, cancellationToken);
                 return;
             }
 
-            await messageHandler.HandleRawAsync(e, plainData, cancellationToken);
+            await messageHandler.HandleRawAsync(e, plainData.Value, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -101,14 +101,11 @@ public sealed class InboundMessagePipeline : IHostedService, IAsyncDisposable
         }
     }
 
-    private async Task OnLocalMessageRecieved(LocalMessageReceivedEvent e, CancellationToken cancellationToken)
-    {
-        var context = roomFactory.GetOrCreateContext(e.RoomId);
-        await dispatcher.DispatchAsync(e.Message,
-            new MessageContext(context, identityService.SelfParticipant.Id,
+    private async Task OnLocalMessageReceived(LocalMessageReceivedEvent e, CancellationToken cancellationToken)
+        => await dispatcher.DispatchAsync(e.Message,
+            new MessageContext(roomFactory.GetOrCreateContext(e.RoomId), identityService.SelfParticipant.Id,
             CoreRegistryConstants.LocalConnectionId, e.Role, cancellationToken),
             e.BroadcastExcludeIds);
-    }
 
     private async Task OnMessageAssembled(MessageAssembledEventArgs e, CancellationToken cancellationToken)
     {
@@ -140,8 +137,8 @@ public sealed class InboundMessagePipeline : IHostedService, IAsyncDisposable
         localRawMessageToken.Dispose();
         localMessageToken.Dispose();
         disposed = true;
-        cts?.Cancel();
-        cts?.Dispose();
+        cts.Cancel();
+        cts.Dispose();
         return Task.CompletedTask;
     }
 

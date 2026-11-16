@@ -39,11 +39,11 @@ public class TcpTransport : ITransport, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? prefferedPort, int? sequentialAttempts, CancellationToken cancellationToken)
+    public async Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? preferredPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         var connectionId = serverConnectionId ?? Guid.NewGuid();
 
-        var port = PortProvider.AllocatePort(TransportType.Tcp, prefferedPort, sequentialAttempts);
+        var port = PortProvider.AllocatePort(TransportType.Tcp, preferredPort, sequentialAttempts);
         var server = new TcpSocketServer(logger, port);
 
         server.OnMessageReceived += (TcpSocketServer _, (TcpSocketConnection conn, byte[] msg) eventArgs) =>
@@ -113,7 +113,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task SendAsync(byte[] data, Guid receipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
+    public async Task SendAsync(ReadOnlyMemory<byte> data, Guid receipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
     {
         if (clients.TryGetValue(receipientConnectionId, out var client))
         {
@@ -132,7 +132,7 @@ public class TcpTransport : ITransport, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
+    public async Task BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
     {
         var excludeSet = excludeConnections?.ToHashSet() ?? [];
 
@@ -175,12 +175,12 @@ public class TcpTransport : ITransport, IAsyncDisposable
                     break;
 
                 case ResultCodes.ConflictInMappingEntry:
-                    var conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
+                    const string conflictMessage = "UPnP конфликтует с текущим портом. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Попробуйте повторить попытку";
                     logger.Log(conflictMessage, LogLevel.Error);
                     throw new InvalidOperationException(conflictMessage);
 
                 case ResultCodes.UnknownError:
-                    var message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
+                    const string message = "UPnP не доступен. Клиенты из Интернета не могут подключиться, если порт не проброшен вручную. Либо ну удалось получить публичный адрес.";
                     logger.Log(message, LogLevel.Error);
                     throw new InvalidOperationException(message);
             }
@@ -206,17 +206,17 @@ public class TcpTransport : ITransport, IAsyncDisposable
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        var endpoints = new List<TcpEndpoint>();
-
-        foreach (var ip in knownIps)
+        var endpoints = knownIps.Select(ip => new TcpEndpoint
         {
-            endpoints.Add(new TcpEndpoint
-            {
-                Origin = ip.Origin,
-                IpAddress = ip.Address.ToString(),
-                NetworkName = ip.NetworkName,
-                Port = server.Port
-            });
+            Origin = ip.Origin,
+            IpAddress = ip.Address.ToString(),
+            NetworkName = ip.NetworkName,
+            Port = server.Port
+        }).ToList();
+
+        if (networkOptions.EnablePortForwarding && endpoints.All(ep => ep.Origin != AddressOrigin.Wan))
+        {
+            logger.Log("Порт проброшен на роутере, но публичный IP-адрес не определён (двойной NAT/CGNAT или сервисы определения IP недоступны). Подключения из интернета будут невозможны", LogLevel.Warning);
         }
 
         cachedServerEndpoints[connectionId] = endpoints;

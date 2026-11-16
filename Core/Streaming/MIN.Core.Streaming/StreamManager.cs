@@ -1,5 +1,8 @@
+using System.Buffers;
 using System.Collections.Concurrent;
+using MIN.Core.Cryptography.Contracts.Constants;
 using MIN.Core.Cryptography.Contracts.Interfaces;
+using MIN.Core.Headers.Contracts.Constants;
 using MIN.Core.Headers.Contracts.Enums;
 using MIN.Core.Headers.Contracts.Interfaces;
 using MIN.Core.Messaging.Contracts.Enums;
@@ -74,37 +77,15 @@ public sealed class StreamManager : IStreamManager, IDisposable
             {
                 var chunkStart = i * StreamingConstants.ChunkDataSize;
                 var chunkLength = Math.Min(StreamingConstants.ChunkDataSize, data.Length - chunkStart);
-                var chunkData = data.Slice(chunkStart, chunkLength);
-
-                var flags = StreamChunkFlags.Mid;
-                if (i == 0)
-                {
-                    flags |= StreamChunkFlags.Start;
-                    if (options.RequiresAcks)
-                    {
-                        flags |= StreamChunkFlags.RequiresAcks;
-                    }
-                    if (options.IsRawPayload)
-                    {
-                        flags |= StreamChunkFlags.RawPayload;
-                    }
-                }
-                if (i == totalChunks - 1)
-                {
-                    flags |= StreamChunkFlags.End;
-                }
 
                 var chunk = new StreamChunk
                 {
                     StreamId = streamId,
-                    Flags = flags,
+                    Flags = BuildChunkFlags(i, totalChunks, options),
                     Index = i,
                     Total = totalChunks,
-                    Data = chunkData
+                    Data = data.Slice(chunkStart, chunkLength)
                 };
-
-                var package = SerializeChunk(chunk);
-                var encrypted = EncryptChunkIfNeeded(package, recipientConnectionId, roomId, options);
 
                 if (options.RequiresAcks)
                 {
@@ -116,15 +97,8 @@ public sealed class StreamManager : IStreamManager, IDisposable
                     });
                 }
 
-                // Secure because of message assembling
-                await transport.SendAsync(encrypted, recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
                 sentLength += chunkLength;
-                ChunkSended?.Invoke(new ChunkSendedEventArgs()
-                {
-                    RoomId = roomId,
-                    StreamId = streamId,
-                    ReceivedBytes = sentLength,
-                }, cancellationToken);
+                await SendChunkCoreAsync(chunk, recipientConnectionId, roomId, serverConnectionId, options, sentLength, cancellationToken);
             }
 
             logger.Log($"Передача пакетов окончена");
@@ -134,7 +108,6 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 StreamId = streamId,
                 IsRawPayload = false,
             }, cancellationToken);
-            CleanForStream(streamId);
         }
         catch (OperationCanceledException ex)
         {
@@ -145,7 +118,6 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 StreamId = streamId,
                 ErrorMessage = "Передача была отменена"
             }, cancellationToken);
-            CleanForStream(streamId);
         }
         catch (Exception ex)
         {
@@ -156,6 +128,9 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 StreamId = streamId,
                 ErrorMessage = "Передача пакетов провалилась"
             }, cancellationToken);
+        }
+        finally
+        {
             CleanForStream(streamId);
         }
     }
@@ -171,7 +146,7 @@ public sealed class StreamManager : IStreamManager, IDisposable
 
         var streamId = options.StreamId ?? Guid.NewGuid();
         var totalChunks = (int)Math.Ceiling((double)source.Length / StreamingConstants.ChunkDataSize);
-        var buffer = new byte[StreamingConstants.ChunkDataSize];
+        var readBuffer = ArrayPool<byte>.Shared.Rent(StreamingConstants.ChunkDataSize);
 
         logger.Log($"Начало отправки потока {streamId}: {source.Length} байт, {totalChunks} пакетов (streaming)");
 
@@ -181,39 +156,18 @@ public sealed class StreamManager : IStreamManager, IDisposable
             long sentLength = 0;
             int bytesRead;
 
-            while ((bytesRead = await source.ReadAsync(buffer, cancellationToken)) > 0)
+            while ((bytesRead = await source.ReadAsync(readBuffer.AsMemory(0, StreamingConstants.ChunkDataSize), cancellationToken)) > 0)
             {
-                var chunkData = buffer.AsMemory(0, bytesRead);
-
-                var flags = StreamChunkFlags.Mid;
-                if (chunkIndex == 0)
-                {
-                    flags |= StreamChunkFlags.Start;
-                    if (options.RequiresAcks)
-                    {
-                        flags |= StreamChunkFlags.RequiresAcks;
-                    }
-                    if (options.IsRawPayload)
-                    {
-                        flags |= StreamChunkFlags.RawPayload;
-                    }
-                }
-                if (chunkIndex == totalChunks - 1)
-                {
-                    flags |= StreamChunkFlags.End;
-                }
+                sentLength += bytesRead;
 
                 var chunk = new StreamChunk
                 {
                     StreamId = streamId,
-                    Flags = flags,
+                    Flags = BuildChunkFlags(chunkIndex, totalChunks, options),
                     Index = chunkIndex,
                     Total = totalChunks,
-                    Data = chunkData
+                    Data = readBuffer.AsMemory(0, bytesRead)
                 };
-
-                var package = SerializeChunk(chunk);
-                var encrypted = EncryptChunkIfNeeded(package, recipientConnectionId, roomId, options);
 
                 if (options.RequiresAcks)
                 {
@@ -225,16 +179,21 @@ public sealed class StreamManager : IStreamManager, IDisposable
                     });
                 }
 
-                // Secure because of message assembling
-                await transport.SendAsync(encrypted, recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
+                await SendChunkCoreAsync(chunk, recipientConnectionId, roomId, serverConnectionId, options, sentLength, cancellationToken);
                 chunkIndex++;
-                sentLength += bytesRead;
-                ChunkSended?.Invoke(new ChunkSendedEventArgs()
+            }
+
+            if (chunkIndex == 0)
+            {
+                var chunk = new StreamChunk
                 {
-                    RoomId = roomId,
                     StreamId = streamId,
-                    ReceivedBytes = sentLength,
-                }, cancellationToken);
+                    Flags = BuildChunkFlags(0, 1, options),
+                    Index = 0,
+                    Total = 1,
+                    Data = ReadOnlyMemory<byte>.Empty
+                };
+                await SendChunkCoreAsync(chunk, recipientConnectionId, roomId, serverConnectionId, options, 0, cancellationToken);
             }
 
             logger.Log($"Передача пакетов окончена");
@@ -244,7 +203,6 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 StreamId = streamId,
                 IsRawPayload = true,
             }, cancellationToken);
-            CleanForStream(streamId);
         }
         catch (OperationCanceledException ex)
         {
@@ -255,7 +213,6 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 StreamId = streamId,
                 ErrorMessage = "Передача была отменена"
             }, cancellationToken);
-            CleanForStream(streamId);
         }
         catch (Exception ex)
         {
@@ -266,7 +223,11 @@ public sealed class StreamManager : IStreamManager, IDisposable
                 StreamId = streamId,
                 ErrorMessage = "Передача пакетов провалилась"
             }, cancellationToken);
+        }
+        finally
+        {
             CleanForStream(streamId);
+            ArrayPool<byte>.Shared.Return(readBuffer);
         }
     }
 
@@ -313,29 +274,78 @@ public sealed class StreamManager : IStreamManager, IDisposable
         }
     }
 
-    private byte[] SerializeChunk(StreamChunk chunk)
+    private static StreamChunkFlags BuildChunkFlags(int index, int total, StreamOptions options)
     {
-        var header = headerManager.BuildStreamChunkHeader(chunk.Flags, chunk.StreamId, chunk.Index, chunk.Total);
-        var result = new byte[header.Length + chunk.Data.Length];
-        header.CopyTo(result, 0);
-        chunk.Data.CopyTo(result.AsMemory(header.Length));
-        return result;
+        var flags = StreamChunkFlags.Mid;
+
+        if (index == 0)
+        {
+            flags |= StreamChunkFlags.Start;
+            if (options.RequiresAcks)
+            {
+                flags |= StreamChunkFlags.RequiresAcks;
+            }
+            if (options.IsRawPayload)
+            {
+                flags |= StreamChunkFlags.RawPayload;
+            }
+        }
+
+        if (index == total - 1)
+        {
+            flags |= StreamChunkFlags.End;
+        }
+
+        return flags;
     }
 
-    private byte[] EncryptChunkIfNeeded(byte[] plainData, Guid recipientConnectionId, Guid roomId, StreamOptions options)
+    private async Task SendChunkCoreAsync(StreamChunk chunk,
+        Guid recipientConnectionId,
+        Guid roomId,
+        Guid? serverConnectionId,
+        StreamOptions options,
+        long sentBytes,
+        CancellationToken cancellationToken)
     {
-        byte[] resultBytes;
-        if (options.RequiresEncryption)
+        var plainLen = HeadersConstants.StreamHeaderSize + chunk.Data.Length;
+        var totalLen = options.RequiresEncryption
+            ? 1 + CryptographyConstants.IvSize + plainLen + CryptographyConstants.AuthTagSize
+            : 1 + plainLen;
+
+        var buffer = ArrayPool<byte>.Shared.Rent(totalLen);
+        try
         {
-            var recipientId = roomFactory.GetOrCreateContext(roomId).Connections.GetParticipantIdFromConnectionId(recipientConnectionId);
-            var encrypted = encryptor.EncryptMessage(plainData, recipientId);
-            resultBytes = headerManager.AddHeader(encrypted, (byte)HeaderMessageType.Encrypted);
+            var span = buffer.AsSpan(0, totalLen);
+            span[0] = (byte)(options.RequiresEncryption ? HeaderMessageType.Encrypted : HeaderMessageType.Plain);
+
+            var headerTarget = options.RequiresEncryption
+                ? span.Slice(1 + CryptographyConstants.IvSize, plainLen)
+                : span.Slice(1, plainLen);
+
+            headerManager.WriteStreamChunkHeader(headerTarget, chunk.Flags, chunk.StreamId, chunk.Index, chunk.Total);
+            chunk.Data.Span.CopyTo(headerTarget[HeadersConstants.StreamHeaderSize..]);
+
+            if (options.RequiresEncryption)
+            {
+                var recipientId = roomFactory.GetOrCreateContext(roomId)
+                    .Connections.GetParticipantIdFromConnectionId(recipientConnectionId);
+                encryptor.EncryptMessageInPlace(span.Slice(1), recipientId);
+            }
+
+            // Secure because of message assembling
+            await transport.SendAsync(buffer.AsMemory(0, totalLen), recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
         }
-        else
+        finally
         {
-            resultBytes = headerManager.AddHeader(plainData, (byte)HeaderMessageType.Plain);
+            ArrayPool<byte>.Shared.Return(buffer);
         }
-        return resultBytes;
+
+        ChunkSended?.Invoke(new ChunkSendedEventArgs()
+        {
+            RoomId = roomId,
+            StreamId = chunk.StreamId,
+            ReceivedBytes = sentBytes,
+        }, cancellationToken);
     }
 
     /// <inheritdoc cref="IDisposable.Dispose"/>

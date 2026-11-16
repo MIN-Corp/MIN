@@ -10,7 +10,7 @@ public class VoiceCallStateService : IVoiceCallStateService
     private SubRoomContext? activeVoiceCall;
 
     void IVoiceCallStateService.RegisterVoiceCall(Guid roomId, int subRoomId)
-        => activeVoiceCall = new(roomId, subRoomId);
+        => activeVoiceCall = new SubRoomContext(roomId, subRoomId);
 
     SubRoomContext? IVoiceCallStateService.GetRoomVoiceCallContext()
         => activeVoiceCall;

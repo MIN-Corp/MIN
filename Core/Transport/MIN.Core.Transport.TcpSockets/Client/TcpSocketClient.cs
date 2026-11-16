@@ -28,7 +28,7 @@ internal sealed class TcpSocketClient : IAsyncDisposable
     public event Action<DisconnectReason>? OnDisconnected;
 
     /// <summary>
-    /// Идентификатор соеднинения
+    /// Идентификатор соединения
     /// </summary>
     public Guid ConnectionId => connection?.Id ?? Guid.Empty;
 
@@ -58,14 +58,14 @@ internal sealed class TcpSocketClient : IAsyncDisposable
         connection.RawMessageReceived += (_, msg) => OnMessageReceived?.Invoke(msg);
         connection.Disconnected += (_, ex) => OnDisconnected?.Invoke(ex);
 
-        await connection.SendAsync(ConnectionPreamble.Create(connection.Id), cancellationToken);
+        await connection.SendAsync(ConnectionPreamble.Create(connection.Id), cts.Token);
 
         connection.StartReading();
 
         return connection.Id;
     }
 
-    public async Task SendAsync(byte[] data, CancellationToken cancellationToken = default)
+    public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
         if (connection == null)
         {

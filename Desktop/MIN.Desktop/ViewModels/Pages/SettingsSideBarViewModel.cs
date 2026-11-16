@@ -2,7 +2,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Collections;
@@ -15,7 +14,6 @@ using MIN.Common.Core.Extensions;
 using MIN.Desktop.Contracts.Constants;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.Contracts.Interfaces;
-using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.Infrastructure.Validators;
 using MIN.Desktop.ViewModels.Base;
 using MIN.Desktop.ViewModels.Modals;
@@ -34,7 +32,6 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
 
     private readonly IMinFeatureCollection featureCollection;
     private readonly IDialogService dialogService;
-    private readonly CancellationTokenSource appCts = null!;
 
     /// <inheritdoc />
     public override ViewLayoutType LayoutType => ViewLayoutType.LeftSideBar;
@@ -114,8 +111,7 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
     /// Инициализирует новый экземпляр <see cref="SettingsSideBarViewModel"/>
     /// </summary>
     public SettingsSideBarViewModel(IMinFeatureCollection featureCollection,
-        IDialogService dialogService,
-        ICtsProvider ctsProvider)
+        IDialogService dialogService)
     {
         this.featureCollection = featureCollection;
         this.dialogService = dialogService;
@@ -125,15 +121,13 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
             return;
         }
 
-        appCts = ctsProvider.AppCts;
-
-        var inputDeviceNames = featureCollection.Voice.AudioDeviceService.GetInputDevices(asDecoded: true).Select(x => x.Name);
+        var inputDeviceNames = featureCollection.Audio.AudioDeviceService.GetInputDevices(asDecoded: true).Select(x => x.Name);
         foreach (var name in inputDeviceNames)
         {
             InputDevices.Add(name);
         }
 
-        var outputDeviceNames = featureCollection.Voice.AudioDeviceService.GetOutputDevices(asDecoded: true).Select(x => x.Name);
+        var outputDeviceNames = featureCollection.Audio.AudioDeviceService.GetOutputDevices(asDecoded: true).Select(x => x.Name);
         foreach (var name in outputDeviceNames)
         {
             OutputDevices.Add(name);
@@ -215,16 +209,6 @@ public partial class SettingsSideBarViewModel : ValidatingRoutableViewModelBase
             FileName = IssueHandlingLink,
             UseShellExecute = true
         });
-
-    /// <summary>
-    /// Отсканировать папку с сессиями
-    /// </summary>
-    [RelayCommand]
-    private async Task ScanSessionsAsync()
-    {
-        await featureCollection.Chat.ChatSessionService.ScanDownloadedSessions(appCts.Token);
-        InAppNotifier.Info($"Найдено установленных активностей: {featureCollection.Sessions.SessionScanner.DownloadedSessions.Count}");
-    }
 
     private void FillControls()
     {

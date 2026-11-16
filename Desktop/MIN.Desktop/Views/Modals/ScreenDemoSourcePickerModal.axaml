@@ -1,0 +1,109 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MIN.Desktop.ViewModels.Modals"
+        xmlns:cardsVm="using:MIN.Desktop.ViewModels.Cards"
+        xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:designer="using:MIN.Desktop.Contracts.Designer"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Width="524"
+        SizeToContent="Height"
+        CanResize="False"
+        x:Class="MIN.Desktop.Views.Modals.ScreenDemoSourcePickerModal"
+        x:DataType="vm:ScreenDemoSourcePickerViewModel"
+        Title="MIN - Демонстрация экрана">
+
+    <Design.DataContext>
+        <designer:DesignerScreenDemoSourcePickerViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <DataTemplate x:Key="ScreenDemoSourceCardTemplate" x:DataType="cardsVm:ScreenDemoSourceCardViewModel">
+            <Button Classes="card"
+                    Command="{Binding SelectCardCommand}"
+                    Classes.selected="{Binding IsSelected}"
+                    Width="250"
+                    HorizontalContentAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Panel Width="36" Height="36">
+                        <Svg Path="/Assets/Icons/monitor.svg"
+                             Width="28" Height="28"
+                             IsVisible="{Binding IsMonitor}" />
+                        <Svg Path="/Assets/Icons/app-window.svg"
+                             Width="26" Height="26"
+                             IsVisible="{Binding !IsMonitor}" />
+                    </Panel>
+                    <TextBlock Text="{Binding Title}"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="180" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel>
+        <controls:CustomTitleBar CanMinimize="False" CanMaximize="False" />
+        <DockPanel>
+            <Border DockPanel.Dock="Bottom"
+                    Classes="footer">
+                <Panel>
+                    <Button
+                        Command="{Binding CloseCommand}"
+                        Content="Отмена"
+                        Classes="secondary"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Left"
+                        HotKey="Escape" />
+                    <Button
+                        Command="{Binding StartDemoCommand}"
+                        Content="Демонстрировать"
+                        HorizontalAlignment="Right"
+                        HotKey="Enter" />
+                </Panel>
+            </Border>
+
+            <StackPanel DockPanel.Dock="Bottom"
+                        Margin="12,8,12,8"
+                        Orientation="Horizontal">
+                    <TextBlock
+                        FontSize="{DynamicResource FontSizeH5}"
+                        FontWeight="Bold"
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0"
+                        Text="Дать доступ к звуку" />
+                    <ToggleSwitch
+                        IsChecked="{Binding WithSound}" />
+            </StackPanel>
+
+            <ScrollViewer Classes="main" MaxHeight="620">
+                <StackPanel Margin="8" Spacing="8">
+                    <TextBlock Classes="header4" Text="Мониторы" />
+                    <ItemsControl ItemsSource="{Binding Monitors}"
+                                  ItemTemplate="{StaticResource ScreenDemoSourceCardTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"
+                                           LineSpacing="8"
+                                           ItemSpacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <TextBlock Classes="header4" Text="Приложения" />
+                    <ItemsControl ItemsSource="{Binding Windows}"
+                                  ItemTemplate="{StaticResource ScreenDemoSourceCardTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"
+                                           LineSpacing="8"
+                                           ItemSpacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </DockPanel>
+</Window>

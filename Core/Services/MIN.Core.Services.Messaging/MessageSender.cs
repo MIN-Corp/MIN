@@ -29,7 +29,7 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
     private readonly ILoggerProvider logger;
 
     /// <summary>
-    /// Инциализирует новый экземпляр <see cref="MessageSender"/>
+    /// Инициализирует новый экземпляр <see cref="MessageSender"/>
     /// </summary>
     public MessageSender(ITransport transport,
         IRoomConnectionRegistry registry,
@@ -102,7 +102,6 @@ public sealed class MessageSender : IMessageSender, IAsyncDisposable
             messageWithSecured.Sanitize();
         }
 
-        var serialized = serializer.Serialize(message);
         var context = roomFactory.GetOrCreateContext(roomId);
         var participants = context.Participants.GetParticipants();
 

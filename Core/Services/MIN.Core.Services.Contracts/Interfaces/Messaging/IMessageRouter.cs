@@ -1,5 +1,4 @@
-﻿using MIN.Core.Entities.Contracts.Enums;
-using MIN.Core.Messaging.Contracts.Interfaces;
+﻿using MIN.Core.Messaging.Contracts.Interfaces;
 
 namespace MIN.Core.Services.Contracts.Interfaces.Messaging;
 
@@ -17,6 +16,6 @@ public interface IMessageRouter
     /// <summary>
     /// Оппубликовать сообщения для себя локально
     /// </summary>
-    Task PublishLocally(IMessage message, Guid roomId, Role role,
+    Task PublishLocally(IMessage message, Guid roomId,
         IEnumerable<Guid>? broadcastExcludeIds = null, CancellationToken cancellationToken = default);
 }

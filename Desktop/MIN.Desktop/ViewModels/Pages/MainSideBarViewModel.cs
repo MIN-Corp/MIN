@@ -8,7 +8,6 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Events.Events;
 using MIN.Desktop.Contracts.Enums;
@@ -37,7 +36,6 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     private readonly TrayService trayService;
     private readonly List<RecentRoomCardViewModel> allRooms = [];
     private readonly List<RoomInfo> savedRooms = [];
-    private readonly ParticipantInfo localParticipant = null!;
     private RecentRoomCardViewModel? selectedRecentRoomCardViewModel;
 
     /// <summary>
@@ -55,7 +53,9 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
     [ObservableProperty]
     public partial bool IsNavigationMode { get; set; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Строка поиска поменялась
+    /// </summary>
     partial void OnSearchTermChanged(string value) => PerformRecentRoomSearch();
 
     /// <inheritdoc />
@@ -87,22 +87,22 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
         this.discoveryViewModel = discoveryViewModel;
         this.trayService = trayService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
-
-            this.RegisterMessageListener<RegisterRoomReferenceCommand, MainSideBarViewModel>(static (message, vm)
-               => vm.RegisterChat(message.Room, message.View));
-
-            this.RegisterMessageListener<LayoutModeChangedReferenceCommand, MainSideBarViewModel>((msg, _) =>
-                IsNavigationMode = msg.Layout == WindowLayout.Narrow);
-
-            trayService.NavigateToRoom += NavigateToChatView;
-
-            SubscribeToEvents();
-            InitializeLayoutStyles();
-            _ = LoadRestoredRoomsAsync();
+            return;
         }
+
+        this.RegisterMessageListener<RegisterRoomReferenceCommand, MainSideBarViewModel>(static (message, vm)
+            => vm.RegisterChat(message.Room, message.View));
+
+        this.RegisterMessageListener<LayoutModeChangedReferenceCommand, MainSideBarViewModel>((msg, _) =>
+            IsNavigationMode = msg.Layout == WindowLayout.Narrow);
+
+        trayService.NavigateToRoom += NavigateToChatView;
+
+        SubscribeToEvents();
+        InitializeLayoutStyles();
+        _ = LoadRestoredRoomsAsync();
     }
 
     private void SubscribeToEvents()
@@ -239,11 +239,13 @@ public partial class MainSideBarViewModel : RoutableViewModelBase
                 GoBack();
             }
 
-            if (selectedRecentRoomCardViewModel != card || CurrentLayout == WindowLayout.Narrow)
+            if (selectedRecentRoomCardViewModel == card && CurrentLayout != WindowLayout.Narrow)
             {
-                SelectChatCard(card);
-                ChangeView(viewModel);
+                return;
             }
+
+            SelectChatCard(card);
+            ChangeView(viewModel);
         };
 
         savedRooms.Add(roomInfo);

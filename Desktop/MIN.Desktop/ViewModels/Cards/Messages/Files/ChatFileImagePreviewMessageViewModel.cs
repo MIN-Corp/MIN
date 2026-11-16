@@ -1,7 +1,6 @@
 using System.IO;
 using Avalonia;
 using Avalonia.Input.Platform;
-using Avalonia.Labs.Gif;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,7 +17,7 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
 {
     // GIF
     private FileStream? gifStream;
-    private GifStreamSource gifPreviewImage = null!;
+    private GifHeaderSource gifPreviewImage = null!;
 
     [ObservableProperty]
     public partial string FileNameAndSize { get; set; } = string.Empty;
@@ -32,7 +31,7 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
     /// <summary>
     /// Превью GIF изображения
     /// </summary>
-    public GifStreamSource GifPreviewImage
+    public GifHeaderSource GifPreviewImage
     {
         get => gifPreviewImage;
         private set
@@ -100,18 +99,18 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
         gifStream?.Dispose();
         gifStream = null;
 
-        if (CachedFormat == "gif")
+        switch (CachedFormat)
         {
-            gifStream = File.OpenRead(filePath);
-            GifPreviewImage = GifStreamSource.FromStream(gifStream);
-        }
-        else if (CachedFormat == "svg")
-        {
-            PreviewImage = ImageHelper.SvgToBitmap(filePath);
-        }
-        else
-        {
-            PreviewImage = new Bitmap(filePath);
+            case "gif":
+                gifStream = File.OpenRead(filePath);
+                GifPreviewImage = GifHeaderSource.FromStream(gifStream);
+                break;
+            case "svg":
+                PreviewImage = ImageHelper.SvgToBitmap(filePath);
+                break;
+            default:
+                PreviewImage = new Bitmap(filePath);
+                break;
         }
     }
 
@@ -134,6 +133,7 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
     /// <inheritdoc />
     public override void Dispose()
     {
+        PreviewImage?.Dispose();
         gifStream?.Dispose();
         gifStream = null;
 

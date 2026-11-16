@@ -36,7 +36,7 @@ internal sealed class FileMetadataHandler : BaseHandler
     {
         var metadata = (FileMetadataMessage)message;
 
-        if (!context.RoomContext.Participants.TryGetParticipantById(metadata.SenderId, out var sender))
+        if (!context.RoomContext.Participants.TryGetParticipantById(metadata.SenderId, out _))
         {
             LogWarning($"Получил метаданные файла от неизвестного отправителя {metadata.SenderId}");
             return HandlerResult.Failure("Получил метаданные файла от неизвестного отправителя", stopPropagation: false);
@@ -103,6 +103,7 @@ internal sealed class FileMetadataHandler : BaseHandler
 
             metadata.AsDownloaded = true;
             metadata.FilePath = e.FilePath;
+            metadata.FileName = Path.GetFileName(e.FilePath);
             fileTransferService.RegisterFileMetadata(message.Id, roomId, metadata.FileName);
 
             context.RoomContext.Messages.AddMessage(new FileMetadataMessage(metadata));

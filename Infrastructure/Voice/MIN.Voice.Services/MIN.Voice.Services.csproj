@@ -9,25 +9,14 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ML.OnnxRuntime" />
-    <PackageReference Include="OpenTK.Audio.OpenAL" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Helpers\MIN.Helpers.Contracts\MIN.Helpers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Audio\MIN.Audio.Services\MIN.Audio.Services.csproj" />
     <ProjectReference Include="..\MIN.Voice.Events\MIN.Voice.Events.csproj" />
-    <ProjectReference Include="..\MIN.Voice.Services.Contacts\MIN.Voice.Services.Contacts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="VAD\Models\silero_vad.onnx" />
-    <None Include="Native\openal32.dll">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        <Link>openal32.dll</Link>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Native\" />
   </ItemGroup>
 </Project>

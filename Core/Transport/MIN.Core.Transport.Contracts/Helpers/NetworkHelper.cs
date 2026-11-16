@@ -10,7 +10,7 @@ using MIN.Core.Transport.Contracts.Models;
 namespace MIN.Core.Transport.Contracts.Helpers;
 
 /// <summary>
-/// Помошник в сети
+/// Помощник в сети
 /// </summary>
 public static partial class NetworkHelper
 {
@@ -31,6 +31,8 @@ public static partial class NetworkHelper
     ];
 
     private static IPAddress? wanIpCache;
+    private static long wanIpCacheTimestamp;
+    private readonly static TimeSpan wanIpCacheLifetime = TimeSpan.FromMinutes(5);
     private static IPAddress? lanIpCache;
     private static long lastSeenPacketChange = -1;
     private static long lastBytesSendOrReceived = -1;
@@ -91,49 +93,67 @@ public static partial class NetworkHelper
     {
         lock (wanIpLock)
         {
-            if (wanIpCache != null)
+            if (wanIpCache != null
+                && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - wanIpCacheTimestamp < wanIpCacheLifetime.TotalMilliseconds)
             {
                 return wanIpCache;
             }
         }
 
         var ip = await PortForwardingHelper.GetExternalIpAsync(cancellationToken);
-        var canceled = false;
 
-        if (ip == null || ip.IsPrivate())
+        if (ip == null || ip.IsPrivate() || ip.IsVpn())
         {
-            Regex regex = IpAddressRegex();
-            using HttpClient client = new();
-            foreach (var site in PublicIpResolverServiceUrls)
+            try
             {
-                try
+                ip = await ResolvePublicIpFromServicesAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                lock (wanIpLock)
                 {
-                    using var response = await client.GetAsync(site, cancellationToken);
-                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                    ip = IPAddress.Parse(regex.Match(content).Value);
-                    if (ip.IsPrivate())
-                    {
-                        continue;
-                    }
-                    break;
-                }
-                catch (TaskCanceledException) { canceled = true; }
-                catch
-                {
-                    // ignore
+                    return null;
                 }
             }
         }
 
         lock (wanIpLock)
         {
-            if (!canceled)
-            {
-                wanIpCache = ip;
-            }
-
+            wanIpCache = ip;
+            wanIpCacheTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             return ip;
         }
+    }
+
+    /// <summary>
+    /// Опросить все сервисы публичного IP параллельно, взять первый валидный результат
+    /// </summary>
+    private static async Task<IPAddress?> ResolvePublicIpFromServicesAsync(CancellationToken cancellationToken)
+    {
+        var regex = IpAddressRegex();
+        using HttpClient client = new();
+        client.Timeout = TimeSpan.FromSeconds(5);
+
+        var tasks = PublicIpResolverServiceUrls.Select(async url =>
+        {
+            try
+            {
+                var content = await client.GetStringAsync(url, cancellationToken);
+                var parsed = IPAddress.Parse(regex.Match(content).Value);
+                return !parsed.IsPrivate() && !parsed.IsVpn() ? parsed : null;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                return null;
+            }
+        });
+
+        var results = await Task.WhenAll(tasks);
+        return results.FirstOrDefault(result => result != null);
     }
 
     /// <summary>
@@ -170,62 +190,35 @@ public static partial class NetworkHelper
     public static IEnumerable<(IPAddress Address, string NetworkName)> GetVpnIps() => GetVpnIps(SupportedVpnNames.ToArray());
 
     /// <summary>
-    /// Получить список всех доступых Ip адресов
+    /// Получить список всех доступных Ip адресов
     /// </summary>
     public static async Task<IEnumerable<MachineKnownIp>> GetAllKnownIpsAsync(bool includeWan = true, bool includeVpns = true, CancellationToken cancellationToken = default)
     {
-        var wantedIps = new List<Task>();
-
         var machineKnownIps = Task.Run(() => GetLocalMachineAttachedIpAddresses().ToArray(), cancellationToken);
-        var wanIp = GetWanIpAsync(cancellationToken);
 
-        if (includeWan)
-        {
-            wantedIps.Add(wanIp);
-        }
+        var wanIp = includeWan ? GetWanIpAsync(cancellationToken) : null;
+        var vpnIps = includeVpns ? Task.Run(GetVpnIps, cancellationToken) : null;
 
-        var vpnIps = Task.Run(GetVpnIps, cancellationToken);
-
-        if (includeVpns)
-        {
-            wantedIps.Add(vpnIps);
-        }
-
-        await Task.WhenAll(wantedIps);
+        await Task.WhenAll(machineKnownIps, wanIp ?? Task.CompletedTask, vpnIps ?? Task.CompletedTask);
 
         List<MachineKnownIp> knownIps = [];
-        foreach (var knownIp in await machineKnownIps)
+        knownIps.AddRange(from knownIp in await machineKnownIps where knownIp.Address.IsPrivate() select new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.Lan, knownIp.NetworkName));
+
+        if (wanIp != null && await wanIp is { } wanAddress && !wanAddress.IsPrivate() && !wanAddress.IsVpn())
         {
-            if (knownIp.Address.IsPrivate())
-            {
-                knownIps.Add(new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.Lan, knownIp.NetworkName));
-            }
+            knownIps.Add(new MachineKnownIp(wanAddress, AddressOrigin.Wan));
         }
-        if (includeWan)
+
+        if (vpnIps != null)
         {
-            if (await wanIp is { } wanAddress && !wanAddress.IsPrivate())
+            foreach (var (vpnAddress, vpnName) in await vpnIps)
             {
-                knownIps.Add(new MachineKnownIp(wanAddress, AddressOrigin.Wan));
-            }
-        }
-        if (includeVpns)
-        {
-            foreach ((var vpnAddress, var vpnName) in await vpnIps)
-            {
-                if (vpnAddress == null)
-                {
-                    continue;
-                }
                 knownIps.Add(new MachineKnownIp(vpnAddress.TryExtractMappedIPv4(), AddressOrigin.Vpn, vpnName));
             }
         }
-        foreach (var knownIp in await machineKnownIps)
-        {
-            if (!knownIp.Address.IsPrivate() && !SupportedVpnNames.Where(x => x.Contains(knownIp.NetworkName ?? string.Empty)).Any())
-            {
-                knownIps.Add(new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.Wan, knownIp.NetworkName));
-            }
-        }
+
+        knownIps.AddRange(from knownIp in await machineKnownIps where !knownIp.Address.IsPrivate() && !SupportedVpnNames.Any(x => x.Contains(knownIp.NetworkName ?? string.Empty)) select new MachineKnownIp(knownIp.Address.TryExtractMappedIPv4(), AddressOrigin.Wan, knownIp.NetworkName));
+
         return knownIps.Where(ip => ip.Address.AddressFamily == AddressFamily.InterNetwork);
     }
 

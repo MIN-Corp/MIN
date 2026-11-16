@@ -284,7 +284,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 
     private Task OnSessionParticipantJoined(SessionParticipantJoinedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.SubRoomId != SessionMessage.SubRoomId || IsSessionStopped)
+        if (eventMessage.SubRoomId != SessionMessage.SubRoomId)
         {
             return Task.CompletedTask;
         }
@@ -371,7 +371,7 @@ public partial class ChatSessionMessageViewModel : BaseUpdateableReplyableChatMe
 
         TunnelConnectInfo = $"Запустите игру и подключитесь к {TunnelConnectAddress}";
 
-        JoinButtonStateText = (IsSessionStopped && IsLocal ? "Запустить заново"
+        JoinButtonStateText = (currentAmount <= 0 ? "Запустить заново"
            : IsTunnel && IsLocal ? "Остановить сессию"
            : IsWaitingForGame ? "Отменить подключение"
            : IsJoined ? "Покинуть сессию"

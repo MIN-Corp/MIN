@@ -81,7 +81,7 @@ internal sealed class RoomSyncHandler : BaseHandler
                     await messageRouter.PublishLocally(new MessageDeleteMessage
                     {
                         MessageIdToDelete = deletedMessageId,
-                    }, roomId, context.Role, cancellationToken: context.CancellationToken);
+                    }, roomId, cancellationToken: context.CancellationToken);
                 }
 
                 foreach (var updatedMessage in syncResponse.UpdatedMessages)
@@ -90,7 +90,7 @@ internal sealed class RoomSyncHandler : BaseHandler
                     {
                         MessageIdToEdit = updatedMessage.Id,
                         NewMessage = updatedMessage
-                    }, roomId, context.Role, cancellationToken: context.CancellationToken);
+                    }, roomId, cancellationToken: context.CancellationToken);
                 }
 
                 LogInfo($"Получил упущенную информацию о комнате с id {roomId} сообщений {syncResponse.MissedMessages.Count}");

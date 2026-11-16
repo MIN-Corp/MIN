@@ -10,10 +10,10 @@ public interface IStreamChunkHandler
     /// <summary>
     /// Являются ли расшифрованные данные пакетом потока
     /// </summary>
-    bool CanHandle(byte[] plainData);
+    bool CanHandle(ReadOnlySpan<byte> plainData);
 
     /// <summary>
     /// Обработать пакет потока
     /// </summary>
-    Task HandleAsync(byte[] plainData, RoomRawMessageReceivedEventArgs e, CancellationToken cancellationToken);
+    Task HandleAsync(ReadOnlyMemory<byte> plainData, RoomRawMessageReceivedEventArgs e, CancellationToken cancellationToken);
 }

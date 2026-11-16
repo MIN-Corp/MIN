@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
       <OutputType>WinExe</OutputType>
-      <TargetFramework>net8.0</TargetFramework>
+      <TargetFrameworks>net8.0-windows10.0.19041.0;net8.0</TargetFrameworks>
       <Nullable>enable</Nullable>
       <LangVersion>preview</LangVersion>
       <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -12,6 +12,7 @@
       <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
       <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
       <IncludeAllContentForSelfExtract>false</IncludeAllContentForSelfExtract>
+      <DefineConstants Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">$(DefineConstants);MIN_WINDOWS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,6 +38,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\DI\MIN.DI\MIN.DI.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Audio\MIN.Audio.DI\MIN.Audio.DI.csproj" />
+    <ProjectReference Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'" Include="..\..\Infrastructure\ScreenDemo\Capture\Windows\MIN.ScreenDemo.Capture.Windows\MIN.ScreenDemo.Capture.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -108,6 +111,22 @@
     </Compile>
     <Compile Update="Views\Windows\MainWindow.axaml.cs">
       <DependentUpon>MainWindow.axaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\Modals\ScreenDemoSourcePickerModal.axaml.cs">
+      <DependentUpon>ScreenDemoSourcePickerModal.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Views\Windows\ScreenDemoPreviewWindow.axaml.cs">
+      <DependentUpon>ScreenDemoPreviewWindow.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Views\Windows\ScreenDemoViewerWindow.axaml.cs">
+      <DependentUpon>ScreenDemoViewerWindow.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Views\Cards\ScreenDemoStreamView.axaml.cs">
+      <DependentUpon>ScreenDemoStreamView.axaml</DependentUpon>
+      <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
 </Project>

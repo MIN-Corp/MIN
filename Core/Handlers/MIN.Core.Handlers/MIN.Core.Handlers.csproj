@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\Events\MIN.Core.Events\MIN.Core.Events.csproj" />
     <ProjectReference Include="..\..\Messaging\MIN.Core.Messaging\MIN.Core.Messaging.csproj" />
     <ProjectReference Include="..\..\Services\MIN.Core.Services.Contracts\MIN.Core.Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\Transport\MIN.Core.Transport.UdpSockets\MIN.Core.Transport.UdpSockets.csproj" />
     <ProjectReference Include="..\MIN.Core.Handlers.Contracts\MIN.Core.Handlers.Contracts.csproj" />
   </ItemGroup>
 

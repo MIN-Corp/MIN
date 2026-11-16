@@ -26,17 +26,17 @@ public interface ITransport
     /// <remarks>
     /// serverConnectionId указывает, какой id соединения у сервера в случае хоста
     /// </remarks>
-    Task SendAsync(byte[] data, Guid receipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken);
+    Task SendAsync(ReadOnlyMemory<byte> data, Guid recipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken);
 
     /// <summary>
     /// Отправить сырые данные всем соединениям
     /// </summary>
-    Task BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken);
+    Task BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken);
 
     /// <summary>
     /// Запустить сервер подключений (с желаемым id)
     /// </summary>
-    Task<Guid> StartHostingAsync(Guid? serverConnectionId = null, ushort? prefferedPort = null, int? sequentialAttempts = null, CancellationToken cancellationToken = default);
+    Task<Guid> StartHostingAsync(Guid? serverConnectionId = null, ushort? preferredPort = null, int? sequentialAttempts = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Настроить доступ и получить все точки подключения

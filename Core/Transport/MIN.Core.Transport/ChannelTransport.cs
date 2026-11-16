@@ -93,7 +93,7 @@ public class ChannelTransport : ITransport, IAsyncDisposable
         throw new ArgumentException($"Неподдерживаемый endpoint: {endpoint.GetType().Name}");
     }
 
-    async Task ITransport.SendAsync(byte[] data, Guid recipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
+    async Task ITransport.SendAsync(ReadOnlyMemory<byte> data, Guid recipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
     {
         if (channel == MessageChannel.Fast && fastTransport.IsReadyToSend(recipientConnectionId, serverConnectionId))
         {
@@ -115,7 +115,7 @@ public class ChannelTransport : ITransport, IAsyncDisposable
         await secureTransport.SendAsync(data, recipientConnectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
     }
 
-    async Task ITransport.BroadcastAsync(byte[] data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
+    async Task ITransport.BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
     {
         var excludeConnectionsArray = excludeConnections as Guid[] ?? excludeConnections?.ToArray();
 
@@ -137,10 +137,12 @@ public class ChannelTransport : ITransport, IAsyncDisposable
 
     async Task<IEnumerable<IEndpoint>> ITransport.SetUpEndpoints(Guid connectionId, NetworkOptions networkOptions, NetworkOptions? oldNetworkOptions, CancellationToken cancellationToken)
     {
-        var tcpEndpoints = await secureTransport.SetUpEndpoints(connectionId, networkOptions, oldNetworkOptions, cancellationToken);
-        await fastTransport.SetUpEndpoints(connectionId, networkOptions, oldNetworkOptions, cancellationToken);
-        // Возращаются только TCP endpoint потому что у них обрабатывается подключение
-        return tcpEndpoints;
+        var tcpTask = secureTransport.SetUpEndpoints(connectionId, networkOptions, oldNetworkOptions, cancellationToken);
+        var udpTask = fastTransport.SetUpEndpoints(connectionId, networkOptions, oldNetworkOptions, cancellationToken);
+
+        await Task.WhenAll(tcpTask, udpTask);
+
+        return tcpTask.Result;
     }
 
     IEnumerable<IEndpoint> ITransport.GetEndpoints(Guid serverConnectionId)

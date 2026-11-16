@@ -44,24 +44,21 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
         this.logger = logger;
     }
 
-    async Task IChunkBufferAssembler.ProcessStreamChunk(byte[] data, Guid roomId, Guid connectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
+    async Task IChunkBufferAssembler.ProcessStreamChunk(ReadOnlyMemory<byte> data, Guid roomId, Guid connectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
     {
         if (disposed)
         {
             return;
         }
 
-        var header = headerManager.ParseStreamChunkHeader(data);
-        var chunkData = new ReadOnlyMemory<byte>(data, HeadersConstants.StreamHeaderSize,
-            data.Length - HeadersConstants.StreamHeaderSize);
-
+        var header = headerManager.ParseStreamChunkHeader(data.Span);
         var chunk = new StreamChunk
         {
             StreamId = header.StreamId,
             Flags = header.Flags,
             Index = header.Index,
             Total = header.Total,
-            Data = chunkData
+            Data = data[HeadersConstants.StreamHeaderSize..],
         };
 
         try
@@ -173,7 +170,7 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
         }
     }
 
-    private async Task SendAck(Guid streamId, int chunkIndex, Guid connectionId, Guid? serverConnectionid, CancellationToken cancellationToken)
+    private async Task SendAck(Guid streamId, int chunkIndex, Guid connectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
     {
         try
         {
@@ -183,7 +180,7 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
             BitConverter.GetBytes(chunkIndex).CopyTo(ack, 17);
 
             // Secure because of message assembling
-            await transport.SendAsync(ack, connectionId, serverConnectionid, MessageChannel.Secure, cancellationToken);
+            await transport.SendAsync(ack, connectionId, serverConnectionId, MessageChannel.Secure, cancellationToken);
         }
         catch (Exception ex)
         {

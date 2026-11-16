@@ -28,9 +28,6 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
         keyProvider = new KeyProvider(dataProtection, identityDataPathProvider, logger);
     }
 
-    bool IMessageEncryptor.IsSessionInitialized(Guid partnerId)
-        => sharedSecrets.ContainsKey(partnerId);
-
     async Task IMessageEncryptor.InitializeSessionWithPartnerAsync(Guid partnerId, byte[] partnerPublicKey)
     {
         var sharedSecret = await keyProvider.ComputeSharedSecretAsync(partnerPublicKey);
@@ -77,22 +74,34 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
     byte[] IMessageEncryptor.EncryptMessage(byte[] plaintext, Guid partnerId)
     {
         var key = GetSessionKey(partnerId);
-        var iv = RandomNumberGenerator.GetBytes(CryptographyConstants.IvSize);
+
+        var result = new byte[CryptographyConstants.IvSize + plaintext.Length + CryptographyConstants.AuthTagSize];
+        var iv = result.AsSpan(0, CryptographyConstants.IvSize);
+        RandomNumberGenerator.Fill(iv);
+
+        var ciphertext = result.AsSpan(CryptographyConstants.IvSize, plaintext.Length);
+        var authTag = result.AsSpan(CryptographyConstants.IvSize + plaintext.Length, CryptographyConstants.AuthTagSize);
 
         using var aesGcm = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize);
-        var ciphertext = new byte[plaintext.Length];
-        var authTag = new byte[CryptographyConstants.AuthTagSize];
         aesGcm.Encrypt(iv, plaintext, ciphertext, authTag);
 
-        using var ms = new MemoryStream();
-        ms.Write(iv, 0, CryptographyConstants.IvSize);
-        ms.Write(ciphertext, 0, ciphertext.Length);
-        ms.Write(authTag, 0, CryptographyConstants.AuthTagSize);
-
-        return ms.ToArray();
+        return result;
     }
 
-    byte[] IMessageEncryptor.DecryptMessage(byte[] encryptedData, Guid partnerId)
+    void IMessageEncryptor.EncryptMessageInPlace(Span<byte> ivPlaintextTag, Guid partnerId)
+    {
+        var key = GetSessionKey(partnerId);
+
+        var iv = ivPlaintextTag[..CryptographyConstants.IvSize];
+        RandomNumberGenerator.Fill(iv);
+
+        var plaintext = ivPlaintextTag[CryptographyConstants.IvSize..^CryptographyConstants.AuthTagSize];
+
+        using var aesGcm = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize);
+        aesGcm.Encrypt(iv, plaintext, plaintext, ivPlaintextTag[^CryptographyConstants.AuthTagSize..]);
+    }
+
+    byte[] IMessageEncryptor.DecryptMessage(ReadOnlyMemory<byte> encryptedData, Guid partnerId)
     {
         var key = GetSessionKey(partnerId);
 
@@ -101,17 +110,21 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
             throw new InvalidDataException($"Invalid encrypted data: length {encryptedData.Length} < 28");
         }
 
-        var iv = encryptedData.AsSpan(0, CryptographyConstants.IvSize).ToArray();
-        var authTag = encryptedData.AsSpan(encryptedData.Length - 16, 16).ToArray();
+        var data = encryptedData.Span;
         var ciphertextLength = encryptedData.Length - CryptographyConstants.IvSize - CryptographyConstants.AuthTagSize;
-        var ciphertext = encryptedData.AsSpan(CryptographyConstants.IvSize, ciphertextLength).ToArray();
+        var plaintext = new byte[ciphertextLength];
+
+        Span<byte> iv = stackalloc byte[CryptographyConstants.IvSize];
+        data[..CryptographyConstants.IvSize].CopyTo(iv);
+
+        Span<byte> authTag = stackalloc byte[CryptographyConstants.AuthTagSize];
+        data[^CryptographyConstants.AuthTagSize..].CopyTo(authTag);
 
         using var aesGcm = new AesGcm(key, tagSizeInBytes: CryptographyConstants.AuthTagSize);
-        var plaintext = new byte[ciphertext.Length];
 
         try
         {
-            aesGcm.Decrypt(iv, ciphertext, authTag, plaintext);
+            aesGcm.Decrypt(iv, data.Slice(CryptographyConstants.IvSize, ciphertextLength), authTag, plaintext);
             return plaintext;
         }
         catch (CryptographicException ex) when (ex is AuthenticationTagMismatchException)
