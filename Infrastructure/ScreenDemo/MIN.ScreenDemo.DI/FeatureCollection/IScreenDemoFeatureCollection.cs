@@ -7,11 +7,6 @@ namespace MIN.ScreenDemo.DI.FeatureCollection;
 /// </summary>
 public interface IScreenDemoFeatureCollection
 {
-    /// <summary>
-    /// Есть возможность демонстрации экрана (записи)
-    /// </summary>
-    bool CanShareScreen { get; }
-
     /// <inheritdoc cref="IScreenDemoStateService"/>
     IScreenDemoStateService ScreenDemoState { get; }
 

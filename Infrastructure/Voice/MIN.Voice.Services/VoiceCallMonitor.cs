@@ -73,14 +73,14 @@ public class VoiceCallMonitor : IHostedService
     {
         var context = roomFactory.GetOrCreateContext(e.RoomId);
 
+        voiceCallStateService.UnregisterVoiceCall();
+        audioCaptureService.Stop();
+        voiceDataTransmitter.End();
+        voicePlaybackService.Clear();
+
         var activeSubRooms = context.SubRooms.GetRoomSubRooms().Where(x => x.Purpose == SubRoomPurpose.Voice && x.IsActive).ToList();
         foreach (var subRoom in activeSubRooms)
         {
-            voiceCallStateService.UnregisterVoiceCall();
-            audioCaptureService.Stop();
-            voiceDataTransmitter.End();
-            voicePlaybackService.Clear();
-
             await messageRouter.PublishLocally(new VoiceCallEndedMessage()
             {
                 SubRoomId = subRoom.Id,

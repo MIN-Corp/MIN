@@ -151,11 +151,11 @@ public partial class ConnectionAddressViewModel : CardViewModelBase
         => owner?.ChooseConnectAddress(this);
 
     [RelayCommand]
-    private async Task CopyToClipBoard(string message)
+    private async Task CopyToClipBoard()
     {
         if (clipboard != null)
         {
-            await clipboard.SetTextAsync(message);
+            await clipboard.SetTextAsync(Address);
             InAppNotifier.Info("Скопировано в буфер обмена");
         }
     }

@@ -5,9 +5,6 @@ namespace MIN.ScreenDemo.DI.FeatureCollection;
 /// <inheritdoc cref="IScreenDemoFeatureCollection"/>
 public class ScreenDemoFeatureCollection : IScreenDemoFeatureCollection
 {
-    /// <inheritdoc />
-    public bool CanShareScreen => OperatingSystem.IsWindows();
-
     /// <inheritdoc cref="IScreenDemoStateService"/>
     public IScreenDemoStateService ScreenDemoState { get; }
 

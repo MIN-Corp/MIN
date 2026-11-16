@@ -90,18 +90,20 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
         this.featureCollection = featureCollection;
         this.dialogService = dialogService;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
-            lifeTimeCts = ctsProvider.AppCts;
-            SubscribeToEvents();
-            InitializeLayoutStyles();
-
-            this.RegisterMessageListener<CancelRoutingOperationReferenceCommand, DiscoveryViewModel>((_, _) =>
-            {
-                createRoomCts?.Cancel();
-            });
+            return;
         }
+
+        localParticipant = featureCollection.Core.IdentityService.SelfParticipant.ToParticipantInfo();
+        lifeTimeCts = ctsProvider.AppCts;
+        SubscribeToEvents();
+        InitializeLayoutStyles();
+
+        this.RegisterMessageListener<CancelRoutingOperationReferenceCommand, DiscoveryViewModel>((_, _) =>
+        {
+            createRoomCts?.Cancel();
+        });
     }
 
     private void InitializeLayoutStyles()
@@ -307,7 +309,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
 
                     if (chatViewsRegistry.TryGet(room.Id, out var existingChatVm))
                     {
-                        existingChatVm!.AdoptLiveRoom(room, connectionId);
+                        await existingChatVm!.AdoptLiveRoom(room, connectionId);
                         ChangeView(existingChatVm, connectCts.Token);
                         return;
                     }

@@ -44,14 +44,14 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
 
             await args.OnRoomReady(room);
 
-            return new RoomHostResult()
+            return new RoomHostResult
             {
                 Room = room,
             };
         }
         catch (OperationCanceledException)
         {
-            return new RoomHostResult()
+            return new RoomHostResult
             {
                 Failure = HostFailure.Cancelled,
                 ErrorMessage = "Создание комнаты было отменено"
@@ -59,7 +59,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
         }
         catch (Exception ex)
         {
-            return new RoomHostResult()
+            return new RoomHostResult
             {
                 Failure = HostFailure.Error,
                 ErrorMessage = $"Не удалось создать комнату: {ex.Message}"
@@ -93,7 +93,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
             {
                 _ = dialogService.ShowDialogAsync<LoadingViewModel>(async vm =>
                 {
-                    await vm.LoadRoomDataAndRefresh(OnRoomReady, args.Cts, DesktopConstants.RoomConnectionTimeoutMs);
+                    await vm.LoadRoomDataAndRefresh(OnRoomReady, args.Cts);
                     loadingVm = vm;
                 });
             }
@@ -129,7 +129,6 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
                 }
             }
 
-
             connectionResult = await featureCollection.Core.Lifecycle.ConnectAsync(args.Endpoint, args.ExpectedRoomId, args.Cts.Token);
 
             if (loadingVm != null)
@@ -137,7 +136,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
                 loadingVm.RoomId = connectionResult.RoomId;
             }
 
-            return new RoomJoinResult()
+            return new RoomJoinResult
             {
                 RoomId = connectionResult.RoomId,
                 ConnectionId = connectionResult.ConnectionId,
@@ -146,7 +145,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
         catch (OperationCanceledException)
         {
             loadingVm?.CloseByCode();
-            return new RoomJoinResult()
+            return new RoomJoinResult
             {
                 Failure = JoinFailure.Cancelled,
             };
@@ -166,7 +165,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
 
             var choice = choiceDialog?.Choice ?? RoomMismatchChoice.Cancel;
 
-            return new RoomJoinResult()
+            return new RoomJoinResult
             {
                 Failure = JoinFailure.Mismatch,
                 RoomMismatchChoice = choice,
@@ -179,7 +178,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
         {
             loadingVm?.CloseByCode();
             InAppNotifier.Error($"Произошла ошибка при подключении: {ex.Message}");
-            return new RoomJoinResult()
+            return new RoomJoinResult
             {
                 Failure = JoinFailure.Error,
             };

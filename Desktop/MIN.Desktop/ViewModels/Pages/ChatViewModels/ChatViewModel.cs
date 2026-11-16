@@ -104,7 +104,11 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         this.chatSideBarViewModel = chatSideBarViewModel;
         this.dialogService = dialogService;
 
-        CanShareScreen = featureCollection.ScreenDemo.CanShareScreen;
+        #if MIN_WINDOWS
+        CanShareScreen = true;
+        #else
+        CanShareScreen = false;
+        #endif
 
         if (Design.IsDesignMode)
         {
@@ -122,7 +126,6 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     private void InitializeUiActions()
     {
         InitializeLayoutStyles();
-        InitializeDemoWindows();
         InitializeObservableCollections();
     }
 
@@ -210,14 +213,8 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     /// <summary>
     /// Использовать активное подключение для уже инициализированной комнате (восстановленной из файла или открытой ранее).
     /// </summary>
-    public void AdoptLiveRoom(Room updatedRoom, Guid connectionId)
-    {
-        room = updatedRoom;
-        this.connectionId = connectionId;
-        IsOnline = true;
-        chatSideBarViewModel.IsOnline = true;
-        IsAvailableForNetwork = IsOnline || IsHost;
-    }
+    public async Task AdoptLiveRoom(Room updatedRoom, Guid connectionId)
+        => await RefreshAfterReconnect(updatedRoom, connectionId);
 
     /// <summary>
     /// Подгрузить данные о комнате и перезагрузить страницу
@@ -264,6 +261,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
     {
         InitializeNotifications();
         InitializeTimers();
+        InitializeDemoWindows();
         InitializeParentFormWindowStateEvents();
     }
 

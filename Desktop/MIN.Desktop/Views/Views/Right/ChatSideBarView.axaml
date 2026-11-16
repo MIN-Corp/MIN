@@ -149,8 +149,14 @@
                                                             <Svg Path="/Assets/Icons/about.svg" />
                                                             <Button.Flyout>
                                                                 <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                                    <MenuItem Header="Скопировать"
+                                                                              Command="{Binding CopyToClipBoardCommand}">
+                                                                        <MenuItem.Icon>
+                                                                            <Svg Path="/Assets/Icons/copy.svg" />
+                                                                        </MenuItem.Icon>
+                                                                    </MenuItem>
                                                                     <MenuItem Header="Изменить"
-                                                                            Command="{Binding StartEditCommand}">
+                                                                              Command="{Binding StartEditCommand}">
                                                                         <MenuItem.Icon>
                                                                             <Svg Path="/Assets/Icons/pencil.svg" />
                                                                         </MenuItem.Icon>
