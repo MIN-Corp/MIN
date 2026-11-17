@@ -94,6 +94,7 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     /// <inheritdoc />
     public async Task SendAsync(ReadOnlyMemory<byte> data, Guid recipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var datagram = new SentDatagram(data.ToArray(), recipientConnectionId, serverConnectionId, channel);
         SentDatagrams.Enqueue(datagram);
         if (SendHandler != null)

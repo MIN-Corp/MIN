@@ -18,6 +18,7 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
 {
     private readonly ConcurrentDictionary<Guid, MessageStream> activeStreams = new();
     private readonly ConcurrentDictionary<Guid, Timer> streamTimers = new();
+    private readonly ConcurrentDictionary<Guid, DateTime> completedStreams = new();
     private readonly ITransport transport;
     private readonly IHeaderManager headerManager;
     private readonly ILoggerProvider logger;
@@ -61,6 +62,11 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
             Data = data[HeadersConstants.StreamHeaderSize..],
         };
 
+        if (completedStreams.ContainsKey(chunk.StreamId))
+        {
+            return;
+        }
+
         try
         {
             if (chunk.IsSingle)
@@ -70,6 +76,7 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
                     await SendAck(chunk.StreamId, chunk.Index, connectionId, serverConnectionId, cancellationToken);
                 }
 
+                MarkCompleted(chunk.StreamId);
                 OnMessageAssembled(chunk.StreamId, roomId, connectionId, chunk.Data.ToArray(), null, chunk.Flags.HasFlag(StreamChunkFlags.RawPayload), cancellationToken);
                 return;
             }
@@ -107,6 +114,7 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
             {
                 logger.Log("Сообщение было собрано из потока");
                 var filePath = stream.GetTempFilePath();
+                MarkCompleted(chunk.StreamId);
                 OnMessageAssembled(chunk.StreamId, roomId, connectionId, result, filePath, stream.IsRawPayload, cancellationToken);
                 TryRemoveStream(chunk.StreamId);
             }
@@ -122,6 +130,22 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
             }, cancellationToken);
             TryRemoveStream(chunk.StreamId);
             throw;
+        }
+    }
+
+    private void MarkCompleted(Guid streamId)
+    {
+        completedStreams[streamId] = DateTime.UtcNow;
+        if (completedStreams.Count > 1024)
+        {
+            var cutoff = DateTime.UtcNow.AddMilliseconds(-StreamingConstants.DefaultStreamLifetimeMs);
+            foreach (var pair in completedStreams)
+            {
+                if (pair.Value < cutoff)
+                {
+                    completedStreams.TryRemove(pair.Key, out _);
+                }
+            }
         }
     }
 
@@ -244,5 +268,6 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
             timer.Dispose();
         }
         streamTimers.Clear();
+        completedStreams.Clear();
     }
 }

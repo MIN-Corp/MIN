@@ -12,6 +12,6 @@ public static class TestMessageContext
     /// <summary>
     /// Создать контекст обработки сообщения
     /// </summary>
-    public static MessageContext Create(RoomContext roomContext, Guid connectionId, Guid selfId, Role role, CancellationToken cancellationToken = default)
-        => new(roomContext, connectionId, selfId, role, cancellationToken);
+    public static MessageContext Create(RoomContext roomContext, Guid selfId, Guid connectionId, Role role, CancellationToken cancellationToken = default)
+        => new(roomContext, selfId, connectionId, role, cancellationToken);
 }

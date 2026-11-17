@@ -152,6 +152,12 @@ public sealed class MessageStream : IDisposable
                     $"Поток {Id} завершён с неверным индексом. Ожидался {ExpectedChunks - 1}, получен {chunk.Index}");
             }
 
+            if (GottenChunks != ExpectedChunks)
+            {
+                throw new InvalidDataException(
+                    $"Поток {Id} завершён без всех пакетов: получено {GottenChunks} из {ExpectedChunks}");
+            }
+
             IsComplete = true;
 
             if (!IsRawPayload || fileStream == null)

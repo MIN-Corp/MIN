@@ -65,7 +65,7 @@ public sealed class StreamManager : IStreamManager, IDisposable
         ObjectDisposedException.ThrowIf(disposed, nameof(StreamManager));
 
         var streamId = options.StreamId ?? Guid.NewGuid();
-        var totalChunks = (int)Math.Ceiling((double)data.Length / StreamingConstants.ChunkDataSize);
+        var totalChunks = Math.Max(1, (int)Math.Ceiling((double)data.Length / StreamingConstants.ChunkDataSize));
 
         logger.Log($"Начало отправки потока {streamId}: {data.Length} байт, {totalChunks} пакетов");
 
@@ -154,10 +154,26 @@ public sealed class StreamManager : IStreamManager, IDisposable
         {
             var chunkIndex = 0;
             long sentLength = 0;
-            int bytesRead;
-
-            while ((bytesRead = await source.ReadAsync(readBuffer.AsMemory(0, StreamingConstants.ChunkDataSize), cancellationToken)) > 0)
+            while (true)
             {
+                // Добираем чанк до полного размера: частичные чтения не должны ломать нумерацию пакетов
+                var bytesRead = 0;
+                while (bytesRead < StreamingConstants.ChunkDataSize)
+                {
+                    var read = await source.ReadAsync(readBuffer.AsMemory(bytesRead, StreamingConstants.ChunkDataSize - bytesRead), cancellationToken);
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    bytesRead += read;
+                }
+
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
                 sentLength += bytesRead;
 
                 var chunk = new StreamChunk

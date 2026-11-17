@@ -60,13 +60,19 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
         roomPersistenceService.MarkDirty(context.RoomContext.RoomId);
 
+        var routingDone = false;
         foreach (var handler in applicableHandlers)
         {
             try
             {
                 if (broadcastExcludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
+                    if (!routingDone)
+                    {
+                        await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
+                        routingDone = true;
+                    }
+
                     continue;
                 }
 
@@ -90,6 +96,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
                         await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка", context,
                             needToDisconnect: context.Role == Role.Client && result.CriticalErrorForConnection, result.CriticalErrorForDestroy).ConfigureAwait(false);
                     }
+
+                    if (result.StopPropagation)
+                    {
+                        break;
+                    }
+
                     continue;
                 }
 
@@ -139,6 +151,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
                             logger.Log($"Не удалось доставить ошибку «{result.ErrorMessage}»: {ex.Message}", LogLevel.Warning);
                         }
                     }
+
+                    if (result.StopPropagation)
+                    {
+                        break;
+                    }
+
                     continue;
                 }
 
@@ -147,9 +165,10 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     break;
                 }
 
-                if (context.Role == Role.Host)
+                if (context.Role == Role.Host && !routingDone)
                 {
                     await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
+                    routingDone = true;
                 }
             }
             catch (Exception ex)
