@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Collections.Concurrent;
 using MIN.Core.Cryptography.Contracts.Constants;
 using MIN.Core.Cryptography.Contracts.Interfaces;

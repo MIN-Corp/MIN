@@ -1,4 +1,4 @@
-using MIN.Core.Headers.Contracts.Enums;
+﻿using MIN.Core.Headers.Contracts.Enums;
 using MIN.Core.Streaming.Contracts.Constants;
 
 namespace MIN.Core.Streaming.Contracts.Models;
