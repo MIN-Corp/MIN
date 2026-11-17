@@ -30,7 +30,10 @@ public sealed class IdentityService : IIdentityService, IDisposable
     async Task IIdentityService.SaveParticipant(IParticipantData participantData)
     {
         await identityFileStore.SaveParticipantAsync(participantData).ConfigureAwait(false);
-        await (SelfParticipantSaved?.Invoke(participantData)!).ConfigureAwait(false);
+        if (SelfParticipantSaved != null)
+        {
+            await SelfParticipantSaved(participantData).ConfigureAwait(false);
+        }
     }
 
     private ParticipantInfo ResolveParticipant()

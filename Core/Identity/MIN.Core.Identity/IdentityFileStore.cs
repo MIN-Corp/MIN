@@ -135,44 +135,10 @@ public sealed class IdentityFileStore : IDisposable
     /// <summary>
     /// Сохранить данные участника асинхронно
     /// </summary>
-    public async Task SaveParticipantAsync(IParticipantData participant)
-    {
-        await localKeyLock.WaitAsync();
-        fileMutex.WaitOne();
-        try
-        {
-            var entries = await schemaFileStore.LoadOrCreateAsync<List<IdentityEntry>>(identityPath, () => []);
-
-            var entry = entries.FirstOrDefault(x => x.Slot == appSlot);
-
-            var wasNull = false;
-
-            if (entry == null)
-            {
-                wasNull = true;
-                entry = new IdentityEntry()
-                {
-                    Slot = appSlot,
-                };
-            }
-
-            entry.Id = participant.Id;
-            entry.Name = participant.Name;
-            entry.Hash = ComputeHash(entry.Id);
-
-            if (wasNull)
-            {
-                entries.Add(entry);
-            }
-
-            await schemaFileStore.SaveAsync(identityPath, entries);
-        }
-        finally
-        {
-            localKeyLock.Release();
-            fileMutex.ReleaseMutex();
-        }
-    }
+    public Task SaveParticipantAsync(IParticipantData participant)
+        // Mutex имеет thread affinity: после await продолжение может уйти на другой поток,
+        // и ReleaseMutex бросит ApplicationException. Выполняем синхронную версию целиком на одном потоке.
+        => Task.Run(() => SaveParticipant(participant));
 
     private static string ComputeHash(Guid id)
         => Convert.ToBase64String(HMACSHA256.HashData(IdentityConstants.HashSecret, id.ToByteArray()));
