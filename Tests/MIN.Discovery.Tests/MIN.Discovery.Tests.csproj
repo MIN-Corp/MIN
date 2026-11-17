@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MIN.Tests.Common\MIN.Tests.Common.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Discovery\MIN.Discovery.Services\MIN.Discovery.Services.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Discovery\MIN.Discovery.DI\MIN.Discovery.DI.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Discovery\Transport\MIN.Discovery.Transport.UdpBroadcast\MIN.Discovery.Transport.UdpBroadcast.csproj" />
   </ItemGroup>
 
