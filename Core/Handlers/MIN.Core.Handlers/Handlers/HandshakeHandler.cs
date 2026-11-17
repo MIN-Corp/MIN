@@ -189,9 +189,7 @@ internal sealed class HandshakeHandler : BaseHandler
 
     private HandlerResult BuildFastChannelResponse(MessageContext context)
     {
-        var savedRoom = roomStore.GetRoom(context.RoomContext.RoomId);
-
-        if (savedRoom == null || !savedRoom.ConnectionAddresses.Any())
+        if (!roomStore.TryGetRoom(context.RoomContext.RoomId, out var savedRoom) || !savedRoom.ConnectionAddresses.Any())
         {
             return HandlerResult.Failure("Не нашлась комната. Попробуйте ещё раз.");
         }
