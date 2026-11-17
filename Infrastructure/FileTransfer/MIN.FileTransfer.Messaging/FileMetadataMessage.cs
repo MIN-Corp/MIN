@@ -23,10 +23,10 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     /// <summary>
     /// Отправитель сообщения
     /// </summary>
-    public ParticipantInfo Sender { get; set; } = null!;
+    public ParticipantInfo Sender { get; set; } = new();
 
     /// <inheritdoc />
-    public string SenderName { get => Sender.Name; set => Sender.Name = value; }
+    public string SenderName { get => Sender.Name; set => (Sender ??= new ParticipantInfo()).Name = value; }
 
     /// <summary>
     /// Идентификатор потока, по которому придёт файл

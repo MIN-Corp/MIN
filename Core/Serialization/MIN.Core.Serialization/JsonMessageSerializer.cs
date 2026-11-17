@@ -67,8 +67,12 @@ public sealed class JsonMessageSerializer : IMessageSerializer
             throw new InvalidOperationException("Missing TypeTag property in message JSON");
         }
 
-        var typeTag = (MessageTypeTag)typeTagElement.GetByte();
-        deserializers.TryGetValue(typeTag, out var deserializer);
+        if (typeTagElement.ValueKind != JsonValueKind.Number || !typeTagElement.TryGetByte(out var typeTag))
+        {
+            throw new NotSupportedException($"Invalid TypeTag value in message JSON: {typeTagElement.GetRawText()}");
+        }
+
+        deserializers.TryGetValue((MessageTypeTag)typeTag, out var deserializer);
 
         return deserializer == null
             ? throw new NotSupportedException($"No deserializer registered for message type {typeTag}")

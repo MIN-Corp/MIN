@@ -44,10 +44,10 @@ public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable, IA
     /// <summary>
     /// Отправитель сообщения
     /// </summary>
-    public ParticipantInfo Sender { get; set; } = null!;
+    public ParticipantInfo Sender { get; set; } = new();
 
     /// <inheritdoc />
-    public string SenderName { get => Sender.Name; set => Sender.Name = value; }
+    public string SenderName { get => Sender.Name; set => (Sender ??= new ParticipantInfo()).Name = value; }
 
     string IDescribable.GetDescription() => $"{Sender.Name} запустил \"{Session.Name}\"";
 
