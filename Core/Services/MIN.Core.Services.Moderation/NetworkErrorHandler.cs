@@ -156,9 +156,9 @@ public class NetworkErrorHandler : INetworkErrorHandler
         return false;
     }
 
-    private bool ResetConnectionRejectAckTimer(Guid participantId)
+    private bool ResetConnectionRejectAckTimer(Guid connectionId)
     {
-        if (rejectParticipantsAckTimers.TryRemove(participantId, out var existingTimer))
+        if (rejectConnectionsAckTimers.TryRemove(connectionId, out var existingTimer))
         {
             existingTimer.Dispose();
             return true;
