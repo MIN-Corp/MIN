@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MIN.Tests.Common\MIN.Tests.Common.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Sessions\Core\MIN.Sessions.Core.Services\MIN.Sessions.Core.Services.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Sessions\Core\Transport\MIN.Sessions.Core.Transport.Tcp\MIN.Sessions.Core.Transport.Tcp.csproj" />
+  </ItemGroup>
+
+</Project>
