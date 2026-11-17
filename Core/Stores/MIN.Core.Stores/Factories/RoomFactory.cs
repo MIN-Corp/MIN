@@ -23,12 +23,8 @@ public sealed class RoomFactory : IRoomFactory
 
     RoomContext? IRoomFactory.GetRoomContext(Guid roomId)
     {
-        if (contexts.TryGetValue(roomId, out var context))
-        {
-            return context;
-        }
-
-        throw new ArgumentNullException(nameof(roomId));
+        contexts.TryGetValue(roomId, out var context);
+        return context;
     }
 
     bool IRoomFactory.TryGetContext(Guid roomId, out RoomContext? context)

@@ -66,7 +66,7 @@ public sealed class ParticipantStore : IParticipantStore
     {
         lock (participants)
         {
-            return participants.Where(x => participantIds.Contains(x.Id));
+            return participants.Where(x => participantIds.Contains(x.Id)).ToList();
         }
     }
 
