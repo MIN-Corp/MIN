@@ -6,6 +6,7 @@ using MIN.Core.Transport.Contracts.Helpers;
 using MIN.Core.Transport.UdpSockets.Helpers;
 using MIN.Core.Transport.UdpSockets.Models;
 using MIN.Helpers.Contracts.Interfaces;
+using MIN.Helpers.Contracts.Models.Enums;
 using Open.Nat;
 
 namespace MIN.Core.Transport.UdpSockets.Server;
@@ -63,21 +64,28 @@ internal sealed class UdpSocketServer : IAsyncDisposable
             while (!cts!.Token.IsCancellationRequested)
             {
                 var result = await listener.ReceiveAsync(cts.Token);
-                var (connectionId, payload) = UdpMessage.Parse(result.Buffer);
-
-                var connection = connections.GetOrAdd(connectionId, _ =>
+                try
                 {
-                    var conn = new UdpSocketConnection(connectionId, result.RemoteEndPoint, listener);
-                    logger.Log($"Клиент подключился (udp): {result.RemoteEndPoint}");
-                    return conn;
-                });
+                    var (connectionId, payload) = UdpMessage.Parse(result.Buffer);
 
-                // На NAT адрес источника — единственный, куда реально можно слать
-                connection.UpdateRemoteEndPoint(result.RemoteEndPoint);
+                    var connection = connections.GetOrAdd(connectionId, _ =>
+                    {
+                        var conn = new UdpSocketConnection(connectionId, result.RemoteEndPoint, listener);
+                        logger.Log($"Клиент подключился (udp): {result.RemoteEndPoint}");
+                        return conn;
+                    });
 
-                if (payload.Length > 0)
+                    // На NAT адрес источника — единственный, куда реально можно слать
+                    connection.UpdateRemoteEndPoint(result.RemoteEndPoint);
+
+                    if (payload.Length > 0)
+                    {
+                        OnMessageReceived?.Invoke(this, (connection, payload));
+                    }
+                }
+                catch (Exception ex)
                 {
-                    OnMessageReceived?.Invoke(this, (connection, payload));
+                    logger.Log($"Пропускаю некорректную udp датаграмму от {result.RemoteEndPoint}: {ex.Message}", LogLevel.Warning);
                 }
             }
         }

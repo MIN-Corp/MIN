@@ -24,12 +24,12 @@ public static class PortProvider
     /// </summary>
     public static int AllocatePort(TransportType type, ushort? preferredPort = 0, int? sequentialAttempts = 15)
     {
-        if (preferredPort > 1024 && preferredPort < ushort.MaxValue && sequentialAttempts != null)
+        if (preferredPort > 1024 && preferredPort <= ushort.MaxValue && sequentialAttempts != null)
         {
             for (var i = 0; i < sequentialAttempts; i++)
             {
                 var port = preferredPort.Value + i;
-                if (reserved[type].Contains(port) || !IsPortFree(port, type))
+                if (port > ushort.MaxValue || reserved[type].Contains(port) || !IsPortFree(port, type))
                 {
                     continue;
                 }

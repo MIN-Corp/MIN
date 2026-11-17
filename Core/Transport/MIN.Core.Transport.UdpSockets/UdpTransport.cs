@@ -234,7 +234,12 @@ public class UdpTransport : IAsyncDisposable
             throw new InvalidOperationException($"Connection {serverConnectionId} is not hosted locally");
         }
 
-        return cachedServerEndpoints[serverConnectionId];
+        if (!cachedServerEndpoints.TryGetValue(serverConnectionId, out var endpoints))
+        {
+            throw new InvalidOperationException($"Endpoints for connection {serverConnectionId} are not set up yet");
+        }
+
+        return endpoints;
     }
 
     /// <summary>
