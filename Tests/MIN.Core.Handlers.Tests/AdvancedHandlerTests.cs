@@ -45,7 +45,7 @@ public class AdvancedHandlerTests : IDisposable
         roomContext = factory.RoomFactory.GetOrCreateContext(roomId);
     }
 
-    private MessageContext CreateContext(Role role = Role.Client)
+    private MessageContext CreateContext(Role role)
         => TestMessageContext.Create(roomContext, selfId, connectionId, role);
 
     private Room RegisterRoom(string name = "Комната")
@@ -65,7 +65,7 @@ public class AdvancedHandlerTests : IDisposable
     {
         var localKey = new byte[] { 1, 2, 3, 4 };
         factory.Encryptor.Setup(e => e.GetLocalPublicKey()).ReturnsAsync(localKey);
-        factory.Encryptor.Setup(e => e.ComputeKeyFingerprint(It.IsAny<byte[]>())).Returns<byte[]>(k => SHA256.HashData(k));
+        factory.Encryptor.Setup(e => e.ComputeKeyFingerprint(It.IsAny<byte[]>())).Returns<byte[]>(SHA256.HashData);
         factory.Encryptor.Setup(e => e.InitializeSessionWithPartnerAsync(It.IsAny<Guid>(), It.IsAny<byte[]>())).Returns(Task.CompletedTask);
         factory.Encryptor.Setup(e => e.TryGetPartnerKeyFingerprintAsync(It.IsAny<Guid>())).ReturnsAsync(storedFingerprint);
         factory.Encryptor.Setup(e => e.TryInitializeSessionFromStoredAsync(It.IsAny<Guid>())).ReturnsAsync(true);
@@ -81,7 +81,7 @@ public class AdvancedHandlerTests : IDisposable
         SetupEncryptor();
         var handler = factory.GetHandler(MessageTypeTag.Handshake);
         var participant = new ParticipantInfo { Id = Guid.NewGuid(), Name = "Гость" };
-        var message = new HandshakeMessage { Participant = participant, Version = new Version(2, 2, 0, 0), PublicKey = [9, 9, 9] };
+        var message = new HandshakeMessage { Participant = participant, Version = new Version(2, 2, 0, 0), PublicKey = "\t\t\t"u8.ToArray() };
 
         // Act
         var result = await handler.HandleAsync(message, CreateContext(Role.Host));
@@ -196,7 +196,7 @@ public class AdvancedHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.PublicKeyRequest);
 
         // Act
-        var result = await handler.HandleAsync(new PublicKeyRequestMessage(), CreateContext());
+        var result = await handler.HandleAsync(new PublicKeyRequestMessage(), CreateContext(Role.Client));
 
         // Assert
         var response = result.Response.Should().BeOfType<PublicKeyResponseMessage>().Subject;
@@ -312,7 +312,7 @@ public class AdvancedHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.RoomJoinResponse);
 
         // Act
-        var result = await handler.HandleAsync(new RoomJoinResponseMessage(), CreateContext());
+        var result = await handler.HandleAsync(new RoomJoinResponseMessage(), CreateContext(Role.Client));
 
         // Assert
         var joined = result.Response.Should().BeOfType<ParticipantJoinedMessage>().Subject;
@@ -373,7 +373,7 @@ public class AdvancedHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.ParticipantAccepted);
 
         // Act
-        var result = await handler.HandleAsync(new ParticipantAcceptedMessage(), CreateContext());
+        var result = await handler.HandleAsync(new ParticipantAcceptedMessage(), CreateContext(Role.Client));
 
         // Assert
         result.Response.Should().BeOfType<RoomInfoRequestMessage>();
@@ -467,7 +467,7 @@ public class AdvancedHandlerTests : IDisposable
         };
 
         // Act
-        var result = await handler.HandleAsync(message, CreateContext());
+        var result = await handler.HandleAsync(message, CreateContext(Role.Client));
 
         // Assert
         room.Name.Should().Be("Новое имя");
@@ -530,7 +530,7 @@ public class AdvancedHandlerTests : IDisposable
         roomContext.Messages.GetMessageById(missed.Id).Should().NotBeNull();
         roomContext.Messages.GetMessageById(deleted.Id).Should().BeNull();
         roomContext.Messages.GetMessageById(kept.Id).Should().NotBeNull();
-        factory.Router.Verify(r => r.PublishLocally(It.IsAny<MIN.Core.Messaging.Stateless.RoomRelated.Messages.MessageDeleteMessage>(), roomId, It.IsAny<IEnumerable<Guid>?>(), It.IsAny<CancellationToken>()), Times.Once);
+        factory.Router.Verify(r => r.PublishLocally(It.IsAny<Messaging.Stateless.RoomRelated.Messages.MessageDeleteMessage>(), roomId, It.IsAny<IEnumerable<Guid>?>(), It.IsAny<CancellationToken>()), Times.Once);
         result.ResultEvent.Should().BeOfType<RoomStateChangedEvent>();
     }
 
@@ -568,7 +568,7 @@ public class AdvancedHandlerTests : IDisposable
         var senderId = Guid.NewGuid();
 
         // Act
-        var result = await handler.HandleAsync(new DisconnectAckMessage { SenderId = senderId }, CreateContext());
+        var result = await handler.HandleAsync(new DisconnectAckMessage { SenderId = senderId }, CreateContext(Role.Client));
 
         // Assert
         var ackEvent = result.ResultEvent.Should().BeOfType<DisconnectAckReceived>().Subject;
@@ -606,7 +606,7 @@ public class AdvancedHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.FastChannelConnectResponse);
 
         // Act
-        var result = await handler.HandleAsync(new FastChannelConnectResponseMessage { FastChannelEndpoint = null }, CreateContext());
+        var result = await handler.HandleAsync(new FastChannelConnectResponseMessage { FastChannelEndpoint = null }, CreateContext(Role.Client));
 
         // Assert
         result.Response.Should().BeOfType<RoomJoinRequestMessage>();
@@ -629,7 +629,7 @@ public class AdvancedHandlerTests : IDisposable
         };
 
         // Act
-        var result = await handler.HandleAsync(response, CreateContext());
+        var result = await handler.HandleAsync(response, CreateContext(Role.Client));
 
         // Assert
         result.Response.Should().BeOfType<RoomJoinRequestMessage>();
@@ -664,7 +664,7 @@ public class AdvancedHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.RoomLeaveAck);
 
         // Act
-        var result = await handler.HandleAsync(new RoomLeaveMessageAckMessage(), CreateContext());
+        var result = await handler.HandleAsync(new RoomLeaveMessageAckMessage(), CreateContext(Role.Client));
 
         // Assert
         factory.Lifecycle.Verify(l => l.CompleteRoomLeaveAck(roomId), Times.Once);

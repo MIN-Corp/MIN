@@ -43,7 +43,7 @@ public sealed class ClientHandshakeService : IClientHandshake
             if (!response.StartsWith(ProtocolConstants.ResponseStarter))
             {
                 logger.Log($"Protocol client: неверный ответ от {connectionId}: {response[..Math.Min(response.Length, 20)]}");
-                tcs.TrySetResult(new PreambleResult { IsSuccess = false, ErrorMessage = "Конечное подключение не соответсвует MIN протоколу" });
+                tcs.TrySetResult(new PreambleResult { IsSuccess = false, ErrorMessage = "Конечное подключение не соответствует MIN протоколу" });
                 return;
             }
 
@@ -57,7 +57,7 @@ public sealed class ClientHandshakeService : IClientHandshake
             }
 
             logger.Log($"Protocol client: успех, комната {roomInfo.Id} ({roomInfo.Name})");
-            tcs.TrySetResult(new PreambleResult { IsSuccess = true, RoomInfo = roomInfo! });
+            tcs.TrySetResult(new PreambleResult { IsSuccess = true, RoomInfo = roomInfo });
         }
 
         transport.RawMessageReceived += RawMessageReceivedHandler;
@@ -71,12 +71,13 @@ public sealed class ClientHandshakeService : IClientHandshake
 
             transport.ConnectionStateChanged -= ConnectionStateChangedHandler;
 
-            if (!e.IsConnected && !tcs.Task.IsCompleted)
+            if (e.IsConnected || tcs.Task.IsCompleted)
             {
-                logger.Log("Protocol client: сервер разорвал соединения");
-                tcs.TrySetResult(new PreambleResult { IsSuccess = false, ErrorMessage = "Конечное подключение не соответсвует MIN протоколу (Сервер разорвал соединение)" });
                 return;
             }
+
+            logger.Log("Protocol client: сервер разорвал соединения");
+            tcs.TrySetResult(new PreambleResult { IsSuccess = false, ErrorMessage = "Конечное подключение не соответствует MIN протоколу (Сервер разорвал соединение)" });
         }
 
         transport.ConnectionStateChanged += ConnectionStateChangedHandler;
@@ -109,11 +110,13 @@ public sealed class ClientHandshakeService : IClientHandshake
                     logger.Log($"Protocol client: таймаут ожидания ответа от {connectionId}, попытка {attempt + 1}");
                 }
 
-                if (attempt < ProtocolConstants.ClientSideRetryAmount - 1)
+                if (attempt >= ProtocolConstants.ClientSideRetryAmount - 1)
                 {
-                    var delaySeconds = attempt + 1;
-                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
+                    continue;
                 }
+
+                var delaySeconds = attempt + 1;
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cts.Token);
             }
 
             logger.Log($"Protocol client: все попытки истекли, соединение {connectionId} не отвечает");

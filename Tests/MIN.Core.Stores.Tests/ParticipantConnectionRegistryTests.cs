@@ -40,7 +40,7 @@ public class ParticipantConnectionRegistryTests
     }
 
     /// <summary>
-    /// Неизвестное соединение бросает ConnectionNotRegistredException
+    /// Неизвестное соединение бросает ConnectionNotRegisteredException
     /// </summary>
     [Fact]
     public void UnknownConnectionShouldThrow()
@@ -51,9 +51,9 @@ public class ParticipantConnectionRegistryTests
         var getConnectionId = () => registry.GetConnectionIdFromParticipantId(Guid.NewGuid());
 
         // Assert
-        getParticipant.Should().Throw<ConnectionNotRegistredException>();
-        getParticipantId.Should().Throw<ConnectionNotRegistredException>();
-        getConnectionId.Should().Throw<ParticipantNotRegistredException>();
+        getParticipant.Should().Throw<ConnectionNotRegisteredException>();
+        getParticipantId.Should().Throw<ConnectionNotRegisteredException>();
+        getConnectionId.Should().Throw<ParticipantNotRegisteredException>();
         registry.ConnectionExists(Guid.NewGuid()).Should().BeFalse();
         registry.TryGetParticipantFromConnectionId(Guid.NewGuid(), out _).Should().BeFalse();
     }

@@ -19,12 +19,12 @@ public class SchemaFileStoreTests : IDisposable
     /// <summary>
     /// Тестовые данные
     /// </summary>
-    public sealed class TestData
+    private sealed class TestData
     {
         /// <summary>
         /// Значение
         /// </summary>
-        public string Value { get; set; } = string.Empty;
+        public string Value { get; init; } = string.Empty;
     }
 
     /// <summary>

@@ -72,7 +72,7 @@ public sealed class RoomSnapshotMapper : IRoomSnapshotMapper
             context.SubRooms.RestoreState(snapshot.SubRooms);
         }
 
-        context.Participants.MarkAllParticipansOffline();
+        context.Participants.MarkAllParticipantsOffline();
         room.TotalMessageCount = context.Messages.GetMessageCount();
 
         logger.Log($"Комната {room.Id} '{room.Name}' восстановлена ({room.TotalMessageCount} сообщений)");

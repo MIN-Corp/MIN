@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using MIN.Core.Events.Events;
+﻿using MIN.Core.Events.Events;
 using MIN.Core.Events.Services;
 using MIN.Core.Messaging.Stateless;
 using MIN.Core.Messaging.Stateless.RoomRelated.Disconnect;

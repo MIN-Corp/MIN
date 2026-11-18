@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Services;
-using MIN.Core.Serialization.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Services;
 using MIN.Discovery.DI;
@@ -36,7 +35,7 @@ public class DiscoveryModuleSmokeTests : IAsyncDisposable
         services.AddSingleton<ILoggerProvider>(new TestLoggerProvider());
         services.AddSingleton<IEventBus>(new InMemoryEventBus(new TestLoggerProvider()));
         services.AddSingleton<IRoomStore>(new RoomStore(rooms.Factory));
-        services.AddSingleton<IMessageSerializer>(TestSerializer.Create());
+        services.AddSingleton(TestSerializer.Create());
         services.AddSingleton(settings.Object);
         services.AddSingleton<IAppDataProvider>(new TestAppDataProvider());
         new DiscoveryModule().Configure(services);
@@ -56,7 +55,7 @@ public class DiscoveryModuleSmokeTests : IAsyncDisposable
         // Assert
         service.Should().NotBeNull();
         transport.Should().NotBeNull();
-        service.DiscoveryMethod.Should().Be(MIN.Discovery.Services.Contracts.Enums.DiscoveryMethod.Local);
+        service.DiscoveryMethod.Should().Be(Services.Contracts.Enums.DiscoveryMethod.Local);
     }
 
     /// <inheritdoc />

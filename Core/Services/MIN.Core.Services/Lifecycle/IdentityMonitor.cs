@@ -168,7 +168,7 @@ public class IdentityMonitor : IHostedService
         {
             throw;
         }
-        catch (RoomNotRegistredException)
+        catch (RoomNotRegisteredException)
         {
             // Комната закрылась во время рассылки — обновлять некому
         }

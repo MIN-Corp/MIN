@@ -39,9 +39,9 @@ public class UdpTransportTests
 
         // Act
         await client.SendAsync(new byte[] { 1, 2, 3 }, clientId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => serverReceived.Count >= 1);
+        await TestWait.UntilAsync(() => !serverReceived.IsEmpty);
         await server.SendAsync(new byte[] { 9, 8 }, clientId, hostingId, CancellationToken.None);
-        await TestWait.UntilAsync(() => clientReceived.Count >= 1);
+        await TestWait.UntilAsync(() => !clientReceived.IsEmpty);
 
         // Assert
         var got = serverReceived.Single();
@@ -68,7 +68,7 @@ public class UdpTransportTests
         await client.ConnectAsync(new UdpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await TestWait.UntilAsync(() => server.IsReadyToSend(clientId, hostingId));
         using var garbageSender = new UdpClient();
-        await garbageSender.SendAsync(new byte[] { 1, 2, 3 }, 3, new IPEndPoint(IPAddress.Loopback, port));
+        await garbageSender.SendAsync([1, 2, 3], 3, new IPEndPoint(IPAddress.Loopback, port));
         await Task.Delay(100);
 
         // Act
@@ -128,7 +128,7 @@ public class UdpTransportTests
 
         // Act
         await server.BroadcastAsync(new byte[] { 7 }, hostingId, [id1], CancellationToken.None);
-        await TestWait.UntilAsync(() => received2.Count >= 1);
+        await TestWait.UntilAsync(() => !received2.IsEmpty);
         await Task.Delay(200);
 
         // Assert

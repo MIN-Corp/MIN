@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using MIN.Chat.Messaging;
+﻿using MIN.Chat.Messaging;
 using MIN.Chat.Services;
 using MIN.Chat.Services.Contracts.Interfaces;
 using MIN.Core.Entities.Contracts.Enums;

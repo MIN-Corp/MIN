@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using FluentAssertions;
 using MIN.Core.Entities.Contracts.Models;
-using MIN.Core.Identity;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Tests.Common;
 using Xunit;
@@ -64,7 +63,7 @@ public class IdentityServiceTests
         var notified = false;
         using (var service = new IdentityService(appData, new TestLoggerProvider()))
         {
-            var identity = (IIdentityService)service;
+            IIdentityService identity = service;
             identity.SelfParticipantSaved = _ => { notified = true; return Task.CompletedTask; };
             var newParticipant = new ParticipantInfo { Id = identity.SelfParticipant.Id, Name = "Новое имя" };
 
@@ -87,7 +86,7 @@ public class IdentityServiceTests
         // Arrange
         using var appData = new TestAppDataProvider();
         using var service = new IdentityService(appData, new TestLoggerProvider());
-        var identity = (IIdentityService)service;
+        IIdentityService identity = service;
         var participant = new ParticipantInfo { Id = identity.SelfParticipant.Id, Name = "Имя" };
 
         // Act
@@ -142,7 +141,7 @@ public class IdentityServiceTests
         // Arrange
         using var appData = new TestAppDataProvider();
         using var service = new IdentityService(appData, new TestLoggerProvider());
-        var identity = (IIdentityService)service;
+        IIdentityService identity = service;
 
         // Act
         var paths = new IdentityDataPathProvider(appData, identity);

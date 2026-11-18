@@ -73,7 +73,7 @@ public class HeaderManagerTests
     {
         // Arrange
         var streamId = Guid.NewGuid();
-        var flags = StreamChunkFlags.Start | StreamChunkFlags.End | StreamChunkFlags.RequiresAcks | StreamChunkFlags.RawPayload;
+        const StreamChunkFlags flags = StreamChunkFlags.Start | StreamChunkFlags.End | StreamChunkFlags.RequiresAcks | StreamChunkFlags.RawPayload;
 
         // Act
         var header = manager.BuildStreamChunkHeader(flags, streamId, index: 3, total: 7);

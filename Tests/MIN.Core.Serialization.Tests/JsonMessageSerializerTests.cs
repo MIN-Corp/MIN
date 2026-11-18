@@ -8,7 +8,6 @@ using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Interfaces;
-using MIN.Core.Serialization.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.TcpSockets.Models;
 using MIN.Core.Transport.UdpSockets.Models;
@@ -189,7 +188,7 @@ public class JsonMessageSerializerTests
             [
                 new MIN.Discovery.Services.Contracts.Models.RoomDiscoveryInfo
                 {
-                    Room = new MIN.Core.Entities.Contracts.Models.RoomInfo { Name = "Комната" },
+                    Room = new RoomInfo { Name = "Комната" },
                     Endpoints =
                     [
                         new TcpEndpoint { IpAddress = "192.168.1.10", Port = 5000, Origin = AddressOrigin.Lan },
@@ -224,7 +223,7 @@ public class JsonMessageSerializerTests
     {
         // Arrange
         var serializer = TestSerializer.Create();
-        var message = new MIN.Core.Messaging.Stateless.RoomRelated.History.ChatHistoryResponseMessage
+        var message = new Messaging.Stateless.RoomRelated.History.ChatHistoryResponseMessage
         {
             Messages =
             [
@@ -235,7 +234,7 @@ public class JsonMessageSerializerTests
         };
 
         // Act
-        var deserialized = (MIN.Core.Messaging.Stateless.RoomRelated.History.ChatHistoryResponseMessage)serializer.Deserialize(serializer.Serialize(message));
+        var deserialized = (Messaging.Stateless.RoomRelated.History.ChatHistoryResponseMessage)serializer.Deserialize(serializer.Serialize(message));
 
         // Assert
         deserialized.Messages.Should().HaveCount(2);
@@ -345,11 +344,6 @@ public class JsonMessageSerializerTests
             return new ChatTextMessage { Content = "вложенное" };
         }
 
-        if (type == typeof(IEnumerable<IEndpoint>))
-        {
-            return new List<IEndpoint> { new MIN.Core.Transport.TcpSockets.Models.TcpEndpoint { IpAddress = "127.0.0.1", Port = 1 } };
-        }
-
-        return type.IsValueType ? Activator.CreateInstance(type) : Activator.CreateInstance(type);
+        return type == typeof(IEnumerable<IEndpoint>) ? new List<IEndpoint> { new TcpEndpoint { IpAddress = "127.0.0.1", Port = 1 } } : Activator.CreateInstance(type);
     }
 }

@@ -1,7 +1,6 @@
 ﻿using FluentAssertions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Headers.Services;
-using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Events;
 using MIN.Core.Services.Contracts.Interfaces.Pipeline;
 using MIN.Core.Services.Pipeline;
@@ -48,7 +47,7 @@ public class RawMessageHandlerTests : IDisposable
     {
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
         var inner = new byte[] { 0, 1, 2, 3 };
         var wire = new byte[] { 0 }.Concat(inner).ToArray();
 
@@ -68,7 +67,7 @@ public class RawMessageHandlerTests : IDisposable
     {
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
 
         // Act
         var plain = handler.TryDecrypt(Args([]));
@@ -86,7 +85,7 @@ public class RawMessageHandlerTests : IDisposable
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
         rooms.Factory.GetOrCreateContext(roomId).Connections.Register(connectionId, new ParticipantInfo { Id = pair.AliceId });
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
         var inner = new byte[] { 0, 9, 8, 7 };
         var encrypted = pair.Alice.EncryptMessage(inner, pair.BobId);
         var wire = new byte[] { 1 }.Concat(encrypted).ToArray();
@@ -106,7 +105,7 @@ public class RawMessageHandlerTests : IDisposable
     {
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
         var encrypted = pair.Alice.EncryptMessage([0, 1], pair.BobId);
         var wire = new byte[] { 1 }.Concat(encrypted).ToArray();
 
@@ -125,9 +124,9 @@ public class RawMessageHandlerTests : IDisposable
     {
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
         var wire = new byte[] { 1, 2, 3 };
-        var localArgs = new RoomRawMessageReceivedEventArgs(roomId, new RawMessageReceivedEventArgs(wire, MIN.Core.Stores.Contracts.Registries.Models.CoreRegistryConstants.LocalConnectionId));
+        var localArgs = new RoomRawMessageReceivedEventArgs(roomId, new RawMessageReceivedEventArgs(wire, Stores.Contracts.Registries.Models.CoreRegistryConstants.LocalConnectionId));
 
         // Act
         var plain = handler.TryDecrypt(localArgs);
@@ -144,7 +143,7 @@ public class RawMessageHandlerTests : IDisposable
     {
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
         var message = new MIN.Chat.Messaging.ChatTextMessage { Content = "по проводу", SenderId = Guid.NewGuid() };
         var json = TestSerializer.Create().Serialize(message);
         var plainData = new byte[] { 0 }.Concat(json).ToArray();
@@ -169,7 +168,7 @@ public class RawMessageHandlerTests : IDisposable
     {
         // Arrange
         using var pair = await EncryptorPair.CreateAsync();
-        var handler = (IRawMessageHandler)CreateHandler(pair.Bob);
+        IRawMessageHandler handler = CreateHandler(pair.Bob);
         var message = new MIN.Chat.Messaging.ChatTextMessage { Content = "из потока" };
         var json = TestSerializer.Create().Serialize(message);
         var assembled = new MIN.Core.Streaming.Contracts.Events.Receiving.MessageAssembledEventArgs

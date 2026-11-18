@@ -11,15 +11,15 @@ namespace MIN.Core.Streaming.Tests;
 /// </summary>
 public class MessageStreamTests
 {
-    private static readonly Guid StreamId = Guid.NewGuid();
-    private static readonly Guid RoomId = Guid.NewGuid();
-    private static readonly Guid ConnectionId = Guid.NewGuid();
+    private readonly static Guid streamId = Guid.NewGuid();
+    private readonly static Guid roomId = Guid.NewGuid();
+    private readonly static Guid connectionId = Guid.NewGuid();
 
     /// <summary>
     /// Создать чанк с полезной нагрузкой
     /// </summary>
     private static StreamChunk Chunk(int index, int total, byte[] data, StreamChunkFlags flags)
-        => new() { StreamId = StreamId, Index = index, Total = total, Data = data, Flags = flags };
+        => new() { StreamId = streamId, Index = index, Total = total, Data = data, Flags = flags };
 
     /// <summary>
     /// Последовательные чанки собираются в исходный payload
@@ -28,7 +28,7 @@ public class MessageStreamTests
     public void InOrderChunksShouldAssemble()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 3, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 3, requiresAcks: false);
         var part0 = Enumerable.Repeat((byte)1, StreamingConstants.ChunkDataSize).ToArray();
         var part1 = Enumerable.Repeat((byte)2, StreamingConstants.ChunkDataSize).ToArray();
         var part2 = new byte[] { 3, 3, 3 };
@@ -51,7 +51,7 @@ public class MessageStreamTests
     public void OutOfOrderChunksShouldAssemble()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 3, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 3, requiresAcks: false);
         var part0 = Enumerable.Repeat((byte)1, StreamingConstants.ChunkDataSize).ToArray();
         var part1 = Enumerable.Repeat((byte)2, StreamingConstants.ChunkDataSize).ToArray();
         var part2 = new byte[] { 3 };
@@ -72,7 +72,7 @@ public class MessageStreamTests
     public void DuplicateChunksShouldBeIgnored()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 2, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 2, requiresAcks: false);
         var part0 = Enumerable.Repeat((byte)1, StreamingConstants.ChunkDataSize).ToArray();
         var part1 = new byte[] { 2 };
 
@@ -93,7 +93,7 @@ public class MessageStreamTests
     public void SingleChunkShouldAssemble()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 1, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 1, requiresAcks: false);
         var data = new byte[] { 1, 2, 3 };
 
         // Act
@@ -110,7 +110,7 @@ public class MessageStreamTests
     public void EndWithWrongIndexShouldThrow()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 3, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 3, requiresAcks: false);
 
         // Act
         var act = () => stream.AddChunk(Chunk(1, 3, [1], StreamChunkFlags.Mid | StreamChunkFlags.End));
@@ -126,7 +126,7 @@ public class MessageStreamTests
     public void MissingMiddleChunkShouldThrowInvalidData()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 3, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 3, requiresAcks: false);
         var part0 = Enumerable.Repeat((byte)1, StreamingConstants.ChunkDataSize).ToArray();
         var part2 = new byte[] { 3 };
 
@@ -145,7 +145,7 @@ public class MessageStreamTests
     public void IndexOutOfRangeShouldThrow()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 2, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 2, requiresAcks: false);
 
         // Act
         var tooBig = () => stream.AddChunk(Chunk(5, 2, [1], StreamChunkFlags.Mid));
@@ -163,7 +163,7 @@ public class MessageStreamTests
     public void AddAfterCompleteShouldReturnNull()
     {
         // Arrange
-        using var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 1, requiresAcks: false);
+        using var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 1, requiresAcks: false);
         stream.AddChunk(Chunk(0, 1, [1], StreamChunkFlags.Start | StreamChunkFlags.Mid | StreamChunkFlags.End));
 
         // Act
@@ -180,7 +180,7 @@ public class MessageStreamTests
     public void RawPayloadShouldUseTempFile()
     {
         // Arrange
-        var stream = new MessageStream(StreamId, RoomId, ConnectionId, expectedChunks: 2, requiresAcks: false, isRawPayload: true);
+        var stream = new MessageStream(streamId, roomId, connectionId, expectedChunks: 2, requiresAcks: false, isRawPayload: true);
         var part0 = Enumerable.Repeat((byte)7, StreamingConstants.ChunkDataSize).ToArray();
         var part1 = new byte[] { 8, 8 };
         var tempPath = stream.GetTempFilePath();

@@ -37,7 +37,7 @@ public class ChannelTransportTests
     {
         // Arrange
         await using var channel = new ChannelTransport(logger);
-        var transport = (ITransport)channel;
+        ITransport transport = channel;
         var port = TestPorts.GetFreeTcpPort();
 
         // Act
@@ -60,20 +60,20 @@ public class ChannelTransportTests
     {
         // Arrange
         await using var serverChannel = new ChannelTransport(logger);
-        var server = (ITransport)serverChannel;
+        ITransport server = serverChannel;
         await using var clientChannel = new ChannelTransport(logger);
-        var client = (ITransport)clientChannel;
+        ITransport client = clientChannel;
         var serverReceived = new ConcurrentQueue<RawMessageReceivedEventArgs>();
         server.RawMessageReceived += (_, e) => serverReceived.Enqueue(e);
         var port = TestPorts.GetFreeTcpPort();
-        var hostingId = await server.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
+        await server.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
         await client.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await Task.Delay(300);
 
         // Act
         await client.SendAsync(new byte[] { 5 }, clientId, null, MessageChannel.Fast, CancellationToken.None);
-        await TestWait.UntilAsync(() => serverReceived.Count >= 1);
+        await TestWait.UntilAsync(() => !serverReceived.IsEmpty);
 
         // Assert
         serverReceived.Single().Data.Should().Equal([5]);
@@ -87,9 +87,9 @@ public class ChannelTransportTests
     {
         // Arrange
         await using var serverChannel = new ChannelTransport(logger);
-        var server = (ITransport)serverChannel;
+        ITransport server = serverChannel;
         await using var clientChannel = new ChannelTransport(logger);
-        var client = (ITransport)clientChannel;
+        ITransport client = clientChannel;
         var serverReceived = new ConcurrentQueue<RawMessageReceivedEventArgs>();
         var clientReceived = new ConcurrentQueue<RawMessageReceivedEventArgs>();
         server.RawMessageReceived += (_, e) => serverReceived.Enqueue(e);
@@ -102,9 +102,9 @@ public class ChannelTransportTests
         var connectedId = await client.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await Task.Delay(300);
         await client.SendAsync(new byte[] { 1 }, connectedId, null, MessageChannel.Secure, CancellationToken.None);
-        await TestWait.UntilAsync(() => serverReceived.Count >= 1);
+        await TestWait.UntilAsync(() => !serverReceived.IsEmpty);
         await server.SendAsync(new byte[] { 2 }, clientId, hostingId, MessageChannel.Secure, CancellationToken.None);
-        await TestWait.UntilAsync(() => clientReceived.Count >= 1);
+        await TestWait.UntilAsync(() => !clientReceived.IsEmpty);
 
         // Assert
         connectedId.Should().Be(clientId);
@@ -120,7 +120,7 @@ public class ChannelTransportTests
     {
         // Arrange
         await using var channel = new ChannelTransport(logger);
-        var transport = (ITransport)channel;
+        ITransport transport = channel;
 
         // Act
         var act = () => transport.ConnectAsync(new FakeEndpoint(), null, CancellationToken.None);
@@ -137,9 +137,9 @@ public class ChannelTransportTests
     {
         // Arrange
         await using var serverChannel = new ChannelTransport(logger);
-        var server = (ITransport)serverChannel;
+        ITransport server = serverChannel;
         await using var clientChannel = new ChannelTransport(logger);
-        var client = (ITransport)clientChannel;
+        ITransport client = clientChannel;
         var clientReceived = new ConcurrentQueue<byte[]>();
         client.RawMessageReceived += (_, e) => clientReceived.Enqueue(e.Data);
         var port = TestPorts.GetFreeTcpPort();
@@ -150,7 +150,7 @@ public class ChannelTransportTests
 
         // Act
         await server.BroadcastAsync(new byte[] { 3 }, hostingId, null, MessageChannel.Secure, CancellationToken.None);
-        await TestWait.UntilAsync(() => clientReceived.Count >= 1);
+        await TestWait.UntilAsync(() => !clientReceived.IsEmpty);
 
         // Assert
         clientReceived.Single().Should().Equal([3]);

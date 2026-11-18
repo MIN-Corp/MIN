@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-using MIN.Helpers.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces.SettingsServices;
 using MIN.Helpers.Contracts.Models;
 using MIN.Helpers.Services;

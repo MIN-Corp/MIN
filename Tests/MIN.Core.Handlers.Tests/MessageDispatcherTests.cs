@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
 using MIN.Core.Entities.Contracts.Enums;
-using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts;
 using MIN.Core.Handlers.Contracts.Models;
@@ -63,7 +62,7 @@ public class MessageDispatcherTests : IDisposable
     private MessageDispatcher CreateDispatcher(params IMessageHandler[] handlers)
         => new(handlers, factory.MessageSender.Object, factory.EventBus, factory.Persistence.Object, factory.NetworkErrorHandler.Object, factory.Logger);
 
-    private MessageContext CreateContext(Role role = Role.Client)
+    private MessageContext CreateContext(Role role)
         => TestMessageContext.Create(roomContext, selfId, connectionId, role);
 
     /// <summary>
@@ -76,7 +75,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher();
 
         // Act
-        var act = () => dispatcher.DispatchAsync(new PingMessage(), CreateContext(), null);
+        var act = () => dispatcher.DispatchAsync(new PingMessage(), CreateContext(Role.Client), null);
 
         // Assert
         await act.Should().ThrowAsync<NotImplementedException>();
@@ -95,7 +94,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(late, early);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         order.Should().Equal("early", "late");
@@ -113,7 +112,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(first, second);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         first.Calls.Should().Be(1);
@@ -132,7 +131,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(first, second);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         first.Calls.Should().Be(1);
@@ -151,7 +150,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(first, second);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         first.Calls.Should().Be(1);
@@ -171,7 +170,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(first, second);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         second.Calls.Should().Be(1);
@@ -229,7 +228,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(handler);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         factory.MessageSender.Verify(s => s.SendAsync(response, roomContext.RoomId, connectionId, It.IsAny<CancellationToken>()), Times.Once);
@@ -269,7 +268,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(handler);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         await capture.WaitAsync();
@@ -285,7 +284,7 @@ public class MessageDispatcherTests : IDisposable
         // Arrange
         var senderId = Guid.NewGuid();
         var senderConnection = Guid.NewGuid();
-        roomContext.Participants.AddParticipant(new MIN.Core.Entities.Participant { Id = senderId });
+        roomContext.Participants.AddParticipant(new Entities.Participant { Id = senderId });
         roomContext.Connections.Register(senderConnection, new MIN.Core.Entities.Contracts.Models.ParticipantInfo { Id = senderId });
         var handler = new FakeHandler(MessageTypeTag.ChatTextMessage, (_, _) => Task.FromResult(HandlerResult.Success()));
         var dispatcher = CreateDispatcher(handler);
@@ -308,7 +307,7 @@ public class MessageDispatcherTests : IDisposable
         // Arrange
         var recipientId = Guid.NewGuid();
         var recipientConnection = Guid.NewGuid();
-        roomContext.Participants.AddParticipant(new MIN.Core.Entities.Participant { Id = recipientId });
+        roomContext.Participants.AddParticipant(new Entities.Participant { Id = recipientId });
         roomContext.Connections.Register(recipientConnection, new MIN.Core.Entities.Contracts.Models.ParticipantInfo { Id = recipientId });
         var handler = new FakeHandler(MessageTypeTag.Ping, (_, _) => Task.FromResult(HandlerResult.Success()));
         var dispatcher = CreateDispatcher(handler);
@@ -329,7 +328,7 @@ public class MessageDispatcherTests : IDisposable
     {
         // Arrange
         var senderId = Guid.NewGuid();
-        roomContext.Participants.AddParticipant(new MIN.Core.Entities.Participant { Id = senderId });
+        roomContext.Participants.AddParticipant(new Entities.Participant { Id = senderId });
         var first = new FakeHandler(MessageTypeTag.ChatTextMessage, (_, _) => Task.FromResult(HandlerResult.Success()));
         var second = new FakeHandler(MessageTypeTag.ChatTextMessage, (_, _) => Task.FromResult(HandlerResult.Success()));
         var dispatcher = CreateDispatcher(first, second);
@@ -353,7 +352,7 @@ public class MessageDispatcherTests : IDisposable
         var dispatcher = CreateDispatcher(handler);
 
         // Act
-        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(), null);
+        await dispatcher.DispatchAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client), null);
 
         // Assert
         factory.Persistence.Verify(p => p.MarkDirty(roomContext.RoomId), Times.Once);

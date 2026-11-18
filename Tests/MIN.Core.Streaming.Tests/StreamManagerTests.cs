@@ -24,18 +24,18 @@ public class StreamManagerTests
     /// </summary>
     private sealed class Harness : IDisposable
     {
-        public EncryptorPair Pair { get; private set; } = null!;
-        public TestRoomFactory SenderRooms { get; } = new();
+        private EncryptorPair Pair { get; set; } = null!;
+        private TestRoomFactory SenderRooms { get; } = new();
         public InMemoryTransport SenderTransport { get; } = new();
         public InMemoryTransport ReceiverTransport { get; } = new();
         public IStreamManager Sender { get; private set; } = null!;
         public Guid RoomId { get; } = Guid.NewGuid();
-        public Guid SenderConnectionId { get; } = Guid.NewGuid();
+        private Guid SenderConnectionId { get; } = Guid.NewGuid();
         public Guid ReceiverConnectionId { get; } = Guid.NewGuid();
         public ConcurrentQueue<MessageAssembledEventArgs> Assembled { get; } = new();
         public ConcurrentDictionary<Guid, byte[]> RawFiles { get; } = new();
         public ConcurrentQueue<ChunkReceivedEventArgs> ChunksReceived { get; } = new();
-        public ConcurrentQueue<ChunkSendedEventArgs> ChunksSended { get; } = new();
+        public ConcurrentQueue<ChunkSendedEventArgs> ChunksSent { get; } = new();
         public ConcurrentQueue<StreamCompletedEventArgs> Completed { get; } = new();
         public ConcurrentQueue<StreamFailedEventArgs> Failed { get; } = new();
 
@@ -50,7 +50,7 @@ public class StreamManagerTests
             context.Connections.Register(harness.ReceiverConnectionId, new ParticipantInfo { Id = harness.Pair.BobId, Name = "Боб" });
 
             var senderManager = new StreamManager(harness.SenderTransport, harness.Pair.Alice, headerManager, harness.SenderRooms.Factory, logger);
-            senderManager.ChunkSended += (e, _) => { harness.ChunksSended.Enqueue(e); return Task.CompletedTask; };
+            senderManager.ChunkSended += (e, _) => { harness.ChunksSent.Enqueue(e); return Task.CompletedTask; };
             senderManager.OnStreamCompleted += (e, _) => { harness.Completed.Enqueue(e); return Task.CompletedTask; };
             senderManager.OnStreamFailed += (e, _) => { harness.Failed.Enqueue(e); return Task.CompletedTask; };
             harness.Sender = senderManager;
@@ -153,11 +153,11 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(payload, new StreamOptions(), harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty);
 
         // Assert
         harness.Assembled.Single().Data.Should().Equal(payload);
-        harness.ChunksSended.Should().HaveCount(1);
+        harness.ChunksSent.Should().HaveCount(1);
         harness.Completed.Should().HaveCount(1);
     }
 
@@ -173,7 +173,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(payload, new StreamOptions { RequiresEncryption = true }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty);
 
         // Assert
         harness.Assembled.Single().Data.Should().Equal(payload);
@@ -181,7 +181,7 @@ public class StreamManagerTests
     }
 
     /// <summary>
-    /// Все пакеты многоканковой передачи доходят и собираются байт-в-байт
+    /// Все пакеты многочанковой передачи доходят и собираются байт-в-байт
     /// </summary>
     [Fact]
     public async Task MultiChunkEncryptedShouldDeliverAllPackets()
@@ -190,17 +190,17 @@ public class StreamManagerTests
         using var harness = await Harness.CreateAsync();
         var payload = new byte[StreamingConstants.ChunkDataSize * 3 + 123];
         Random.Shared.NextBytes(payload);
-        var expectedChunks = 4;
+        const int expectedChunks = 4;
 
         // Act
         await harness.Sender.SendAsync(payload, new StreamOptions { RequiresEncryption = true }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty);
 
         // Assert
         harness.Assembled.Single().Data.Should().Equal(payload);
-        harness.ChunksSended.Should().HaveCount(expectedChunks);
+        harness.ChunksSent.Should().HaveCount(expectedChunks);
         harness.ChunksReceived.Should().HaveCount(expectedChunks);
-        harness.ChunksSended.Last().ReceivedBytes.Should().Be(payload.Length);
+        harness.ChunksSent.Last().ReceivedBytes.Should().Be(payload.Length);
     }
 
     /// <summary>
@@ -216,7 +216,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(payload, new StreamOptions { RequiresEncryption = true }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1, timeoutMs: 15000);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty, timeoutMs: 15000);
 
         // Assert
         harness.Assembled.Single().Data.Should().Equal(payload);
@@ -255,7 +255,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(new byte[] { 1 }, new StreamOptions { StreamId = streamId }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty);
 
         // Assert
         harness.Assembled.Single().StreamId.Should().Be(streamId);
@@ -273,7 +273,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(ReadOnlyMemory<byte>.Empty, new StreamOptions(), harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1, timeoutMs: 2000);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty, timeoutMs: 2000);
 
         // Assert
         harness.Assembled.Single().Data.Should().BeEmpty();
@@ -291,7 +291,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(source, new StreamOptions { IsRawPayload = true }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty);
 
         // Assert
         harness.Assembled.Single().Data.Should().BeEmpty();
@@ -307,11 +307,11 @@ public class StreamManagerTests
         using var harness = await Harness.CreateAsync();
         var payload = new byte[40_000];
         Random.Shared.NextBytes(payload);
-        using var source = new PartialReadStream(payload, maxRead: 1000);
+        await using var source = new PartialReadStream(payload, maxRead: 1000);
 
         // Act
         await harness.Sender.SendAsync(source, new StreamOptions { RequiresEncryption = true, IsRawPayload = true }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1, timeoutMs: 10000);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty, timeoutMs: 10000);
 
         // Assert
         harness.RawFiles.Should().ContainKey(harness.Assembled.Single().StreamId);
@@ -332,7 +332,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(source, new StreamOptions { RequiresEncryption = true, IsRawPayload = true }, harness.RoomId, harness.ReceiverConnectionId, null, CancellationToken.None);
-        await TestWait.UntilAsync(() => harness.Assembled.Count >= 1, timeoutMs: 10000);
+        await TestWait.UntilAsync(() => !harness.Assembled.IsEmpty, timeoutMs: 10000);
 
         // Assert
         var assembled = harness.Assembled.Single();
@@ -355,7 +355,7 @@ public class StreamManagerTests
         var originalHandler = slowTransport.SendHandler;
         slowTransport.SendHandler = async datagram =>
         {
-            await Task.Delay(20);
+            await Task.Delay(20, cts.Token);
             if (originalHandler != null)
             {
                 await originalHandler(datagram);
@@ -365,7 +365,7 @@ public class StreamManagerTests
 
         // Act
         await harness.Sender.SendAsync(payload, new StreamOptions(), harness.RoomId, harness.ReceiverConnectionId, null, cts.Token);
-        await TestWait.UntilAsync(() => harness.Failed.Count >= 1);
+        await TestWait.UntilAsync(() => !harness.Failed.IsEmpty);
 
         // Assert
         harness.Failed.Should().NotBeEmpty();

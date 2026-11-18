@@ -2,7 +2,6 @@
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Models;
-using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Services;
 using MIN.Core.Messaging.Contracts;
 using MIN.Core.Messaging.Contracts.Enums;
@@ -160,7 +159,7 @@ public class MessageRouterTests : IDisposable
         var act = () => router.RouteAsync(new MIN.Chat.Messaging.ChatTextMessage(), Guid.NewGuid(), senderId, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<MIN.Core.Stores.Contracts.Exceptions.RoomNotRegistredException>();
+        await act.Should().ThrowAsync<MIN.Core.Stores.Contracts.Exceptions.RoomNotRegisteredException>();
     }
 
     /// <summary>

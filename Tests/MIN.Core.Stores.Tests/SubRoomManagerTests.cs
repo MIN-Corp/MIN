@@ -2,7 +2,6 @@
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Enums;
 using MIN.Core.Stores.Contracts.Interfaces;
-using MIN.Core.Stores.Contracts.Models.SubRooms;
 using MIN.Core.Stores.Services;
 using Xunit;
 
@@ -94,7 +93,7 @@ public class SubRoomManagerTests
     public void TryJoinWithoutMaximumShouldAcceptMany()
     {
         // Arrange
-        var subRoom = manager.HostSubRoom(creator, SubRoomPurpose.Voice, null, includeCreator: false);
+        var subRoom = manager.HostSubRoom(creator, SubRoomPurpose.Voice, includeCreator: false);
 
         // Act
         for (var i = 0; i < 50; i++)
@@ -215,7 +214,7 @@ public class SubRoomManagerTests
     public void RemoveAndClearShouldWork()
     {
         // Arrange
-        var first = manager.HostSubRoom(creator, SubRoomPurpose.Activity, 4, true);
+        var first = manager.HostSubRoom(creator, SubRoomPurpose.Activity, 4);
         manager.HostSubRoom(creator, SubRoomPurpose.Voice, null, false);
 
         // Act
@@ -236,8 +235,8 @@ public class SubRoomManagerTests
     {
         // Arrange
         var activity = manager.HostSubRoom(creator, SubRoomPurpose.Activity, 4, includeCreator: true);
-        var voice = manager.HostSubRoom(creator, SubRoomPurpose.Voice, null, includeCreator: true);
-        var screen = manager.HostSubRoom(creator, SubRoomPurpose.ScreenDemo, null, includeCreator: true);
+        var voice = manager.HostSubRoom(creator, SubRoomPurpose.Voice, includeCreator: true);
+        var screen = manager.HostSubRoom(creator, SubRoomPurpose.ScreenDemo, includeCreator: true);
         var snapshot = manager.CreateSnapshot();
         manager.ClearRoomSubRooms();
 

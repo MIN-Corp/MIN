@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using FluentAssertions;
-using MIN.Core.Serialization.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.TcpSockets.Models;

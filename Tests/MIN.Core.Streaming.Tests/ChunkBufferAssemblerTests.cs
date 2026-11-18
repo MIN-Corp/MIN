@@ -69,7 +69,7 @@ public class ChunkBufferAssemblerTests
     }
 
     /// <summary>
-    /// Многоканковое сообщение собирается из чанков не по порядку
+    /// Многочанковое сообщение собирается из чанков не по порядку
     /// </summary>
     [Fact]
     public async Task MultiChunkOutOfOrderShouldAssemble()

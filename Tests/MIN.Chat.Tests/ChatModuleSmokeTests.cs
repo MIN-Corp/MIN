@@ -41,7 +41,7 @@ public class ChatModuleSmokeTests : IDisposable
         services.AddSingleton<ILoggerProvider>(new TestLoggerProvider());
         services.AddSingleton<IEventBus>(new InMemoryEventBus(new TestLoggerProvider()));
         services.AddSingleton<IIdentityService>(new TestIdentityService());
-        services.AddSingleton<IRoomFactory>(rooms.Factory);
+        services.AddSingleton(rooms.Factory);
         services.AddSingleton<IRoomStore>(new RoomStore(rooms.Factory));
         services.AddSingleton<IRoomConnectionRegistry>(new RoomConnectionRegistry());
         services.AddSingleton(Mock.Of<IMessageRouter>());
@@ -85,8 +85,8 @@ public class ChatModuleSmokeTests : IDisposable
 
         // Assert
         handlers.Should().HaveCountGreaterThanOrEqualTo(2);
-        handlers.Should().Contain(h => h.HandledTypes.Contains(MIN.Core.Messaging.Contracts.MessageTypeTag.ChatTextMessage));
-        handlers.Should().Contain(h => h.HandledTypes.Contains(MIN.Core.Messaging.Contracts.MessageTypeTag.OnlineStatusChanged));
+        handlers.Should().Contain(h => h.HandledTypes.Contains(Core.Messaging.Contracts.MessageTypeTag.ChatTextMessage));
+        handlers.Should().Contain(h => h.HandledTypes.Contains(Core.Messaging.Contracts.MessageTypeTag.OnlineStatusChanged));
     }
 
     /// <summary>
@@ -99,8 +99,8 @@ public class ChatModuleSmokeTests : IDisposable
         var messages = provider.GetServices<IMessage>().ToList();
 
         // Assert
-        messages.Should().Contain(m => m is MIN.Chat.Messaging.ChatTextMessage);
-        messages.Should().Contain(m => m is MIN.Chat.Messaging.OnlineStatusChangedMessage);
+        messages.Should().Contain(m => m is Messaging.ChatTextMessage);
+        messages.Should().Contain(m => m is Messaging.OnlineStatusChangedMessage);
     }
 
     /// <inheritdoc />

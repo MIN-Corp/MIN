@@ -7,7 +7,6 @@ using MIN.Core.Events.Services;
 using MIN.Core.Headers.Contracts.Enums;
 using MIN.Core.Headers.Services;
 using MIN.Core.Services.Contracts.Events;
-using MIN.Core.Services.Contracts.Interfaces.Pipeline;
 using MIN.Core.Services.Pipeline;
 using MIN.Core.Stores.Contracts.Registries.Models;
 using MIN.Core.Stores.Registries;
@@ -74,11 +73,11 @@ public class InboundMessagePipelineTests : IDisposable
         // Arrange
         var message = new MIN.Chat.Messaging.ChatTextMessage { Content = "открытое" };
         var json = TestSerializer.Create().Serialize(message);
-        var wire = new byte[] { 0, 0 }.Concat(json).ToArray();
+        var wire = "\0\0"u8.ToArray().Concat(json).ToArray();
 
         // Act
         await DeliverAsync(wire);
-        await TestWait.UntilAsync(() => dispatcher.Dispatched.Count >= 1);
+        await TestWait.UntilAsync(() => !dispatcher.Dispatched.IsEmpty);
 
         // Assert
         ((MIN.Chat.Messaging.ChatTextMessage)dispatcher.Dispatched.Single().Message).Content.Should().Be("открытое");
@@ -98,7 +97,7 @@ public class InboundMessagePipelineTests : IDisposable
 
         // Act
         await DeliverAsync(wire);
-        await TestWait.UntilAsync(() => dispatcher.Dispatched.Count >= 1);
+        await TestWait.UntilAsync(() => !dispatcher.Dispatched.IsEmpty);
 
         // Assert
         ((MIN.Chat.Messaging.ChatTextMessage)dispatcher.Dispatched.Single().Message).Content.Should().Be("секретное");
@@ -119,7 +118,7 @@ public class InboundMessagePipelineTests : IDisposable
 
         // Act
         await DeliverAsync(wire);
-        await TestWait.UntilAsync(() => dispatcher.Dispatched.Count >= 1);
+        await TestWait.UntilAsync(() => !dispatcher.Dispatched.IsEmpty);
 
         // Assert
         ((MIN.Chat.Messaging.ChatTextMessage)dispatcher.Dispatched.Single().Message).Content.Should().Be("чанком");
@@ -179,8 +178,8 @@ public class InboundMessagePipelineTests : IDisposable
         await Task.Delay(100);
         var message = new MIN.Chat.Messaging.ChatTextMessage { Content = "после битого" };
         var json = TestSerializer.Create().Serialize(message);
-        await DeliverAsync(new byte[] { 0, 0 }.Concat(json).ToArray());
-        await TestWait.UntilAsync(() => dispatcher.Dispatched.Count >= 1);
+        await DeliverAsync("\0\0"u8.ToArray().Concat(json).ToArray());
+        await TestWait.UntilAsync(() => !dispatcher.Dispatched.IsEmpty);
 
         // Assert
         dispatcher.Dispatched.Should().HaveCount(1);

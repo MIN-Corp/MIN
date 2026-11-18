@@ -148,7 +148,7 @@ public class ParticipantStoreTests
     }
 
     /// <summary>
-    /// MarkAllParticipansOffline переводит всех в оффлайн кроме исключённого
+    /// MarkAllParticipantsOffline переводит всех в офлайн кроме исключённого
     /// </summary>
     [Fact]
     public void MarkAllOfflineShouldExceptOne()
@@ -160,7 +160,7 @@ public class ParticipantStoreTests
         store.AddParticipant(second);
 
         // Act
-        store.MarkAllParticipansOffline(first.Id);
+        store.MarkAllParticipantsOffline(first.Id);
 
         // Assert
         first.CurrentStatus.Should().Be(OnlineStatus.Online);

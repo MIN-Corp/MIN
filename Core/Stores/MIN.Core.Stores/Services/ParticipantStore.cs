@@ -87,7 +87,7 @@ public sealed class ParticipantStore : IParticipantStore
         }
     }
 
-    void IParticipantStore.MarkAllParticipansOffline(Guid? exceptId)
+    void IParticipantStore.MarkAllParticipantsOffline(Guid? exceptId)
     {
         lock (participants)
         {

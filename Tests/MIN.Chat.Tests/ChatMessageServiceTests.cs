@@ -2,9 +2,6 @@
 using MIN.Chat.Messaging;
 using MIN.Chat.Services;
 using MIN.Chat.Services.Contracts.Interfaces;
-using MIN.Core.Entities;
-using MIN.Core.Entities.Contracts.Models;
-using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.History;
 using MIN.Core.Messaging.Stateless.RoomRelated.Messages;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;

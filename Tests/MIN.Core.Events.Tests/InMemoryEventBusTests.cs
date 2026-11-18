@@ -14,11 +14,6 @@ public class InMemoryEventBusTests
     private readonly TestLoggerProvider logger = new();
 
     /// <summary>
-    /// Создать шину
-    /// </summary>
-    private IEventBus CreateBus() => new InMemoryEventBus(logger);
-
-    /// <summary>
     /// Опубликованное событие доходит до подписчика с теми же данными
     /// </summary>
     [Fact]
@@ -173,7 +168,7 @@ public class InMemoryEventBusTests
         // Arrange
         await using var bus = new InMemoryEventBus(logger);
         using var cts = new CancellationTokenSource();
-        CancellationToken observed = default;
+        var observed = CancellationToken.None;
         ((IEventBus)bus).Subscribe<TestEvent>((_, ct) => { observed = ct; return Task.CompletedTask; });
         cts.Cancel();
 

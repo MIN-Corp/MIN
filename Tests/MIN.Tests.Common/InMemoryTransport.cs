@@ -10,12 +10,7 @@ namespace MIN.Tests.Common;
 /// <summary>
 /// Запись об отправке датаграммы
 /// </summary>
-public sealed record SentDatagram(byte[] Data, Guid RecipientConnectionId, Guid? ServerConnectionId, MessageChannel Channel);
-
-/// <summary>
-/// Запись о рассылке датаграммы
-/// </summary>
-public sealed record SentBroadcast(byte[] Data, Guid ConnectionId, Guid[]? ExcludeConnections, MessageChannel Channel);
+public sealed record SentDatagram(byte[] Data, Guid RecipientConnectionId);
 
 /// <summary>
 /// Транспорт в памяти: складывает отправления в очередь и позволяет доставлять байты вручную
@@ -34,11 +29,6 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     public ConcurrentQueue<SentDatagram> SentDatagrams { get; } = new();
 
     /// <summary>
-    /// Все выполненные рассылки
-    /// </summary>
-    public ConcurrentQueue<SentBroadcast> SentBroadcasts { get; } = new();
-
-    /// <summary>
     /// Обработчик отправки: позволяет маршрутизировать байты получателю в том же тесте
     /// </summary>
     public Func<SentDatagram, Task>? SendHandler { get; set; }
@@ -51,35 +41,23 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     /// <summary>
     /// Идентификатор последнего запущенного хостинга
     /// </summary>
-    public Guid HostingId { get; private set; }
-
-    /// <summary>
-    /// Признак запущенного хостинга
-    /// </summary>
-    public bool IsHosting { get; private set; }
+    private Guid HostingId { get; set; }
 
     /// <summary>
     /// Идентификаторы выполненных подключений
     /// </summary>
     public ConcurrentQueue<Guid> Connections { get; } = new();
 
-    /// <summary>
-    /// Идентификаторы отключений
-    /// </summary>
-    public ConcurrentQueue<Guid> Disconnections { get; } = new();
-
     /// <inheritdoc />
     public Task<Guid> StartHostingAsync(Guid? serverConnectionId, ushort? preferredPort, int? sequentialAttempts, CancellationToken cancellationToken)
     {
         HostingId = serverConnectionId ?? Guid.NewGuid();
-        IsHosting = true;
         return Task.FromResult(HostingId);
     }
 
     /// <inheritdoc />
     public Task StopHostingAsync(Guid connectionId)
     {
-        IsHosting = false;
         return Task.CompletedTask;
     }
 
@@ -95,7 +73,7 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     public async Task SendAsync(ReadOnlyMemory<byte> data, Guid recipientConnectionId, Guid? serverConnectionId, MessageChannel channel, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var datagram = new SentDatagram(data.ToArray(), recipientConnectionId, serverConnectionId, channel);
+        var datagram = new SentDatagram(data.ToArray(), recipientConnectionId);
         SentDatagrams.Enqueue(datagram);
         if (SendHandler != null)
         {
@@ -106,7 +84,6 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     /// <inheritdoc />
     public Task BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
     {
-        SentBroadcasts.Enqueue(new SentBroadcast(data.ToArray(), connectionId, excludeConnections?.ToArray(), channel));
         return Task.CompletedTask;
     }
 
@@ -120,14 +97,12 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     /// <inheritdoc />
     public Task DisconnectClientAsync(Guid clientConnectionId, Guid? serverConnectionId, DisconnectReason reason)
     {
-        Disconnections.Enqueue(clientConnectionId);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task DisconnectAsync(Guid connectionId, DisconnectReason reason)
     {
-        Disconnections.Enqueue(connectionId);
         return Task.CompletedTask;
     }
 

@@ -9,16 +9,16 @@ namespace MIN.Discovery.Tests;
 /// </summary>
 public class UdpPacketHelperTests
 {
-    private static readonly Type HelperType = typeof(MIN.Discovery.Transport.UdpBroadcast.UdpBroadcastDiscoveryTransport).Assembly
+    private readonly static Type helperType = typeof(Transport.UdpBroadcast.UdpBroadcastDiscoveryTransport).Assembly
         .GetType("MIN.Discovery.Transport.UdpBroadcast.Helpers.UdpPacketHelper")!;
 
     private static byte[] Pack(byte[] payload)
-        => (byte[])HelperType.GetMethod("Pack")!.Invoke(null, [payload])!;
+        => (byte[])helperType.GetMethod("Pack")!.Invoke(null, [payload])!;
 
     private static bool TryUnpack(byte[] packet, out byte[] payload)
     {
         var args = new object?[] { packet, null };
-        var result = (bool)HelperType.GetMethod("TryUnpack")!.Invoke(null, args)!;
+        var result = (bool)helperType.GetMethod("TryUnpack")!.Invoke(null, args)!;
         payload = (byte[])args[1]!;
         return result;
     }

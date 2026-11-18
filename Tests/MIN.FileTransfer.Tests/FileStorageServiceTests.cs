@@ -129,7 +129,7 @@ public class FileStorageServiceTests : IDisposable
         // Arrange
         using var tempDir = new TemporaryDirectory();
         var tempPath = Path.Combine(tempDir.Path, "temp.bin");
-        await File.WriteAllBytesAsync(tempPath, [9, 9, 9]);
+        await File.WriteAllBytesAsync(tempPath, "\t\t\t"u8.ToArray());
 
         // Act
         var fileName = await storage.MoveTempFileToRoomAsync(roomId, tempPath, "moved.bin", CancellationToken.None);

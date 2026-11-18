@@ -81,7 +81,7 @@ public class Session
     public string GetServerPath()
 #if DEBUG
         // Для тестирования программ сюда вставлять путь туда, где она собирается
-        => Path.Combine(SessionDirectory, ServerExecutableFileName);
+        => @"C:\Users\Admin\Documents\CSharpProjects\Learning\Projects\MinChess\Network\MIN.Chess.Server\bin\Debug\net8.0\win-x64\MIN.Chess.Server.exe";
 #else
         => Path.Combine(SessionDirectory, ServerExecutableFileName);
 #endif
@@ -91,7 +91,7 @@ public class Session
     /// </summary>
     public string GetClientPath()
 #if DEBUG
-        => Path.Combine(SessionDirectory, ClientExecutableFileName);
+        => @"C:\Users\Admin\Documents\CSharpProjects\Learning\Projects\MinChess\Network\MIN.Chess.Client\bin\Debug\net8.0-windows\win-x64\MIN.Chess.Client.exe";
 #else
         => Path.Combine(SessionDirectory, ClientExecutableFileName);
 #endif

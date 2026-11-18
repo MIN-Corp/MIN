@@ -3,7 +3,6 @@ using MIN.Chat.Messaging;
 using MIN.Chat.Services;
 using MIN.Chat.Services.Contracts.Interfaces;
 using MIN.Core.Entities;
-using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Tests.Common;
 using Moq;

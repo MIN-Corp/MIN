@@ -58,7 +58,7 @@ public class RoomConnectionRegistryTests
     }
 
     /// <summary>
-    /// Неизвестная комната бросает RoomNotRegistredException
+    /// Неизвестная комната бросает RoomNotRegisteredException
     /// </summary>
     [Fact]
     public void UnknownRoomShouldThrow()
@@ -69,13 +69,13 @@ public class RoomConnectionRegistryTests
         var getClient = () => registry.GetClientConnectionIdByRoomId(Guid.NewGuid());
 
         // Assert
-        getRole.Should().Throw<RoomNotRegistredException>();
-        getServer.Should().Throw<RoomNotRegistredException>();
-        getClient.Should().Throw<RoomNotRegistredException>();
+        getRole.Should().Throw<RoomNotRegisteredException>();
+        getServer.Should().Throw<RoomNotRegisteredException>();
+        getClient.Should().Throw<RoomNotRegisteredException>();
     }
 
     /// <summary>
-    /// Detach помечает серверное соединение оффлайн, роль остаётся Host
+    /// Detach помечает серверное соединение офлайн, роль остаётся Host
     /// </summary>
     [Fact]
     public void DetachServerConnectionShouldKeepRoleButDropConnection()

@@ -7,7 +7,6 @@ using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Interfaces.Persistence;
 using MIN.Core.Stores.Contracts.Models.Persistence;
-using MIN.Core.Stores.Contracts.Models.SubRooms;
 using MIN.Core.Stores.Services;
 using MIN.Core.Stores.Services.Persistence;
 using MIN.Tests.Common;

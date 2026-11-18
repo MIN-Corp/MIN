@@ -16,7 +16,7 @@ namespace MIN.Tests.Common;
 /// </summary>
 public static class TestSerializer
 {
-    private static readonly Lazy<IReadOnlyList<IMessage>> allMessages = new(CollectAllMessages);
+    private readonly static Lazy<IReadOnlyList<IMessage>> allMessages = new(CollectAllMessages);
 
     /// <summary>
     /// Экземпляры всех типов сообщений из всех модулей (по якорям сборок)
@@ -29,7 +29,7 @@ public static class TestSerializer
     public static IMessageSerializer Create(params IMessage[] messageTypes)
         => new JsonMessageSerializer(messageTypes.Length > 0 ? messageTypes : AllMessages);
 
-    private static IReadOnlyList<IMessage> CollectAllMessages()
+    private static List<IMessage> CollectAllMessages()
     {
         var anchors = new[]
         {

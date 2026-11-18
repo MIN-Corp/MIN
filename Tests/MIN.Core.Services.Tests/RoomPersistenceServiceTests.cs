@@ -92,7 +92,7 @@ public class RoomPersistenceServiceTests : IDisposable
     }
 
     /// <summary>
-    /// Уход комнаты в оффлайн сохраняет её снапшот
+    /// Уход комнаты в офлайн сохраняет её снапшот
     /// </summary>
     [Fact]
     public async Task RoomWentOfflineShouldSave()

@@ -5,7 +5,6 @@ using MIN.Core.Events.Services;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Services;
 using MIN.Core.Transport.Contracts.Enum;
-using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.TcpSockets.Models;
 using MIN.Discovery.Events;
 using MIN.Discovery.Messaging;
@@ -132,7 +131,7 @@ public class UdpDiscoveryServiceTests : IDisposable
         var roomInfo = new RoomInfo { Name = "Чужая комната" };
         var response = new DiscoveryResponseMessage
         {
-            RoomDiscoveryInfos = [new MIN.Discovery.Services.Contracts.Models.RoomDiscoveryInfo { Room = roomInfo, Endpoints = [lanEndpoint] }],
+            RoomDiscoveryInfos = [new Services.Contracts.Models.RoomDiscoveryInfo { Room = roomInfo, Endpoints = [lanEndpoint] }],
         };
         var responseData = TestSerializer.Create().Serialize(response);
         transport.BroadcastHandler = (_, _) =>
@@ -161,7 +160,7 @@ public class UdpDiscoveryServiceTests : IDisposable
         var roomInfo = new RoomInfo { Name = "Комната" };
         var response = new DiscoveryResponseMessage
         {
-            RoomDiscoveryInfos = [new MIN.Discovery.Services.Contracts.Models.RoomDiscoveryInfo { Room = roomInfo, Endpoints = [lanEndpoint] }],
+            RoomDiscoveryInfos = [new Services.Contracts.Models.RoomDiscoveryInfo { Room = roomInfo, Endpoints = [lanEndpoint] }],
         };
         var responseData = TestSerializer.Create().Serialize(response);
         transport.BroadcastHandler = (_, _) =>
@@ -192,7 +191,7 @@ public class UdpDiscoveryServiceTests : IDisposable
         var roomInfo = new RoomInfo { Name = "Комната" };
         var response = new DiscoveryResponseMessage
         {
-            RoomDiscoveryInfos = [new MIN.Discovery.Services.Contracts.Models.RoomDiscoveryInfo { Room = roomInfo, Endpoints = [lanEndpoint] }],
+            RoomDiscoveryInfos = [new Services.Contracts.Models.RoomDiscoveryInfo { Room = roomInfo, Endpoints = [lanEndpoint] }],
         };
         var responseData = TestSerializer.Create().Serialize(response);
         transport.BroadcastHandler = (_, _) =>

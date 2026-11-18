@@ -37,7 +37,7 @@ public class CoreHandlerTests : IDisposable
         roomContext = factory.RoomFactory.GetOrCreateContext(roomId);
     }
 
-    private MessageContext CreateContext(Role role = Role.Client)
+    private MessageContext CreateContext(Role role)
         => TestMessageContext.Create(roomContext, selfId, connectionId, role);
 
     private void RegisterRoom(Guid? hostId = null)
@@ -61,7 +61,7 @@ public class CoreHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.Ping);
 
         // Act
-        var result = await handler.HandleAsync(new PingMessage { SenderId = selfId }, CreateContext());
+        var result = await handler.HandleAsync(new PingMessage { SenderId = selfId }, CreateContext(Role.Client));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -78,7 +78,7 @@ public class CoreHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.Pong);
 
         // Act
-        var result = await handler.HandleAsync(new PongMessage { SenderId = selfId }, CreateContext());
+        var result = await handler.HandleAsync(new PongMessage { SenderId = selfId }, CreateContext(Role.Client));
 
         // Assert
         result.ResultEvent.Should().BeOfType<PingPongReceivedEvent>();
@@ -178,12 +178,12 @@ public class CoreHandlerTests : IDisposable
         var clear = new ChatHistoryClearMessage { SenderId = selfId };
 
         // Act
-        var result = await handler.HandleAsync(clear, CreateContext());
+        var result = await handler.HandleAsync(clear, CreateContext(Role.Client));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         await deletedCapture.WaitAsync(2);
-        result.ResultEvent.Should().BeOfType<MIN.Core.Events.Events.ChatHistoryClearedEvent>();
+        result.ResultEvent.Should().BeOfType<ChatHistoryClearedEvent>();
         roomContext.Messages.GetMessageCount().Should().Be(1);
         roomContext.Messages.GetFirstMessage().Should().BeOfType<SystemTextMessage>();
     }
@@ -361,14 +361,14 @@ public class CoreHandlerTests : IDisposable
         var leaving = new Participant { Id = Guid.NewGuid(), Name = "Уходящий" };
         roomContext.Participants.AddParticipant(leaving);
         var handler = factory.GetHandler(MessageTypeTag.ParticipantLeft);
-        var message = new MIN.Core.Messaging.RoomRelated.ParticipantRelated.ParticipantLeftMessage
+        var message = new Messaging.RoomRelated.ParticipantRelated.ParticipantLeftMessage
         {
             Participant = leaving.ToParticipantInfo(),
             Reason = DisconnectReason.LeftRoom,
         };
 
         // Act
-        var result = await handler.HandleAsync(message, CreateContext());
+        var result = await handler.HandleAsync(message, CreateContext(Role.Client));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -377,7 +377,7 @@ public class CoreHandlerTests : IDisposable
     }
 
     /// <summary>
-    /// ParticipantLeft без выхода из комнаты переводит в оффлайн
+    /// ParticipantLeft без выхода из комнаты переводит в офлайн
     /// </summary>
     [Fact]
     public async Task ParticipantLeftWithoutLeaveShouldMarkOffline()
@@ -386,14 +386,14 @@ public class CoreHandlerTests : IDisposable
         var leaving = new Participant { Id = Guid.NewGuid(), Name = "Отключившийся", CurrentStatus = OnlineStatus.Online };
         roomContext.Participants.AddParticipant(leaving);
         var handler = factory.GetHandler(MessageTypeTag.ParticipantLeft);
-        var message = new MIN.Core.Messaging.RoomRelated.ParticipantRelated.ParticipantLeftMessage
+        var message = new Messaging.RoomRelated.ParticipantRelated.ParticipantLeftMessage
         {
             Participant = leaving.ToParticipantInfo(),
             Reason = DisconnectReason.Timeout,
         };
 
         // Act
-        await handler.HandleAsync(message, CreateContext());
+        await handler.HandleAsync(message, CreateContext(Role.Client));
 
         // Assert
         leaving.CurrentStatus.Should().Be(OnlineStatus.Offline);
@@ -411,7 +411,7 @@ public class CoreHandlerTests : IDisposable
         var participant = new Participant { Id = Guid.NewGuid(), Name = "Старое" };
         roomContext.Participants.AddParticipant(participant);
         var handler = factory.GetHandler(MessageTypeTag.ParticipantUpdated);
-        var message = new MIN.Core.Messaging.Stateless.RoomRelated.ParticipantRelated.ParticipantUpdatedMessage
+        var message = new Messaging.Stateless.RoomRelated.ParticipantRelated.ParticipantUpdatedMessage
         {
             SenderId = participant.Id,
             NewParticipant = new Participant { Id = participant.Id, Name = "Новое" },
@@ -436,7 +436,7 @@ public class CoreHandlerTests : IDisposable
         var participant = new Participant { Id = Guid.NewGuid(), Name = "Жертва" };
         roomContext.Participants.AddParticipant(participant);
         var handler = factory.GetHandler(MessageTypeTag.ParticipantUpdated);
-        var message = new MIN.Core.Messaging.Stateless.RoomRelated.ParticipantRelated.ParticipantUpdatedMessage
+        var message = new Messaging.Stateless.RoomRelated.ParticipantRelated.ParticipantUpdatedMessage
         {
             SenderId = Guid.NewGuid(),
             NewParticipant = new Participant { Id = participant.Id, Name = "Взлом" },
@@ -459,7 +459,7 @@ public class CoreHandlerTests : IDisposable
     {
         // Arrange
         var handler = factory.GetHandler(MessageTypeTag.Error);
-        var message = new MIN.Core.Messaging.Stateless.ErrorMessage { Message = "что-то сломалось" };
+        var message = new Messaging.Stateless.ErrorMessage { Message = "что-то сломалось" };
 
         // Act
         var result = await handler.HandleAsync(message, CreateContext(Role.Client));

@@ -79,7 +79,7 @@ public class TcpTransportTests
         await using var server = new Node(logger);
         await using var client = new Node(logger);
         var port = TestPorts.GetFreeTcpPort();
-        var hostingId = await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
+        await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
         await client.Transport.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await TestWait.UntilAsync(() => server.StateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
@@ -104,7 +104,7 @@ public class TcpTransportTests
         await using var server = new Node(logger);
         await using var client = new Node(logger);
         var port = TestPorts.GetFreeTcpPort();
-        var hostingId = await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
+        await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
         await client.Transport.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await TestWait.UntilAsync(() => server.StateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
@@ -230,7 +230,7 @@ public class TcpTransportTests
         // Arrange
         await using var server = new Node(logger);
         var port = TestPorts.GetFreeTcpPort();
-        var hostingId = await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
+        await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         using var raw = new TcpClient();
         await raw.ConnectAsync("127.0.0.1", port);
 
@@ -256,7 +256,7 @@ public class TcpTransportTests
         await using var server = new Node(logger);
         await using var client = new Node(logger);
         var port = TestPorts.GetFreeTcpPort();
-        var hostingId = await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
+        await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
         await client.Transport.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await TestWait.UntilAsync(() => server.StateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
@@ -285,7 +285,7 @@ public class TcpTransportTests
         await using var server = new Node(logger);
         await using var client = new Node(logger);
         var port = TestPorts.GetFreeTcpPort();
-        var hostingId = await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
+        await server.Transport.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         using var raw = new TcpClient();
         await raw.ConnectAsync("127.0.0.1", port);
         var stream = raw.GetStream();
@@ -297,7 +297,7 @@ public class TcpTransportTests
         await client.Transport.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
         await TestWait.UntilAsync(() => server.StateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
         await client.Transport.SendAsync(new byte[] { 1 }, clientId, null, MessageChannel.Secure, CancellationToken.None);
-        await TestWait.UntilAsync(() => server.Received.Count >= 1);
+        await TestWait.UntilAsync(() => !server.Received.IsEmpty);
 
         // Assert
         server.Received.Single().Data.Should().Equal([1]);

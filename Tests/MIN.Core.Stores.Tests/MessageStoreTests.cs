@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
 using MIN.Chat.Messaging;
-using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.Ping;
 using MIN.Core.Stores.Contracts.Constants;
 using MIN.Core.Stores.Contracts.Interfaces;

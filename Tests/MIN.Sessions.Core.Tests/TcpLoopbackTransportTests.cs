@@ -4,7 +4,6 @@ using FluentAssertions;
 using MIN.Sessions.Core.Transport.Contracts.Interfaces;
 using MIN.Sessions.Core.Transport.Contracts.Models;
 using MIN.Sessions.Core.Transport.Tcp;
-using MIN.Tests.Common;
 using Xunit;
 
 namespace MIN.Sessions.Core.Tests;
@@ -14,7 +13,7 @@ namespace MIN.Sessions.Core.Tests;
 /// </summary>
 public class TcpLoopbackTransportTests
 {
-    private static readonly SessionInstanceContext Context = new(Guid.NewGuid(), 1, default);
+    private readonly static SessionInstanceContext context = new(Guid.NewGuid(), 1, default);
 
     private static int GetPort(ISessionProcessTransport transport)
     {
@@ -31,7 +30,7 @@ public class TcpLoopbackTransportTests
     {
         // Arrange
         await using var loopback = new TcpLoopbackTransport();
-        var transport = (ISessionProcessTransport)loopback;
+        ISessionProcessTransport transport = loopback;
         await transport.StartAsync(Guid.NewGuid(), CancellationToken.None);
         var port = GetPort(transport);
         using var process = new TcpClient();
@@ -40,20 +39,20 @@ public class TcpLoopbackTransportTests
         transport.MessageReceived += (_, e) => received.TrySetResult(e.Data);
 
         // Act
-        await transport.WaitForConnectionAsync(Context, 5000, CancellationToken.None);
+        await transport.WaitForConnectionAsync(context, 5000, CancellationToken.None);
         var stream = process.GetStream();
         var payload = new byte[] { 1, 2, 3 };
         await stream.WriteAsync(BitConverter.GetBytes(payload.Length));
         await stream.WriteAsync(payload);
         var got = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await transport.SendAsync(new byte[] { 9, 8 }, Context, CancellationToken.None);
+        await transport.SendAsync([9, 8], context, CancellationToken.None);
         var lengthBuf = new byte[4];
         await stream.ReadExactlyAsync(lengthBuf);
         var body = new byte[BitConverter.ToInt32(lengthBuf)];
         await stream.ReadExactlyAsync(body);
 
         // Assert
-        transport.IsConnectionExists(Context).Should().BeTrue();
+        transport.IsConnectionExists(context).Should().BeTrue();
         got.Should().Equal(payload);
         body.Should().Equal([9, 8]);
     }
@@ -66,14 +65,14 @@ public class TcpLoopbackTransportTests
     {
         // Arrange
         await using var loopback = new TcpLoopbackTransport();
-        var transport = (ISessionProcessTransport)loopback;
+        ISessionProcessTransport transport = loopback;
         await transport.StartAsync(Guid.NewGuid(), CancellationToken.None);
 
         // Act
-        await transport.WaitForConnectionAsync(Context, 200, CancellationToken.None);
+        await transport.WaitForConnectionAsync(context, 200, CancellationToken.None);
 
         // Assert
-        transport.IsConnectionExists(Context).Should().BeFalse();
+        transport.IsConnectionExists(context).Should().BeFalse();
     }
 
     /// <summary>
@@ -84,17 +83,17 @@ public class TcpLoopbackTransportTests
     {
         // Arrange
         await using var loopback = new TcpLoopbackTransport();
-        var transport = (ISessionProcessTransport)loopback;
+        ISessionProcessTransport transport = loopback;
         await transport.StartAsync(Guid.NewGuid(), CancellationToken.None);
         using var process = new TcpClient();
         await process.ConnectAsync("127.0.0.1", GetPort(transport));
-        await transport.WaitForConnectionAsync(Context, 5000, CancellationToken.None);
+        await transport.WaitForConnectionAsync(context, 5000, CancellationToken.None);
 
         // Act
-        await transport.DisconnectAsync(Context);
+        await transport.DisconnectAsync(context);
 
         // Assert
-        transport.IsConnectionExists(Context).Should().BeFalse();
+        transport.IsConnectionExists(context).Should().BeFalse();
     }
 
     /// <summary>
@@ -105,7 +104,7 @@ public class TcpLoopbackTransportTests
     {
         // Arrange
         await using var loopback = new TcpLoopbackTransport();
-        var transport = (ISessionProcessTransport)loopback;
+        ISessionProcessTransport transport = loopback;
         await transport.StartAsync(Guid.NewGuid(), CancellationToken.None);
 
         // Act

@@ -46,7 +46,7 @@ public class RoomSnapshotMapperTests : IDisposable
         roomStore.Register(room);
         var context = rooms.Factory.GetOrCreateContext(room.Id);
         context.Messages.AddMessage(new ChatTextMessage { Content = "сообщение" });
-        context.SubRooms.HostSubRoom(new ParticipantInfo { Id = Guid.NewGuid() }, Contracts.Enums.SubRoomPurpose.Activity, 4, true);
+        context.SubRooms.HostSubRoom(new ParticipantInfo { Id = Guid.NewGuid() }, Contracts.Enums.SubRoomPurpose.Activity, 4);
 
         // Act
         var snapshot = mapper.BuildSnapshot(room.Id);
@@ -73,7 +73,7 @@ public class RoomSnapshotMapperTests : IDisposable
     }
 
     /// <summary>
-    /// Восстановление своей комнаты регистрирует её оффлайн с сообщениями
+    /// Восстановление своей комнаты регистрирует её офлайн с сообщениями
     /// </summary>
     [Fact]
     public void RestoreSnapshotShouldRegisterOfflineRoom()

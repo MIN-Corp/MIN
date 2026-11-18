@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using FluentAssertions;
-using MIN.Core.Cryptography;
 using MIN.Core.Cryptography.Contracts.Models;
 using MIN.Tests.Common;
 using Xunit;

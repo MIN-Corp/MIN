@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using FluentAssertions;
-using MIN.Core.Transport.Contracts.Enum;
 using MIN.Core.Transport.Contracts.Helpers;
 using MIN.Tests.Common;
 using Xunit;

@@ -138,7 +138,7 @@ public class ChatHandlerTests : IDisposable
         participant.CurrentStatus.Should().Be(OnlineStatus.Offline);
         participant.LastSeenOnline.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(5));
         var statusEvent = result.ResultEvent.Should().BeOfType<OnlineStatusChangedEvent>().Subject;
-        statusEvent.Participant!.Id.Should().Be(senderId);
+        statusEvent.Participant.Id.Should().Be(senderId);
     }
 
     /// <summary>
@@ -187,7 +187,7 @@ public class ChatHandlerTests : IDisposable
         var handler = factory.GetHandler(MessageTypeTag.ChatTextMessage);
 
         // Act
-        var result = await handler.HandleAsync(new MIN.Core.Messaging.Stateless.RoomRelated.Ping.PingMessage(), CreateContext());
+        var result = await handler.HandleAsync(new Messaging.Stateless.RoomRelated.Ping.PingMessage(), CreateContext());
 
         // Assert
         result.IsSuccess.Should().BeFalse();

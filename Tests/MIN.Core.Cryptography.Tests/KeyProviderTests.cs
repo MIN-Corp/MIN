@@ -1,7 +1,6 @@
 ﻿using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection;
-using MIN.Core.Cryptography;
 using MIN.Tests.Common;
 using Xunit;
 
@@ -104,7 +103,7 @@ public class KeyProviderTests
         using var paths = new TestIdentityDataPathProvider();
         using var provider = new KeyProvider(new EphemeralDataProtectionProvider(), paths, new TestLoggerProvider());
         var partnerId = Guid.NewGuid();
-        await provider.SavePartnerPublicKeyAsync(partnerId, [9, 9, 9]);
+        await provider.SavePartnerPublicKeyAsync(partnerId, "\t\t\t"u8.ToArray());
 
         // Act
         var secret = await provider.TryComputeStoredSharedSecretAsync(partnerId);

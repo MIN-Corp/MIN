@@ -10,10 +10,10 @@ namespace MIN.Core.Serialization.Tests;
 public sealed class DuplicateTagMessage : IMessage
 {
     /// <inheritdoc />
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; } = Guid.NewGuid();
 
     /// <inheritdoc />
-    public DateTime Timestamp { get; init; } = DateTime.Now;
+    public DateTime Timestamp { get; } = DateTime.Now;
 
     /// <inheritdoc />
     public MessageTypeTag TypeTag => MessageTypeTag.ChatTextMessage;

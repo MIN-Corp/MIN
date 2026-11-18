@@ -1,7 +1,6 @@
 ﻿using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection;
-using MIN.Core.Cryptography;
 using MIN.Core.Cryptography.Contracts.Constants;
 using MIN.Core.Cryptography.Contracts.Interfaces;
 using MIN.Tests.Common;

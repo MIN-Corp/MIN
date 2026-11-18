@@ -104,7 +104,7 @@ public class HandshakeServiceTests
         var connectionId = Guid.NewGuid();
         var roomInfo = new RoomInfo { Name = "Комната" };
         var response = Encoding.UTF8.GetBytes(ProtocolConstants.ResponseStarter + JsonSerializer.Serialize(roomInfo));
-        transport.SendHandler = datagram =>
+        transport.SendHandler = _ =>
         {
             transport.Deliver(response, connectionId);
             return Task.CompletedTask;
@@ -129,9 +129,9 @@ public class HandshakeServiceTests
         var transport = new InMemoryTransport();
         IClientHandshake client = new ClientHandshakeService(transport, logger);
         var connectionId = Guid.NewGuid();
-        transport.SendHandler = datagram =>
+        transport.SendHandler = _ =>
         {
-            transport.Deliver(Encoding.UTF8.GetBytes("NOT MIN PROTOCOL"), connectionId);
+            transport.Deliver("NOT MIN PROTOCOL"u8.ToArray(), connectionId);
             return Task.CompletedTask;
         };
 
@@ -140,7 +140,7 @@ public class HandshakeServiceTests
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("не соответсвует MIN протоколу");
+        result.ErrorMessage.Should().Contain("не соответствует MIN протоколу");
     }
 
     /// <summary>
@@ -153,7 +153,7 @@ public class HandshakeServiceTests
         var transport = new InMemoryTransport();
         IClientHandshake client = new ClientHandshakeService(transport, logger);
         var connectionId = Guid.NewGuid();
-        transport.SendHandler = datagram =>
+        transport.SendHandler = _ =>
         {
             transport.Deliver(Encoding.UTF8.GetBytes(ProtocolConstants.ResponseStarter + "null"), connectionId);
             return Task.CompletedTask;
@@ -177,7 +177,7 @@ public class HandshakeServiceTests
         var transport = new InMemoryTransport();
         IClientHandshake client = new ClientHandshakeService(transport, logger);
         var connectionId = Guid.NewGuid();
-        transport.SendHandler = datagram =>
+        transport.SendHandler = _ =>
         {
             transport.RaiseConnectionStateChanged(new ConnectionStateChangedEventArgs(connectionId, false, DisconnectReason.Error));
             return Task.CompletedTask;
