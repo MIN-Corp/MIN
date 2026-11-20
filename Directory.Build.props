@@ -22,6 +22,11 @@
     <Company>MIN-Corp</Company>
   </PropertyGroup>
 
+  <!-- Тесты гоняются на win-x64: не копируем нативы всех платформ (onnx/openh264) в каждый bin -->
+  <PropertyGroup Condition=" $(MSBuildProjectName.EndsWith('.Tests')) ">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
   <ItemGroup Condition=" $(MSBuildProjectName.EndsWith('.Tests')) ">
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />

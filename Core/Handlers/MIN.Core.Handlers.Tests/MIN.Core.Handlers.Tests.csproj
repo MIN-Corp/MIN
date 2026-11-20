@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\MIN.Tests.Common\MIN.Tests.Common.csproj" />
+    <ProjectReference Include="..\MIN.Core.Handlers\MIN.Core.Handlers.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\Chat\MIN.Chat.Handlers\MIN.Chat.Handlers.csproj" />
+    <ProjectReference Include="..\..\..\Common\MIN.Common.Mvc\MIN.Common.Mvc.csproj" />
+  </ItemGroup>
+
+</Project>

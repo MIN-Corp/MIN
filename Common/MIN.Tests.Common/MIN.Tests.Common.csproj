@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Helpers\MIN.Helpers.Contracts\MIN.Helpers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\Entities\MIN.Core.Entities\MIN.Core.Entities.csproj" />
+    <ProjectReference Include="..\..\Core\Identity\MIN.Core.Identity.Contracts\MIN.Core.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\Cryptography\MIN.Core.Cryptography\MIN.Core.Cryptography.csproj" />
+    <ProjectReference Include="..\..\Core\Messaging\MIN.Core.Messaging\MIN.Core.Messaging.csproj" />
+    <ProjectReference Include="..\..\Core\Serialization\MIN.Core.Serialization\MIN.Core.Serialization.Json.csproj" />
+    <ProjectReference Include="..\..\Core\Events\MIN.Core.Events\MIN.Core.Events.csproj" />
+    <ProjectReference Include="..\..\Core\Stores\MIN.Core.Stores\MIN.Core.Stores.csproj" />
+    <ProjectReference Include="..\..\Core\Handlers\MIN.Core.Handlers.Contracts\MIN.Core.Handlers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\Transport\MIN.Core.Transport.Contracts\MIN.Core.Transport.Contracts.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Chat\MIN.Chat.Messaging\MIN.Chat.Messaging.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Discovery\MIN.Discovery.Messaging\MIN.Discovery.Messaging.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\FileTransfer\MIN.FileTransfer.Messaging\MIN.FileTransfer.Messaging.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Sessions\Core\MIN.Sessions.Core.Messaging\MIN.Sessions.Core.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>

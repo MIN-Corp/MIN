@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\MIN.Tests.Common\MIN.Tests.Common.csproj" />
+    <ProjectReference Include="..\MIN.Discovery.Services\MIN.Discovery.Services.csproj" />
+    <ProjectReference Include="..\MIN.Discovery.DI\MIN.Discovery.DI.csproj" />
+    <ProjectReference Include="..\Transport\MIN.Discovery.Transport.UdpBroadcast\MIN.Discovery.Transport.UdpBroadcast.csproj" />
+  </ItemGroup>
+
+</Project>

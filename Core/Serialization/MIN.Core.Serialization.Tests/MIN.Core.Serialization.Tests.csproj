@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\MIN.Tests.Common\MIN.Tests.Common.csproj" />
+    <ProjectReference Include="..\MIN.Core.Serialization\MIN.Core.Serialization.Json.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\Voice\MIN.Voice.Messaging\MIN.Voice.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\ScreenDemo\MIN.ScreenDemo.Messaging\MIN.ScreenDemo.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>
