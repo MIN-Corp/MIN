@@ -142,11 +142,12 @@ public class TcpTransportTests
         // Act
         await server.Transport.BroadcastAsync(new byte[] { 42 }, hostingId, [id1], MessageChannel.Secure, CancellationToken.None);
         await TestWait.UntilAsync(() => client2.Received.Count >= 1);
-        await Task.Delay(200);
+        await server.Transport.SendAsync(new byte[] { 7 }, id1, hostingId, MessageChannel.Secure, CancellationToken.None);
+        await TestWait.UntilAsync(() => client1.Received.Count >= 1);
 
         // Assert
         client2.Received.Single().Data.Should().Equal([42]);
-        client1.Received.Should().BeEmpty();
+        client1.Received.Single().Data.Should().Equal([7]);
     }
 
     /// <summary>

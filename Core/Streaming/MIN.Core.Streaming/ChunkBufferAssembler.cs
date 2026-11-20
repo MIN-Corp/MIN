@@ -64,6 +64,7 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
 
         if (completedStreams.ContainsKey(chunk.StreamId))
         {
+            await ResendAckIfNeeded(chunk, connectionId, serverConnectionId, cancellationToken);
             return;
         }
 
@@ -71,12 +72,15 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
         {
             if (chunk.IsSingle)
             {
-                if (chunk.Flags.HasFlag(StreamChunkFlags.RequiresAcks))
+                // Резервируем сборку атомарно: даже параллельные дубликаты не должны доставить сообщение дважды
+                if (!completedStreams.TryAdd(chunk.StreamId, DateTime.UtcNow))
                 {
-                    await SendAck(chunk.StreamId, chunk.Index, connectionId, serverConnectionId, cancellationToken);
+                    await ResendAckIfNeeded(chunk, connectionId, serverConnectionId, cancellationToken);
+                    return;
                 }
 
-                MarkCompleted(chunk.StreamId);
+                await ResendAckIfNeeded(chunk, connectionId, serverConnectionId, cancellationToken);
+                PruneCompletedStreams();
                 OnMessageAssembled(chunk.StreamId, roomId, connectionId, chunk.Data.ToArray(), null, chunk.Flags.HasFlag(StreamChunkFlags.RawPayload), cancellationToken);
                 return;
             }
@@ -136,16 +140,31 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
     private void MarkCompleted(Guid streamId)
     {
         completedStreams[streamId] = DateTime.UtcNow;
-        if (completedStreams.Count > 1024)
+        PruneCompletedStreams();
+    }
+
+    private void PruneCompletedStreams()
+    {
+        if (completedStreams.Count <= 1024)
         {
-            var cutoff = DateTime.UtcNow.AddMilliseconds(-StreamingConstants.DefaultStreamLifetimeMs);
-            foreach (var pair in completedStreams)
+            return;
+        }
+
+        var cutoff = DateTime.UtcNow.AddMilliseconds(-StreamingConstants.DefaultStreamLifetimeMs);
+        foreach (var pair in completedStreams)
+        {
+            if (pair.Value < cutoff)
             {
-                if (pair.Value < cutoff)
-                {
-                    completedStreams.TryRemove(pair.Key, out _);
-                }
+                completedStreams.TryRemove(pair.Key, out _);
             }
+        }
+    }
+
+    private async Task ResendAckIfNeeded(StreamChunk chunk, Guid connectionId, Guid? serverConnectionId, CancellationToken cancellationToken)
+    {
+        if (chunk.Flags.HasFlag(StreamChunkFlags.RequiresAcks))
+        {
+            await SendAck(chunk.StreamId, chunk.Index, connectionId, serverConnectionId, cancellationToken);
         }
     }
 
@@ -181,17 +200,19 @@ public sealed class ChunkBufferAssembler : IChunkBufferAssembler, IDisposable
 
     private void OnStreamTimeout(object? state)
     {
-        if (state is (Guid roomId, Guid streamId, CancellationToken cancellationToken))
+        if (state is not (Guid roomId, Guid streamId, CancellationToken cancellationToken))
         {
-            logger.Log($"Поток {streamId} превысил время жизни");
-            OnStreamFailed?.Invoke(new StreamFailedEventArgs()
-            {
-                RoomId = roomId,
-                StreamId = streamId,
-                ErrorMessage = $"Поток превысил время жизни",
-            }, cancellationToken);
-            TryRemoveStream(streamId);
+            return;
         }
+
+        logger.Log($"Поток {streamId} превысил время жизни");
+        OnStreamFailed?.Invoke(new StreamFailedEventArgs()
+        {
+            RoomId = roomId,
+            StreamId = streamId,
+            ErrorMessage = $"Поток превысил время жизни",
+        }, cancellationToken);
+        TryRemoveStream(streamId);
     }
 
     private async Task SendAck(Guid streamId, int chunkIndex, Guid connectionId, Guid? serverConnectionId, CancellationToken cancellationToken)

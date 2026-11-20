@@ -82,9 +82,18 @@ public sealed class InMemoryTransport : ITransport, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public Task BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
+    public async Task BroadcastAsync(ReadOnlyMemory<byte> data, Guid connectionId, IEnumerable<Guid>? excludeConnections, MessageChannel channel, CancellationToken cancellationToken)
     {
-        return Task.CompletedTask;
+        cancellationToken.ThrowIfCancellationRequested();
+        var excludeSet = excludeConnections?.ToHashSet() ?? [];
+
+        foreach (var recipient in Connections)
+        {
+            if (!excludeSet.Contains(recipient))
+            {
+                await SendAsync(data, recipient, connectionId, channel, cancellationToken);
+            }
+        }
     }
 
     /// <inheritdoc />

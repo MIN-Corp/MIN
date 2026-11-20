@@ -64,12 +64,14 @@ public class ChannelTransportTests
         await using var clientChannel = new ChannelTransport(logger);
         ITransport client = clientChannel;
         var serverReceived = new ConcurrentQueue<RawMessageReceivedEventArgs>();
+        var serverStateChanges = new ConcurrentQueue<ConnectionStateChangedEventArgs>();
         server.RawMessageReceived += (_, e) => serverReceived.Enqueue(e);
+        server.ConnectionStateChanged += (_, e) => serverStateChanges.Enqueue(e);
         var port = TestPorts.GetFreeTcpPort();
         await server.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
         await client.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
-        await Task.Delay(300);
+        await TestWait.UntilAsync(() => serverStateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
 
         // Act
         await client.SendAsync(new byte[] { 5 }, clientId, null, MessageChannel.Fast, CancellationToken.None);
@@ -92,15 +94,17 @@ public class ChannelTransportTests
         ITransport client = clientChannel;
         var serverReceived = new ConcurrentQueue<RawMessageReceivedEventArgs>();
         var clientReceived = new ConcurrentQueue<RawMessageReceivedEventArgs>();
+        var serverStateChanges = new ConcurrentQueue<ConnectionStateChangedEventArgs>();
         server.RawMessageReceived += (_, e) => serverReceived.Enqueue(e);
         client.RawMessageReceived += (_, e) => clientReceived.Enqueue(e);
+        server.ConnectionStateChanged += (_, e) => serverStateChanges.Enqueue(e);
         var port = TestPorts.GetFreeTcpPort();
         var hostingId = await server.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
 
         // Act
         var connectedId = await client.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
-        await Task.Delay(300);
+        await TestWait.UntilAsync(() => serverStateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
         await client.SendAsync(new byte[] { 1 }, connectedId, null, MessageChannel.Secure, CancellationToken.None);
         await TestWait.UntilAsync(() => !serverReceived.IsEmpty);
         await server.SendAsync(new byte[] { 2 }, clientId, hostingId, MessageChannel.Secure, CancellationToken.None);
@@ -141,12 +145,14 @@ public class ChannelTransportTests
         await using var clientChannel = new ChannelTransport(logger);
         ITransport client = clientChannel;
         var clientReceived = new ConcurrentQueue<byte[]>();
+        var serverStateChanges = new ConcurrentQueue<ConnectionStateChangedEventArgs>();
         client.RawMessageReceived += (_, e) => clientReceived.Enqueue(e.Data);
+        server.ConnectionStateChanged += (_, e) => serverStateChanges.Enqueue(e);
         var port = TestPorts.GetFreeTcpPort();
         var hostingId = await server.StartHostingAsync(null, (ushort)port, 1, CancellationToken.None);
         var clientId = Guid.NewGuid();
         await client.ConnectAsync(new TcpEndpoint { IpAddress = "127.0.0.1", Port = port }, clientId, CancellationToken.None);
-        await Task.Delay(300);
+        await TestWait.UntilAsync(() => serverStateChanges.Any(e => e.IsConnected && e.ConnectionId == clientId));
 
         // Act
         await server.BroadcastAsync(new byte[] { 3 }, hostingId, null, MessageChannel.Secure, CancellationToken.None);

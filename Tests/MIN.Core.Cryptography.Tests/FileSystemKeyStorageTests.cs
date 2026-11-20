@@ -29,7 +29,7 @@ public class FileSystemKeyStorageTests
         // Assert
         loaded.Should().NotBeNull();
         loaded!.EncryptedEcdhPrivateKeyPem.Should().Be("pem");
-        loaded.EcdhPublicKeyBytes.Should().Equal([1, 2, 3]);
+        loaded.EcdhPublicKeyBytes.Should().Equal(1, 2, 3);
     }
 
     /// <summary>
@@ -89,8 +89,8 @@ public class FileSystemKeyStorageTests
         var loadedMissing = await storage.LoadPartnerPublicKeyAsync(Guid.NewGuid());
 
         // Assert
-        loadedFirst.Should().Equal([1, 1, 1]);
-        loadedSecond.Should().Equal([2, 2, 2]);
+        loadedFirst.Should().Equal(1, 1, 1);
+        loadedSecond.Should().Equal(2, 2, 2);
         loadedMissing.Should().BeNull();
     }
 

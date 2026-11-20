@@ -129,11 +129,12 @@ public class UdpTransportTests
         // Act
         await server.BroadcastAsync(new byte[] { 7 }, hostingId, [id1], CancellationToken.None);
         await TestWait.UntilAsync(() => !received2.IsEmpty);
-        await Task.Delay(200);
+        await server.SendAsync(new byte[] { 9 }, id1, hostingId, CancellationToken.None);
+        await TestWait.UntilAsync(() => !received1.IsEmpty);
 
         // Assert
         received2.Single().Should().Equal([7]);
-        received1.Should().BeEmpty();
+        received1.Single().Should().Equal([9]);
     }
 
     /// <summary>

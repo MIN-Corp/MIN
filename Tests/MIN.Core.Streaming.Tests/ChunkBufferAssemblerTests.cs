@@ -135,6 +135,52 @@ public class ChunkBufferAssemblerTests
     }
 
     /// <summary>
+    /// Дубликат одночанкового сообщения с RequiresAcks повторяет ACK, чтобы отправитель не завис
+    /// </summary>
+    [Fact]
+    public async Task DuplicateSingleChunkWithAcksShouldResendAck()
+    {
+        // Arrange
+        var streamId = Guid.NewGuid();
+        var chunk = BuildChunk(streamId,
+            StreamChunkFlags.Start | StreamChunkFlags.Mid | StreamChunkFlags.End | StreamChunkFlags.RequiresAcks,
+            0, 1, [1, 2, 3]);
+
+        // Act
+        await assembler.ProcessStreamChunk(chunk, roomId, connectionId, null, CancellationToken.None);
+        await assembler.ProcessStreamChunk(chunk, roomId, connectionId, null, CancellationToken.None);
+
+        // Assert
+        assembled.Should().HaveCount(1);
+        transport.SentDatagrams.Should().HaveCount(2);
+        transport.SentDatagrams.Should().OnlyContain(a =>
+            a.Data[0] == (byte)HeaderMessageType.Ack && a.RecipientConnectionId == connectionId);
+        transport.SentDatagrams.Select(a => BitConverter.ToInt32(a.Data, 17)).Should().Equal(0, 0);
+    }
+
+    /// <summary>
+    /// Дубликат финального чанка после сборки повторяет ACK и не доставляет сообщение повторно
+    /// </summary>
+    [Fact]
+    public async Task DuplicateFinalChunkAfterAssemblyShouldResendAck()
+    {
+        // Arrange
+        var streamId = Guid.NewGuid();
+        var chunk0 = BuildChunk(streamId, StreamChunkFlags.Start | StreamChunkFlags.Mid | StreamChunkFlags.RequiresAcks, 0, 2, [1]);
+        var chunk1 = BuildChunk(streamId, StreamChunkFlags.Mid | StreamChunkFlags.End | StreamChunkFlags.RequiresAcks, 1, 2, [2]);
+
+        // Act
+        await assembler.ProcessStreamChunk(chunk0, roomId, connectionId, null, CancellationToken.None);
+        await assembler.ProcessStreamChunk(chunk1, roomId, connectionId, null, CancellationToken.None);
+        await assembler.ProcessStreamChunk(chunk1, roomId, connectionId, null, CancellationToken.None);
+
+        // Assert
+        assembled.Should().HaveCount(1);
+        transport.SentDatagrams.Should().HaveCount(3);
+        transport.SentDatagrams.Select(a => BitConverter.ToInt32(a.Data, 17)).Should().Equal(0, 1, 1);
+    }
+
+    /// <summary>
     /// Чанки от другого соединения для того же потока игнорируются
     /// </summary>
     [Fact]

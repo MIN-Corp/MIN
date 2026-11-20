@@ -21,7 +21,7 @@ public sealed class IdentityService : IIdentityService, IDisposable
     /// </summary>
     public IdentityService(IAppDataProvider appDataProvider, ILoggerProvider logger)
     {
-        identityFileStore = new(appDataProvider, logger);
+        identityFileStore = new IdentityFileStore(appDataProvider, logger);
     }
 
     IParticipantData IIdentityService.SelfParticipant => ResolveParticipant();
@@ -53,15 +53,17 @@ public sealed class IdentityService : IIdentityService, IDisposable
 
             currentParticipant = identityFileStore.LoadParticipant();
 
-            if (currentParticipant == null)
+            if (currentParticipant != null)
             {
-                currentParticipant = new ParticipantInfo
-                {
-                    Id = Guid.NewGuid()
-                };
-
-                identityFileStore.SaveParticipant(currentParticipant);
+                return currentParticipant;
             }
+
+            currentParticipant = new ParticipantInfo
+            {
+                Id = Guid.NewGuid()
+            };
+
+            identityFileStore.SaveParticipant(currentParticipant);
 
             return currentParticipant;
         }

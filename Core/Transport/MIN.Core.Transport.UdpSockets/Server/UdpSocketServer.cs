@@ -64,11 +64,15 @@ internal sealed class UdpSocketServer : IAsyncDisposable
             while (!cts!.Token.IsCancellationRequested)
             {
                 var result = await listener.ReceiveAsync(cts.Token);
+                Guid connectionId;
+                byte[] payload;
+                UdpSocketConnection connection;
+
                 try
                 {
-                    var (connectionId, payload) = UdpMessage.Parse(result.Buffer);
+                    (connectionId, payload) = UdpMessage.Parse(result.Buffer);
 
-                    var connection = connections.GetOrAdd(connectionId, _ =>
+                    connection = connections.GetOrAdd(connectionId, _ =>
                     {
                         var conn = new UdpSocketConnection(connectionId, result.RemoteEndPoint, listener);
                         logger.Log($"Клиент подключился (udp): {result.RemoteEndPoint}");
@@ -77,15 +81,23 @@ internal sealed class UdpSocketServer : IAsyncDisposable
 
                     // На NAT адрес источника — единственный, куда реально можно слать
                     connection.UpdateRemoteEndPoint(result.RemoteEndPoint);
-
-                    if (payload.Length > 0)
-                    {
-                        OnMessageReceived?.Invoke(this, (connection, payload));
-                    }
                 }
                 catch (Exception ex)
                 {
                     logger.Log($"Пропускаю некорректную udp датаграмму от {result.RemoteEndPoint}: {ex.Message}", LogLevel.Warning);
+                    continue;
+                }
+
+                if (payload.Length > 0)
+                {
+                    try
+                    {
+                        OnMessageReceived?.Invoke(this, (connection, payload));
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Log($"Ошибка в обработчике полученного udp-сообщения от {result.RemoteEndPoint}: {ex.Message}", LogLevel.Error);
+                    }
                 }
             }
         }

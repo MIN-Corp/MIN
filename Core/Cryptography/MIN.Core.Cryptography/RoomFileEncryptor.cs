@@ -77,6 +77,7 @@ public class RoomFileEncryptor : IRoomFileEncryptor, IDisposable
         catch (AuthenticationTagMismatchException ex)
         {
             logger.Log($"Corrupted data: {ex.Message}", LogLevel.Error);
+            throw;
         }
         return plaintext;
     }

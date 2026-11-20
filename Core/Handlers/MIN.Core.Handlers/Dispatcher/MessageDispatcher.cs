@@ -65,12 +65,20 @@ public sealed class MessageDispatcher : IMessageDispatcher
         {
             try
             {
-                if (broadcastExcludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
+                var excludeIds = broadcastExcludeIds as Guid[] ?? broadcastExcludeIds?.ToArray();
+                if (excludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
                 {
                     if (!routingDone)
                     {
-                        await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
-                        routingDone = true;
+                        try
+                        {
+                            await HandleServerMessageRouting(message, context, excludeIds).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            // Ровно одна попытка маршрутизации на сообщение, даже если она упала
+                            routingDone = true;
+                        }
                     }
 
                     continue;
@@ -110,7 +118,7 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     result.Response.SenderId = context.SelfId;
                     if (context.ConnectionId == CoreRegistryConstants.LocalConnectionId)
                     {
-                        await DispatchAsync(result.Response, context, broadcastExcludeIds).ConfigureAwait(false);
+                        await DispatchAsync(result.Response, context, excludeIds).ConfigureAwait(false);
                     }
                     else
                     {
@@ -167,8 +175,15 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
                 if (context.Role == Role.Host && !routingDone)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
-                    routingDone = true;
+                    try
+                    {
+                        await HandleServerMessageRouting(message, context, excludeIds).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        // Ровно одна попытка маршрутизации на сообщение, даже если она упала
+                        routingDone = true;
+                    }
                 }
             }
             catch (Exception ex)
@@ -192,16 +207,17 @@ public sealed class MessageDispatcher : IMessageDispatcher
                 excludeConnectionIds.Add(senderConnectionId);
             }
 
+            var participantsIds = roomParticipantsIds as Guid[] ?? roomParticipantsIds.ToArray();
             excludeConnectionIds.AddRange(broadcastExcludeIds?
-                .Where(roomParticipantsIds.Contains)
-                .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
-                .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId)
-                ?? []);
+                                              .Where(participantsIds.Contains)
+                                              .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
+                                              .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId)
+                                          ?? []);
 
             if (message is IWithinSubRoom withinSubRoomMessage)
             {
                 var subRoomParticipants = context.RoomContext.SubRooms.GetParticipantIds(withinSubRoomMessage.SubRoomId);
-                excludeConnectionIds.AddRange(roomParticipantsIds.Except(subRoomParticipants)
+                excludeConnectionIds.AddRange(participantsIds.Except(subRoomParticipants)
                     .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
                     .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId));
             }

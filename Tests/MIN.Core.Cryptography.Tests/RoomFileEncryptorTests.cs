@@ -112,10 +112,10 @@ public class RoomFileEncryptorTests
     }
 
     /// <summary>
-    /// Повреждённые данные: текущее поведение — нулевой plaintext и ошибка в логе
+    /// Повреждённые данные отклоняются с AuthenticationTagMismatchException и ошибкой в логе
     /// </summary>
     [Fact]
-    public void DecryptTamperedShouldReturnZerosAndLogError()
+    public void DecryptTamperedShouldThrowAndLogError()
     {
         // Arrange
         using var paths = new TestIdentityDataPathProvider();
@@ -125,10 +125,10 @@ public class RoomFileEncryptorTests
         protectedBytes[^1] ^= 0xFF;
 
         // Act
-        var decrypted = encryptor.DecryptMessage(protectedBytes);
+        var act = () => encryptor.DecryptMessage(protectedBytes);
 
         // Assert
-        decrypted.Should().OnlyContain(b => b == 0);
+        act.Should().Throw<AuthenticationTagMismatchException>();
         logger.HasErrors.Should().BeTrue();
         ((IDisposable)encryptor).Dispose();
     }
@@ -157,10 +157,10 @@ public class RoomFileEncryptorTests
     }
 
     /// <summary>
-    /// Другой мастер-ключ не расшифровывает данные (нулевой результат)
+    /// Другой мастер-ключ не расшифровывает данные (повреждение тега)
     /// </summary>
     [Fact]
-    public void DifferentMasterKeyShouldNotDecrypt()
+    public void DifferentMasterKeyShouldThrow()
     {
         // Arrange
         using var firstPaths = new TestIdentityDataPathProvider();
@@ -171,10 +171,10 @@ public class RoomFileEncryptorTests
         var protectedBytes = first.Protect("чужие данные"u8.ToArray());
 
         // Act
-        var decrypted = second.DecryptMessage(protectedBytes);
+        var act = () => second.DecryptMessage(protectedBytes);
 
         // Assert
-        decrypted.Should().OnlyContain(b => b == 0);
+        act.Should().Throw<AuthenticationTagMismatchException>();
         ((IDisposable)first).Dispose();
         ((IDisposable)second).Dispose();
     }

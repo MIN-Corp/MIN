@@ -21,7 +21,7 @@ public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable, IA
     /// <summary>
     /// Идентификатор подкомнаты
     /// </summary>
-    public int SubRoomId { get; set; }
+    public int SubRoomId { get; init; }
 
     /// <summary>
     /// Текущее количество участников в ней
@@ -31,23 +31,23 @@ public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable, IA
     /// <summary>
     /// Выбранная сессия
     /// </summary>
-    public Session Session { get; set; } = null!;
+    public Session Session { get; init; } = null!;
 
     /// <summary>
     /// Обложка сессии
     /// </summary>
     /// <remarks>
-    /// null, если её нет
+    /// Null, если её нет
     /// </remarks>
-    public byte[]? ThumbnailData { get; set; }
+    public byte[]? ThumbnailData { get; init; }
 
     /// <summary>
     /// Отправитель сообщения
     /// </summary>
-    public ParticipantInfo Sender { get; set; } = new();
+    public ParticipantInfo Sender { get; init; } = new();
 
     /// <inheritdoc />
-    public string SenderName { get => Sender.Name; set => (Sender ??= new ParticipantInfo()).Name = value; }
+    public string SenderName { get => Sender.Name; set => Sender.Name = value; }
 
     string IDescribable.GetDescription() => $"{Sender.Name} запустил \"{Session.Name}\"";
 

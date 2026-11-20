@@ -116,7 +116,8 @@ public sealed class ClientHandshakeService : IClientHandshake
                 }
 
                 var delaySeconds = attempt + 1;
-                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cts.Token);
+                // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
             }
 
             logger.Log($"Protocol client: все попытки истекли, соединение {connectionId} не отвечает");

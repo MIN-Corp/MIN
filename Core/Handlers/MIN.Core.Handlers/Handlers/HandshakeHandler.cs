@@ -42,7 +42,7 @@ internal sealed class HandshakeHandler : BaseHandler
         {
             HandshakeMessage handshakeMessage => await HandleHandshake(handshakeMessage, context),
             HandshakeAckMessage handshakeAckMessage => await HandleHandshakeAck(handshakeAckMessage, context),
-            PublicKeyRequestMessage => await HandleKeyRequest(context),
+            PublicKeyRequestMessage => await HandleKeyRequest(),
             PublicKeyResponseMessage keyResponse => await HandleKeyResponse(keyResponse, context),
             _ => throw new HandlerTypeMismatch(this, message),
         };
@@ -110,7 +110,7 @@ internal sealed class HandshakeHandler : BaseHandler
         return BuildFastChannelResponse(context);
     }
 
-    private async Task<HandlerResult> HandleKeyRequest(MessageContext context)
+    private async Task<HandlerResult> HandleKeyRequest()
     {
         return HandlerResult.WithResponse(new PublicKeyResponseMessage()
         {

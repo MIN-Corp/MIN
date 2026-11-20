@@ -19,6 +19,20 @@ public static class TestSerializer
     private readonly static Lazy<IReadOnlyList<IMessage>> allMessages = new(CollectAllMessages);
 
     /// <summary>
+    /// Сборки-якори, в которых ищутся сообщения
+    /// </summary>
+    public static IReadOnlyList<System.Reflection.Assembly> AnchorAssemblies { get; } =
+    [
+        typeof(ICoreMessagingAnchor).Assembly,
+        typeof(IChatMessagingAnchor).Assembly,
+        typeof(IDiscoveryMessagingAnchor).Assembly,
+        typeof(IFileTransferMessagingAnchor).Assembly,
+        typeof(ISessionsMessagingAnchor).Assembly,
+        typeof(IVoiceMessagingAnchor).Assembly,
+        typeof(IScreenDemoMessagingAnchor).Assembly,
+    ];
+
+    /// <summary>
     /// Экземпляры всех типов сообщений из всех модулей (по якорям сборок)
     /// </summary>
     public static IReadOnlyList<IMessage> AllMessages => allMessages.Value;
@@ -31,18 +45,7 @@ public static class TestSerializer
 
     private static List<IMessage> CollectAllMessages()
     {
-        var anchors = new[]
-        {
-            typeof(ICoreMessagingAnchor).Assembly,
-            typeof(IChatMessagingAnchor).Assembly,
-            typeof(IDiscoveryMessagingAnchor).Assembly,
-            typeof(IFileTransferMessagingAnchor).Assembly,
-            typeof(ISessionsMessagingAnchor).Assembly,
-            typeof(IVoiceMessagingAnchor).Assembly,
-            typeof(IScreenDemoMessagingAnchor).Assembly,
-        };
-
-        return anchors
+        return AnchorAssemblies
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => typeof(IMessage).IsAssignableFrom(type)
                 && type.IsClass
