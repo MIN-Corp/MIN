@@ -54,7 +54,7 @@ public interface IParticipantStore
     /// <summary>
     /// Пометить всех участников как оффлайн для комнаты
     /// </summary>
-    void MarkAllParticipansOffline(Guid? exceptId = null);
+    void MarkAllParticipantsOffline(Guid? exceptId = null);
 
     /// <summary>
     /// Очистить участников для комнаты

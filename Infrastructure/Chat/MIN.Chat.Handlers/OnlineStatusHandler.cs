@@ -28,22 +28,24 @@ internal sealed class OnlineStatusHandler : BaseHandler
 
         var onlineStatusChangedMessage = (OnlineStatusChangedMessage)message;
 
-        if (context.RoomContext.Participants.TryGetParticipantById(message.SenderId, out var participant))
+        if (!context.RoomContext.Participants.TryGetParticipantById(message.SenderId, out var participant))
         {
-            var status = onlineStatusChangedMessage.Status;
-            participant!.CurrentStatus = status;
-            if (status == OnlineStatus.Offline)
-            {
-                participant.LastSeenOnline = DateTime.Now;
-            }
+            LogWarning($"Статус от неизвестного участника {message.SenderId} — игнорирую");
+            return Task.FromResult(HandlerResult.Success());
+        }
+
+        var status = onlineStatusChangedMessage.Status;
+        participant!.CurrentStatus = status;
+        if (status == OnlineStatus.Offline)
+        {
+            participant.LastSeenOnline = DateTime.Now;
         }
 
         return Task.FromResult(HandlerResult.WithEvent(new OnlineStatusChangedEvent()
         {
             RoomId = context.RoomContext.RoomId,
             Status = onlineStatusChangedMessage.Status,
-            Participant = participant?.ToParticipantInfo()
-                ?? context.RoomContext.Participants.GetParticipantById(message.SenderId).ToParticipantInfo(),
+            Participant = participant.ToParticipantInfo(),
         }));
     }
 }

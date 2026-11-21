@@ -32,7 +32,7 @@ public class HeaderManager : IHeaderManager
 
     /// <inheritdoc />
     public StreamChunkFlags GetStreamFlags(ReadOnlySpan<byte> data)
-        => data.IsEmpty ? StreamChunkFlags.None : (StreamChunkFlags)(data[0] & 0xFF);
+        => data.IsEmpty ? StreamChunkFlags.None : (StreamChunkFlags)(data[0] & ~(byte)HeaderMessageType.StreamChunk);
 
     byte[] IHeaderManager.BuildStreamChunkHeader(StreamChunkFlags flags, Guid streamId, int index, int total)
     {

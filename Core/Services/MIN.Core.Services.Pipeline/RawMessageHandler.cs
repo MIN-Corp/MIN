@@ -52,6 +52,11 @@ public sealed class RawMessageHandler : IRawMessageHandler
 
     ReadOnlyMemory<byte>? IRawMessageHandler.TryDecrypt(RoomRawMessageReceivedEventArgs e)
     {
+        if (e.Data.Length == 0)
+        {
+            return null;
+        }
+
         if (!headerManager.IsEncrypted(e.Data) || e.ConnectionId == CoreRegistryConstants.LocalConnectionId)
         {
             return e.Data.AsMemory(1);

@@ -507,7 +507,7 @@ To use direct connection:
 | Author | Role | Contribution |
 |--------|------|--------------|
 | [**CasCadeVR**](https://github.com/CasCadeVR) | Founder | Lead developer, architecture creator |
-| [**Karo4a**](https://github.com/Karo4a) | Inspiration | Ideas and inspiration |
+| [**Karo4a**](https://github.com/Karo4a) | Inspiration, Tester | Ideas and inspiration, smoke and unit testing |
 
 ---
 

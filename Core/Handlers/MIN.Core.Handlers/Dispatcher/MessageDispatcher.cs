@@ -60,13 +60,27 @@ public sealed class MessageDispatcher : IMessageDispatcher
 
         roomPersistenceService.MarkDirty(context.RoomContext.RoomId);
 
+        var routingDone = false;
         foreach (var handler in applicableHandlers)
         {
             try
             {
-                if (broadcastExcludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
+                var excludeIds = broadcastExcludeIds as Guid[] ?? broadcastExcludeIds?.ToArray();
+                if (excludeIds?.Contains(context.SelfId) == true && context.Role == Role.Host)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
+                    if (!routingDone)
+                    {
+                        try
+                        {
+                            await HandleServerMessageRouting(message, context, excludeIds).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            // Ровно одна попытка маршрутизации на сообщение, даже если она упала
+                            routingDone = true;
+                        }
+                    }
+
                     continue;
                 }
 
@@ -90,6 +104,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
                         await PublishErrorEvent(result.ErrorMessage ?? "Неизвестная ошибка", context,
                             needToDisconnect: context.Role == Role.Client && result.CriticalErrorForConnection, result.CriticalErrorForDestroy).ConfigureAwait(false);
                     }
+
+                    if (result.StopPropagation)
+                    {
+                        break;
+                    }
+
                     continue;
                 }
 
@@ -98,7 +118,7 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     result.Response.SenderId = context.SelfId;
                     if (context.ConnectionId == CoreRegistryConstants.LocalConnectionId)
                     {
-                        await DispatchAsync(result.Response, context, broadcastExcludeIds).ConfigureAwait(false);
+                        await DispatchAsync(result.Response, context, excludeIds).ConfigureAwait(false);
                     }
                     else
                     {
@@ -139,6 +159,12 @@ public sealed class MessageDispatcher : IMessageDispatcher
                             logger.Log($"Не удалось доставить ошибку «{result.ErrorMessage}»: {ex.Message}", LogLevel.Warning);
                         }
                     }
+
+                    if (result.StopPropagation)
+                    {
+                        break;
+                    }
+
                     continue;
                 }
 
@@ -147,9 +173,17 @@ public sealed class MessageDispatcher : IMessageDispatcher
                     break;
                 }
 
-                if (context.Role == Role.Host)
+                if (context.Role == Role.Host && !routingDone)
                 {
-                    await HandleServerMessageRouting(message, context, broadcastExcludeIds).ConfigureAwait(false);
+                    try
+                    {
+                        await HandleServerMessageRouting(message, context, excludeIds).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        // Ровно одна попытка маршрутизации на сообщение, даже если она упала
+                        routingDone = true;
+                    }
                 }
             }
             catch (Exception ex)
@@ -173,16 +207,17 @@ public sealed class MessageDispatcher : IMessageDispatcher
                 excludeConnectionIds.Add(senderConnectionId);
             }
 
+            var participantsIds = roomParticipantsIds as Guid[] ?? roomParticipantsIds.ToArray();
             excludeConnectionIds.AddRange(broadcastExcludeIds?
-                .Where(roomParticipantsIds.Contains)
-                .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
-                .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId)
-                ?? []);
+                                              .Where(participantsIds.Contains)
+                                              .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
+                                              .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId)
+                                          ?? []);
 
             if (message is IWithinSubRoom withinSubRoomMessage)
             {
                 var subRoomParticipants = context.RoomContext.SubRooms.GetParticipantIds(withinSubRoomMessage.SubRoomId);
-                excludeConnectionIds.AddRange(roomParticipantsIds.Except(subRoomParticipants)
+                excludeConnectionIds.AddRange(participantsIds.Except(subRoomParticipants)
                     .Where(id => context.RoomContext.Connections.TryGetConnectionIdFromParticipantId(id, out _))
                     .Select(context.RoomContext.Connections.GetConnectionIdFromParticipantId));
             }

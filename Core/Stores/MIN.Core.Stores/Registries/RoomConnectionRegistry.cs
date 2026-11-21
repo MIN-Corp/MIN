@@ -16,7 +16,7 @@ public class RoomConnectionRegistry : IRoomConnectionRegistry
     Role IRoomConnectionRegistry.GetRole(Guid roomId)
         => hostedRooms.ContainsKey(roomId) ? Role.Host
             : connectedRooms.ContainsKey(roomId) ? Role.Client
-            : throw new RoomNotRegistredException(roomId);
+            : throw new RoomNotRegisteredException(roomId);
 
     bool IRoomConnectionRegistry.IsHosting(Guid roomId) => hostedRooms.ContainsKey(roomId);
     bool IRoomConnectionRegistry.IsConnected(Guid roomId) => connectedRooms.ContainsKey(roomId);
@@ -56,12 +56,12 @@ public class RoomConnectionRegistry : IRoomConnectionRegistry
             return currentConnectionId.Value;
         }
 
-        throw new RoomNotRegistredException(roomId);
+        throw new RoomNotRegisteredException(roomId);
     }
 
     Guid IRoomConnectionRegistry.GetRoomIdByServerConnectionId(Guid serverConnectionId)
         => roomsByServerConnection.TryGetValue(serverConnectionId, out var roomId)
-            ? roomId : throw new ConnectionNotRegistredException(serverConnectionId);
+            ? roomId : throw new ConnectionNotRegisteredException(serverConnectionId);
 
     bool IRoomConnectionRegistry.TryGetServerConnectionIdByRoomId(Guid? roomId, out Guid connectionId)
     {
@@ -97,10 +97,10 @@ public class RoomConnectionRegistry : IRoomConnectionRegistry
     }
 
     Guid IRoomConnectionRegistry.GetClientConnectionIdByRoomId(Guid roomId)
-        => connectedRooms.TryGetValue(roomId, out var id) ? id : throw new RoomNotRegistredException(roomId);
+        => connectedRooms.TryGetValue(roomId, out var id) ? id : throw new RoomNotRegisteredException(roomId);
 
     Guid IRoomConnectionRegistry.GetRoomIdByClientConnectionId(Guid connectionId)
-        => roomsByClientConnection.TryGetValue(connectionId, out var roomId) ? roomId : throw new ConnectionNotRegistredException(connectionId);
+        => roomsByClientConnection.TryGetValue(connectionId, out var roomId) ? roomId : throw new ConnectionNotRegisteredException(connectionId);
 
     bool IRoomConnectionRegistry.TryGetClientConnectionIdByRoomId(Guid? roomId, out Guid connectionId)
         => connectedRooms.TryGetValue(roomId ?? Guid.Empty, out connectionId);

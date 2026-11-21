@@ -23,7 +23,7 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     /// <summary>
     /// Отправитель сообщения
     /// </summary>
-    public ParticipantInfo Sender { get; set; } = null!;
+    public ParticipantInfo Sender { get; init; } = new();
 
     /// <inheritdoc />
     public string SenderName { get => Sender.Name; set => Sender.Name = value; }
@@ -41,13 +41,13 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     /// <summary>
     /// Размер файла
     /// </summary>
-    public long FileSize { get; set; }
+    public long FileSize { get; init; }
 
     /// <summary>
     /// Путь к файлу
     /// </summary>
     /// <remarks>
-    /// null, если получен с хоста и не имеется локально
+    /// Null, если получен с хоста и не имеется локально
     /// </remarks>
     public string? FilePath { get; set; }
 
@@ -55,7 +55,7 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
     /// Можно ли отправлять дальше
     /// </summary>
     /// <remarks>
-    /// true - если он загружен на сервер и может быть передан дальше
+    /// True - если он загружен на сервер и может быть передан дальше
     /// false - если ещё ожидается его загрузка и даже сам хост не получает информацию о нём
     /// </remarks>
     public bool AsDownloaded { get; set; }
@@ -76,7 +76,7 @@ public class FileMetadataMessage : BaseContentMessage, IDescribable, IReplyable,
         };
 
     /// <summary>
-    /// Инициализирует новый экзмемпляр <see cref="FileMetadataMessage"/>
+    /// Инициализирует новый экземпляр <see cref="FileMetadataMessage"/>
     /// </summary>
     public FileMetadataMessage() { }
 

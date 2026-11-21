@@ -90,6 +90,11 @@ public class MessageEncryptor : IMessageEncryptor, IDisposable
 
     void IMessageEncryptor.EncryptMessageInPlace(Span<byte> ivPlaintextTag, Guid partnerId)
     {
+        if (ivPlaintextTag.Length < CryptographyConstants.IvSize + CryptographyConstants.AuthTagSize)
+        {
+            throw new InvalidDataException($"Invalid buffer length: {ivPlaintextTag.Length} < {CryptographyConstants.IvSize + CryptographyConstants.AuthTagSize}");
+        }
+
         var key = GetSessionKey(partnerId);
 
         var iv = ivPlaintextTag[..CryptographyConstants.IvSize];

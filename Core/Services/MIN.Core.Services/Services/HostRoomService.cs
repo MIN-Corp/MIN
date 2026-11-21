@@ -322,7 +322,7 @@ internal sealed class HostRoomService
                 }, roomId, hostParticipantId, CancellationToken.None);
             }
         }
-        catch (ParticipantNotRegistredException ex)
+        catch (ParticipantNotRegisteredException ex)
         {
             logger.Log($"Не удалось кикнуть участника {ex.Message}", LogLevel.Warning);
         }
@@ -372,7 +372,7 @@ internal sealed class HostRoomService
         }
 
         var context = roomFactory.GetOrCreateContext(roomId);
-        context.Participants.MarkAllParticipansOffline(exceptId: identityService.SelfParticipant.Id);
+        context.Participants.MarkAllParticipantsOffline(exceptId: identityService.SelfParticipant.Id);
         var toDisconnect = context.Connections.UnregisterAllExceptLocal();
         foreach (var participantConnectionId in toDisconnect)
         {

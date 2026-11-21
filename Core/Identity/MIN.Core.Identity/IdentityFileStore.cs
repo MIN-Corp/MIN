@@ -19,7 +19,6 @@ public sealed class IdentityFileStore : IDisposable
     private readonly string identityPath;
     private readonly int appSlot;
     private readonly ILoggerProvider logger;
-    private readonly JsonSerializerOptions jsonOptions;
     private readonly IdentityAppInstanceResolver appInstanceResolver;
     private readonly SchemaFileStore schemaFileStore;
     private readonly SemaphoreSlim localKeyLock = new(1, 1);
@@ -32,7 +31,7 @@ public sealed class IdentityFileStore : IDisposable
     {
         identityPath = Path.Combine(appDataProvider.SharedDirectory, "identity", "uuid.json");
 
-        jsonOptions = new JsonSerializerOptions
+        var jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -40,7 +39,7 @@ public sealed class IdentityFileStore : IDisposable
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-        schemaFileStore = new(1, jsonOptions, logger);
+        schemaFileStore = new SchemaFileStore(1, jsonOptions, logger);
 
         this.logger = logger;
         appInstanceResolver = new IdentityAppInstanceResolver();
@@ -71,17 +70,14 @@ public sealed class IdentityFileStore : IDisposable
                 return null;
             }
 
-            if (!VerifyHash(foundEntry.Id, foundEntry.Hash))
+            if (VerifyHash(foundEntry.Id, foundEntry.Hash))
             {
-                logger.Log($"Хеш участника в слоте {appSlot} не совпал — возможно ручное изменение. id пересоздан.", LogLevel.Warning);
-                return null;
+                return new ParticipantInfo { Id = foundEntry.Id, Name = foundEntry.Name };
             }
 
-            return new ParticipantInfo
-            {
-                Id = foundEntry.Id,
-                Name = foundEntry.Name
-            };
+            logger.Log($"Хеш участника в слоте {appSlot} не совпал — возможно ручное изменение. id пересоздан.", LogLevel.Warning);
+            return null;
+
         }
         finally
         {
@@ -135,44 +131,10 @@ public sealed class IdentityFileStore : IDisposable
     /// <summary>
     /// Сохранить данные участника асинхронно
     /// </summary>
-    public async Task SaveParticipantAsync(IParticipantData participant)
-    {
-        await localKeyLock.WaitAsync();
-        fileMutex.WaitOne();
-        try
-        {
-            var entries = await schemaFileStore.LoadOrCreateAsync<List<IdentityEntry>>(identityPath, () => []);
-
-            var entry = entries.FirstOrDefault(x => x.Slot == appSlot);
-
-            var wasNull = false;
-
-            if (entry == null)
-            {
-                wasNull = true;
-                entry = new IdentityEntry()
-                {
-                    Slot = appSlot,
-                };
-            }
-
-            entry.Id = participant.Id;
-            entry.Name = participant.Name;
-            entry.Hash = ComputeHash(entry.Id);
-
-            if (wasNull)
-            {
-                entries.Add(entry);
-            }
-
-            await schemaFileStore.SaveAsync(identityPath, entries);
-        }
-        finally
-        {
-            localKeyLock.Release();
-            fileMutex.ReleaseMutex();
-        }
-    }
+    public Task SaveParticipantAsync(IParticipantData participant)
+        // Mutex имеет thread affinity: после await продолжение может уйти на другой поток,
+        // и ReleaseMutex бросит ApplicationException. Выполняем синхронную версию целиком на одном потоке.
+        => Task.Run(() => SaveParticipant(participant));
 
     private static string ComputeHash(Guid id)
         => Convert.ToBase64String(HMACSHA256.HashData(IdentityConstants.HashSecret, id.ToByteArray()));

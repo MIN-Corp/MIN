@@ -15,5 +15,7 @@ public interface IRoomFileEncryptor
     /// Раскодировать файл
     /// </summary>
     /// <param name="encryptedData">Информация для расшифровки</param>
+    /// <exception cref="System.IO.InvalidDataException">Данные короче IV + тега аутентичности</exception>
+    /// <exception cref="System.Security.Cryptography.AuthenticationTagMismatchException">Данные повреждены или расшифрованы чужим ключом</exception>
     byte[] DecryptMessage(byte[] encryptedData);
 }

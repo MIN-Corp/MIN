@@ -66,7 +66,7 @@ public class NetworkErrorHandler : INetworkErrorHandler
             Reason = message,
             RecipientId = recipientId,
         }, roomId, selfId, CancellationToken.None,
-        broadcastExcludeIds: [selfId]); // Оно не broadcast, но сервер попытается его захендлить, поэтому фильтруем
+        broadcastExcludeIds: [selfId]); // Оно не broadcast, но сервер попытается его обработать, поэтому фильтруем
 
         var timer = new Timer(OnParticipantRejectAckTimeout,
             new ParticipantContext(roomId, recipientId),
@@ -148,21 +148,23 @@ public class NetworkErrorHandler : INetworkErrorHandler
 
     private bool ResetParticipantRejectAckTimer(Guid participantId)
     {
-        if (rejectParticipantsAckTimers.TryRemove(participantId, out var existingTimer))
+        if (!rejectParticipantsAckTimers.TryRemove(participantId, out var existingTimer))
         {
-            existingTimer.Dispose();
-            return true;
+            return false;
         }
-        return false;
+
+        existingTimer.Dispose();
+        return true;
     }
 
-    private bool ResetConnectionRejectAckTimer(Guid participantId)
+    private bool ResetConnectionRejectAckTimer(Guid connectionId)
     {
-        if (rejectParticipantsAckTimers.TryRemove(participantId, out var existingTimer))
+        if (!rejectConnectionsAckTimers.TryRemove(connectionId, out var existingTimer))
         {
-            existingTimer.Dispose();
-            return true;
+            return false;
         }
-        return false;
+
+        existingTimer.Dispose();
+        return true;
     }
 }

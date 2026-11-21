@@ -1,4 +1,4 @@
-using MIN.Core.Headers.Contracts.Enums;
+﻿using MIN.Core.Headers.Contracts.Enums;
 using MIN.Core.Streaming.Contracts.Constants;
 
 namespace MIN.Core.Streaming.Contracts.Models;
@@ -150,6 +150,12 @@ public sealed class MessageStream : IDisposable
             {
                 throw new InvalidOperationException(
                     $"Поток {Id} завершён с неверным индексом. Ожидался {ExpectedChunks - 1}, получен {chunk.Index}");
+            }
+
+            if (GottenChunks != ExpectedChunks)
+            {
+                throw new InvalidDataException(
+                    $"Поток {Id} завершён без всех пакетов: получено {GottenChunks} из {ExpectedChunks}");
             }
 
             IsComplete = true;

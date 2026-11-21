@@ -21,12 +21,12 @@ public sealed class VoiceCallStartedMessage : BaseUpdatebleMessage, IDescribable
     /// <summary>
     /// Идентификатор подкомнаты
     /// </summary>
-    public int SubRoomId { get; set; }
+    public int SubRoomId { get; init; }
 
     /// <summary>
     /// Отправитель сообщения
     /// </summary>
-    public ParticipantInfo Sender { get; set; } = null!;
+    public ParticipantInfo Sender { get; init; } = new();
 
     /// <inheritdoc />
     public string SenderName { get => Sender.Name; set => Sender.Name = value; }
