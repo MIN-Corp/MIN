@@ -119,6 +119,47 @@ public class RoomSnapshotMapperTests : IDisposable
         registry.IsHosting(room.Id).Should().BeFalse();
     }
 
+    /// <summary>
+    /// Снапшот сохраняет хеш пароля из локальных настроек
+    /// </summary>
+    [Fact]
+    public void BuildSnapshotShouldPreservePasswordHash()
+    {
+        // Arrange
+        var room = new Room
+        {
+            Id = Guid.NewGuid(), Name = "Комната", HostParticipant = new ParticipantInfo { Id = Guid.NewGuid() }, LocalRoomSettings =
+            {
+                PasswordHash = "600000:AbCdEf=="
+            }
+        };
+        roomStore.Register(room);
+
+        // Act
+        var snapshot = mapper.BuildSnapshot(room.Id);
+
+        // Assert
+        snapshot!.Room.LocalRoomSettings.PasswordHash.Should().Be("600000:AbCdEf==");
+    }
+
+    /// <summary>
+    /// Снапшот сохраняет признак защищённости комнаты паролем
+    /// </summary>
+    [Fact]
+    public void BuildSnapshotShouldPreserveHasPassword()
+    {
+        // Arrange
+        var room = new Room { Id = Guid.NewGuid(), Name = "Комната", HostParticipant = new ParticipantInfo { Id = Guid.NewGuid() } };
+        room.HasPassword = true;
+        roomStore.Register(room);
+
+        // Act
+        var snapshot = mapper.BuildSnapshot(room.Id);
+
+        // Assert
+        snapshot!.Room.HasPassword.Should().BeTrue();
+    }
+
     /// <inheritdoc />
     public void Dispose() => rooms.Dispose();
 }

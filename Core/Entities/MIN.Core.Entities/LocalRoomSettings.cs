@@ -38,4 +38,12 @@ public record LocalRoomSettings
     /// Переживают rehost: хост заново подмешивает их после SetUpEndpoints
     /// </remarks>
     public List<IEndpoint> CustomEndpoints { get; set; } = [];
+
+    /// <summary>
+    /// Хеш-верификатор пароля комнаты
+    /// </summary>
+    /// <remarks>
+    /// Null - если пароль не установлен. Переживает rehost и сохраняется в файл комнаты
+    /// </remarks>
+    public string? PasswordHash { get; set; }
 }

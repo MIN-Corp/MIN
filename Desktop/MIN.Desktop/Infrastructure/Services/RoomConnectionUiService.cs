@@ -38,7 +38,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
     {
         try
         {
-            var room = await featureCollection.Core.Lifecycle.StartHostingAsync(args.RoomInfo, args.NetworkOptions, cancellationToken);
+            var room = await featureCollection.Core.Lifecycle.StartHostingAsync(args.RoomInfo, args.NetworkOptions, password: null, cancellationToken);
             await featureCollection.Chat.ChatRoomService.ManageDiscoveryOutOfSettings(args.RoomInfo,
                 room.ConnectionAddresses, args.NetworkOptions, cancellationToken: cancellationToken);
 
@@ -129,7 +129,7 @@ internal class RoomConnectionUiService : IRoomConnectionUiService
                 }
             }
 
-            connectionResult = await featureCollection.Core.Lifecycle.ConnectAsync(args.Endpoint, args.ExpectedRoomId, args.Cts.Token);
+            connectionResult = await featureCollection.Core.Lifecycle.ConnectAsync(args.Endpoint, args.ExpectedRoomId, password: null, args.Cts.Token);
 
             if (loadingVm != null)
             {

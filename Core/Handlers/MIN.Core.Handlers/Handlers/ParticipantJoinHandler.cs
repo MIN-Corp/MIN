@@ -1,4 +1,5 @@
-﻿using MIN.Core.Entities;
+﻿using MIN.Core.Cryptography.Contracts.Interfaces;
+using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
@@ -19,15 +20,18 @@ namespace MIN.Core.Handlers.Handlers;
 internal sealed class ParticipantJoinHandler : BaseHandler
 {
     private readonly IRoomStore roomStore;
+    private readonly IPasswordHasher passwordHasher;
     private readonly IIdentityService identityService;
     private readonly IEventBus eventBus;
 
     public ParticipantJoinHandler(IRoomStore roomStore,
+        IPasswordHasher passwordHasher,
         IIdentityService identityService,
         IEventBus eventBus,
         ILoggerProvider logger) : base(logger)
     {
         this.roomStore = roomStore;
+        this.passwordHasher = passwordHasher;
         this.identityService = identityService;
         this.eventBus = eventBus;
     }
@@ -43,6 +47,12 @@ internal sealed class ParticipantJoinHandler : BaseHandler
         {
             case RoomJoinRequestMessage roomJoinRequestMessage:
                 var room = roomStore.GetRoom(context.RoomContext.RoomId);
+
+                if (room.LocalRoomSettings.PasswordHash is { } expectedHash
+                    && !passwordHasher.VerifyVerifier(roomJoinRequestMessage.PasswordHash, expectedHash))
+                {
+                    return HandlerResult.WithErrorHandled("Неверный пароль комнаты.", critical: true);
+                }
 
                 if (room.LocalRoomSettings.PendingKickParticipantIds.Remove(roomJoinRequestMessage.SenderId, out var reason))
                 {

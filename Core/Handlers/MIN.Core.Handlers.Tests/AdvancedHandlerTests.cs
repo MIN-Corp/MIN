@@ -71,6 +71,11 @@ public class AdvancedHandlerTests : IDisposable
         factory.Encryptor.Setup(e => e.TryInitializeSessionFromStoredAsync(It.IsAny<Guid>())).ReturnsAsync(true);
     }
 
+    private void SetupPasswordVerifier()
+        => factory.PasswordHasher
+            .Setup(h => h.VerifyVerifier(It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns<string?, string?>((provided, stored) => provided == stored);
+
     /// <summary>
     /// Handshake с полным ключом регистрирует соединение и отвечает Ack
     /// </summary>
@@ -300,6 +305,85 @@ public class AdvancedHandlerTests : IDisposable
         // Assert
         result.ErrorMessage.Should().Be("кикнут");
         result.CriticalErrorForConnection.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Запрос входа с неверным паролем отклоняется критической ошибкой
+    /// </summary>
+    [Fact]
+    public async Task JoinRequestWrongPasswordShouldReject()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.LocalRoomSettings.PasswordHash = "600000:stored==";
+        SetupPasswordVerifier();
+        var handler = factory.GetHandler(MessageTypeTag.RoomJoinRequest);
+
+        // Act
+        var result = await handler.HandleAsync(new RoomJoinRequestMessage { SenderId = Guid.NewGuid(), PasswordHash = "600000:wrong==" }, CreateContext(Role.Host));
+
+        // Assert
+        result.ErrorMessage.Should().Contain("пароль");
+        result.CriticalErrorForConnection.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Запрос входа с верным паролем возвращает ответ
+    /// </summary>
+    [Fact]
+    public async Task JoinRequestCorrectPasswordShouldReturnResponse()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.LocalRoomSettings.PasswordHash = "600000:stored==";
+        SetupPasswordVerifier();
+        var handler = factory.GetHandler(MessageTypeTag.RoomJoinRequest);
+
+        // Act
+        var result = await handler.HandleAsync(new RoomJoinRequestMessage { SenderId = Guid.NewGuid(), PasswordHash = "600000:stored==" }, CreateContext(Role.Host));
+
+        // Assert
+        result.Response.Should().BeOfType<RoomJoinResponseMessage>();
+    }
+
+    /// <summary>
+    /// Запрос входа без пароля в защищённую комнату отклоняется
+    /// </summary>
+    [Fact]
+    public async Task JoinRequestMissingPasswordShouldRejectWhenProtected()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.LocalRoomSettings.PasswordHash = "600000:stored==";
+        SetupPasswordVerifier();
+        var handler = factory.GetHandler(MessageTypeTag.RoomJoinRequest);
+
+        // Act
+        var result = await handler.HandleAsync(new RoomJoinRequestMessage { SenderId = Guid.NewGuid() }, CreateContext(Role.Host));
+
+        // Assert
+        result.CriticalErrorForConnection.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Проверка пароля выполняется раньше проверки заполненности комнаты
+    /// </summary>
+    [Fact]
+    public async Task JoinRequestWrongPasswordShouldTakePrecedenceOverFullRoom()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.LocalRoomSettings.PasswordHash = "600000:stored==";
+        room.MaximumParticipants = 1;
+        room.CurrentParticipants = [new Participant { Id = Guid.NewGuid() }];
+        SetupPasswordVerifier();
+        var handler = factory.GetHandler(MessageTypeTag.RoomJoinRequest);
+
+        // Act
+        var result = await handler.HandleAsync(new RoomJoinRequestMessage { SenderId = Guid.NewGuid(), PasswordHash = "600000:wrong==" }, CreateContext(Role.Host));
+
+        // Assert
+        result.ErrorMessage.Should().Contain("пароль");
     }
 
     /// <summary>
@@ -610,6 +694,7 @@ public class AdvancedHandlerTests : IDisposable
 
         // Assert
         result.Response.Should().BeOfType<RoomJoinRequestMessage>();
+        ((RoomJoinRequestMessage)result.Response!).PasswordHash.Should().BeNull();
         factory.Transport.Connections.Should().BeEmpty();
     }
 
@@ -634,6 +719,25 @@ public class AdvancedHandlerTests : IDisposable
         // Assert
         result.Response.Should().BeOfType<RoomJoinRequestMessage>();
         factory.Transport.Connections.Should().ContainSingle().Which.Should().Be(connectionId);
+    }
+
+    /// <summary>
+    /// Запрос входа содержит верификатор пароля из локальных настроек
+    /// </summary>
+    [Fact]
+    public async Task FastChannelResponseShouldAttachPasswordHash()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.LocalRoomSettings.PasswordHash = "600000:stored==";
+        var handler = factory.GetHandler(MessageTypeTag.FastChannelConnectResponse);
+
+        // Act
+        var result = await handler.HandleAsync(new FastChannelConnectResponseMessage { FastChannelEndpoint = null }, CreateContext(Role.Client));
+
+        // Assert
+        var join = result.Response.Should().BeOfType<RoomJoinRequestMessage>().Subject;
+        join.PasswordHash.Should().Be("600000:stored==");
     }
 
     /// <summary>

@@ -35,6 +35,7 @@ internal sealed class ClientRoomService
     private readonly IMessageSender messageSender;
     private readonly IIdentityService identityService;
     private readonly IMessageEncryptor encryptor;
+    private readonly IPasswordHasher passwordHasher;
     private readonly IRoomConnectionRegistry registry;
     private readonly IVersionProvider versionProvider;
     private readonly IEventBus eventBus;
@@ -51,6 +52,7 @@ internal sealed class ClientRoomService
         IMessageSender messageSender,
         IIdentityService identityService,
         IMessageEncryptor encryptor,
+        IPasswordHasher passwordHasher,
         IRoomConnectionRegistry registry,
         IVersionProvider versionProvider,
         IEventBus eventBus,
@@ -64,6 +66,7 @@ internal sealed class ClientRoomService
         this.messageSender = messageSender;
         this.identityService = identityService;
         this.encryptor = encryptor;
+        this.passwordHasher = passwordHasher;
         this.registry = registry;
         this.versionProvider = versionProvider;
         this.eventBus = eventBus;
@@ -77,7 +80,7 @@ internal sealed class ClientRoomService
     public bool TryResolveRoom(RawMessageReceivedEventArgs e, out Guid roomId)
         => registry.TryGetRoomIdByClientConnectionId(e.ConnectionId, out roomId);
 
-    public async Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, CancellationToken cancellationToken)
+    public async Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, string? password, CancellationToken cancellationToken)
     {
         var connectionResult = new ConnectionResult();
 
@@ -132,6 +135,7 @@ internal sealed class ClientRoomService
             switch (roomExistedBefore)
             {
                 case true:
+                    room.HasPassword = result.RoomInfo.HasPassword;
                     // Адрес, по которому реально подключились, всегда первый; остальные — запасные
                     room.ConnectionAddresses = new[] { endpoint }
                         .Concat(room.ConnectionAddresses.Where(saved => !saved.SameTarget(endpoint)))
@@ -141,6 +145,11 @@ internal sealed class ClientRoomService
                 case false:
                     roomStore.Register(room);
                     break;
+            }
+
+            if (!string.IsNullOrEmpty(password))
+            {
+                room.LocalRoomSettings.PasswordHash = passwordHasher.HashPassword(password, connectionResult.RoomId);
             }
 
             logger.Log($"Подключились к комнате с id {connectionResult.RoomId}, соединение с id {connectionResult.ConnectionId}");
