@@ -1,13 +1,13 @@
-﻿# Guideline: тесты обработчиков MIN
+﻿# Guideline: handler tests for MIN
 
-Для `Core/Handlers` и `Infrastructure/*/Handlers`.
-Образцы: `MIN.Core.Handlers.Tests` (`CoreHandlerTests`, `AdvancedHandlerTests`,
+For `Core/Handlers` and `Infrastructure/*/Handlers`.
+Reference projects: `MIN.Core.Handlers.Tests` (`CoreHandlerTests`, `AdvancedHandlerTests`,
 `ChatHandlerTests`, `MessageDispatcherTests`).
 
-## Доступ к internal-обработчикам
+## Accessing internal handlers
 
-Обработчики — `internal sealed`. Не добавляй InternalsVisibleTo: резолвь их
-через настоящий DI-контур `HandlerTestFactory`:
+Handlers are `internal sealed`. Do not add InternalsVisibleTo: resolve them
+through the real DI wiring of `HandlerTestFactory`:
 
 ```csharp
 private readonly HandlerTestFactory factory = new();
@@ -16,26 +16,27 @@ var handler = factory.GetHandler(MessageTypeTag.ChatTextMessage);
 var result = await handler.HandleAsync(message, context);
 ```
 
-`HandlerTestFactory` регистрирует обработчики Core и Chat через
+`HandlerTestFactory` registers Core and Chat handlers via
 `RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, ICoreHandlerAnchor>`
-(и `IChatHandlerAnchor`), зависимости — моки/фикстуры:
+(and `IChatHandlerAnchor`); dependencies are mocks/fixtures:
 `Logger`, `EventBus`, `RoomStore`, `Transport` (InMemoryTransport),
-`RoomConnections`, `Identity`, моки `MessageSender`, `Lifecycle`, `Router`,
+`RoomConnections`, `Identity`, and mocks of `MessageSender`, `Lifecycle`, `Router`,
 `Version`, `Encryptor`, `Persistence`, `NetworkErrorHandler`.
-Контекст: `factory.RoomFactory.GetOrCreateContext(roomId)` +
+Context: `factory.RoomFactory.GetOrCreateContext(roomId)` +
 `TestMessageContext.Create(roomContext, selfId, connectionId, role)`.
 
-## Семантика HandlerResult
+## HandlerResult semantics
 
 - `Success(stopPropagation)`, `Failure(msg, critical, stopPropagation)`,
   `WithErrorHandled(msg)`, `WithResponse(msg)`, `WithEvent(evt)`.
-- **События из `ResultEvent` публикует ДИСПЕТЧЕР, не обработчик.** В юнит-тесте
-  обработчика проверяй `result.ResultEvent.Should().BeOfType<T>()`, а не шину.
-  Исключения: `PingHandler` и `ChatHistoryClear` публикуют сами.
-- Response проверяй `result.Response.Should().BeOfType<T>().Subject`.
-- Ошибки: `result.ErrorMessage.Should().NotBeNull()` / `Contain("кусок")`.
+- **Events from `ResultEvent` are published by the DISPATCHER, not the handler.**
+  In a handler unit test assert `result.ResultEvent.Should().BeOfType<T>()`,
+  not the bus. Exceptions: `PingHandler` and `ChatHistoryClear` publish
+  themselves.
+- Response: `result.Response.Should().BeOfType<T>().Subject`.
+- Errors: `result.ErrorMessage.Should().NotBeNull()` / `Contain("fragment")`.
 
-## Пример
+## Example
 
 ```csharp
 /// <summary>
@@ -61,22 +62,22 @@ public async Task PublicChatTextShouldBeStoredAndNotified()
 }
 ```
 
-## Тесты диспетчера
+## Dispatcher tests
 
-`MessageDispatcher` тестируется фейковыми обработчиками (`FakeHandler` с
-настраиваемым результатом и счётчиком вызовов): приоритеты, StopPropagation
-у Success/Failure/WithErrorHandled, исключения в обработчике, рекурсивная
-диспетчеризация локальных Response, host-рассылка (broadcast один раз),
-`MarkDirty`. Моки `IMessageSender` проверяй `Verify(..., Times.Once)`.
+`MessageDispatcher` is tested with fake handlers (`FakeHandler` with a
+configurable result and a call counter): priorities, StopPropagation on
+Success/Failure/WithErrorHandled, handler exceptions, recursive dispatch of
+local Responses, host broadcast (sent once), `MarkDirty`. Assert mocks of
+`IMessageSender` with `Verify(..., Times.Once)`.
 
-## Грабли
+## Pitfalls
 
-- `PingMessage.IsPublic => false` — для broadcast-тестов бери `ChatTextMessage`.
-- Ответ `ChatHistoryResponse` приходит «новые первыми»; prepend в обработчике
-  разворачивает в хронологию.
+- `PingMessage.IsPublic => false` — use `ChatTextMessage` for broadcast tests.
+- `ChatHistoryResponse` arrives "newest first"; the handler's prepend flips it
+  back into chronological order.
 - `ReplyToMessageDescription` = `"SenderName: Content"` (IDescribable).
-- Роли: `Role.Host` / `Role.Client`; хост валидирует право редактирования/
-  удаления, клиент доверяет хосту.
-- Для крипто-зависимых обработчиков (Handshake) настраивай
+- Roles: `Role.Host` / `Role.Client`; the host validates edit/delete rights,
+  the client trusts the host.
+- For crypto-dependent handlers (Handshake) set up
   `factory.Encryptor.Setup(...)` (GetLocalPublicKey, ComputeKeyFingerprint,
   TryInitializeSessionFromStoredAsync...).

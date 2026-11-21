@@ -1,24 +1,24 @@
-﻿# Guideline: юнит-тесты ядра MIN
+﻿# Guideline: core unit tests for MIN
 
-Для модулей `Core/Cryptography`, `Core/Serialization`, `Core/Events`,
+For the modules `Core/Cryptography`, `Core/Serialization`, `Core/Events`,
 `Core/Headers`, `Core/Stores`, `Core/Entities`, `Helpers`, `Common`.
-Образцы: `MIN.Core.Cryptography.Tests`, `MIN.Core.Stores.Tests`,
+Reference projects: `MIN.Core.Cryptography.Tests`, `MIN.Core.Stores.Tests`,
 `MIN.Core.Serialization.Tests`.
 
-## Структура и именование
+## Structure and naming
 
-- Проект рядом с тестируемым: `Core/Events/MIN.Core.Events.Tests/`.
-- Класс: `{Subject}Tests` (`MessageEncryptorTests`, `MessageStoreTests`).
-- Метод: `{Method}Should{Behavior}` (`EncryptDecryptShouldRoundTrip`,
+- Test project next to the tested one: `Core/Events/MIN.Core.Events.Tests/`.
+- Class: `{Subject}Tests` (`MessageEncryptorTests`, `MessageStoreTests`).
+- Method: `{Method}Should{Behavior}` (`EncryptDecryptShouldRoundTrip`,
   `GetRoomUnknownShouldThrow`).
-- Русские XML-доки на классе и каждом тесте — обязательны
+- Russian XML docs on the class and on every test are mandatory
   (`TreatWarningsAsErrors` + `GenerateDocumentationFile`).
-- Тело: комментарии `// Arrange`, `// Act`, `// Assert`, пустая строка между блоками.
-- Файлы: CRLF + UTF-8 BOM, file-scoped namespace, 4 пробела, `var`.
+- Body: `// Arrange`, `// Act`, `// Assert` comments, blank line between blocks.
+- Files: CRLF + UTF-8 BOM, file-scoped namespace, 4-space indent, `var`.
 
 ## Setup
 
-Зависимости — реальные лёгкие реализации или фикстуры, не моки:
+Dependencies are real lightweight implementations or fixtures, not mocks:
 
 ```csharp
 public class MessageEncryptorTests
@@ -43,29 +43,29 @@ public class MessageEncryptorTests
 }
 ```
 
-- Крипта: `EncryptorPair` (реальный ECDH-обмен), `TestIdentityDataPathProvider`.
-- Файловые сторы: `TemporaryDirectory` / `TestAppDataProvider`; повреждённые
-  файлы пиши напрямую (`File.WriteAllTextAsync(path, "{битый json")`) и
-  проверяй `.bak` + сброс.
-- Комнаты: `TestRoomFactory` + `RoomStore`/реестры — реальные.
-- Шина: `InMemoryEventBus` + `EventCapture<T>`.
+- Crypto: `EncryptorPair` (real ECDH exchange), `TestIdentityDataPathProvider`.
+- File stores: `TemporaryDirectory` / `TestAppDataProvider`; write corrupted
+  files directly (`File.WriteAllTextAsync(path, "{битый json")`) and assert
+  `.bak` creation + reset.
+- Rooms: `TestRoomFactory` + real `RoomStore`/registries.
+- Event bus: `InMemoryEventBus` + `EventCapture<T>`.
 
-## Обязательные проверки
+## Mandatory checks
 
-- **Round-trip**: serialize → deserialize → равенство полей. Для сообщений —
-  теория по `TestSerializer.AllMessages` (см. ниже).
-- **Негатив**: неизвестный id, пустые данные, повреждённый ввод —
-  `Should().Throw<T>()` / `ThrowAsync<T>()`, при необходимости
-  `.WithMessage("*кусок*")`.
-- **Граничные значения**: пустой payload, 1 МиБ, отрицательные длины,
-  дубликаты, out-of-order.
-- **Перф-смоук** (по желанию модуля): щедрый лимит, чтобы не флапать:
+- **Round-trip**: serialize → deserialize → field equality. For messages —
+  a theory over `TestSerializer.AllMessages` (see below).
+- **Negative cases**: unknown id, empty data, corrupted input —
+  `Should().Throw<T>()` / `ThrowAsync<T>()`, with `.WithMessage("*fragment*")`
+  when needed.
+- **Boundary values**: empty payload, 1 MiB, negative lengths, duplicates,
+  out-of-order.
+- **Perf smoke** (module-dependent): generous limit so it never flakes:
 
 ```csharp
-stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000, "50 циклов AES-GCM по 1 МиБ не должны занимать вечность");
+stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000, "50 cycles of AES-GCM over 1 MiB must not take forever");
 ```
 
-## Theory по всем сообщениям
+## Theory over all messages
 
 ```csharp
 public static IEnumerable<object[]> AllMessageData()
@@ -76,27 +76,29 @@ public static IEnumerable<object[]> AllMessageData()
 public void AllMessagesShouldRoundTrip(IMessage message) { ... }
 ```
 
-Нюансы:
-- `required`-поля с null не сериализуются (`WhenWritingNull`) и роняют
-  десериализацию — заполняй их перед сериализацией через рефлексию
-  (`RequiredMemberAttribute`), образец `PopulateRequiredProperties` в
-  `JsonMessageSerializerTests`. Это ограничение STJ/net8, не баг MIN.
-- Данные теории — живые объекты, VS не перечисляет их до запуска:
-  Test Explorer показывает один узел, после прогона — N кейсов.
-- Полнота покрытия проверяется `TestSerializerCoverageTests` (все конкретные
-  `IMessage` якорных сборок имеют ctor без параметров и попадают в AllMessages).
+Nuances:
+- `required` fields left null are not serialized (`WhenWritingNull`) and break
+  deserialization — populate them via reflection before serializing
+  (`RequiredMemberAttribute`); see `PopulateRequiredProperties` in
+  `JsonMessageSerializerTests`. This is an STJ/net8 limitation, not a MIN bug.
+- Theory data are live objects; VS does not enumerate them until run time:
+  Test Explorer shows a single node, then N cases after the run.
+- Coverage completeness is enforced by `TestSerializerCoverageTests` (every
+  concrete `IMessage` in the anchor assemblies has a parameterless ctor and
+  gets into AllMessages).
 
-## Грабли
+## Pitfalls
 
-- Почти все классы реализуют интерфейсы **явно** — держи переменные типом
-  интерфейса (`IEventBus`, `IMessageStore`, `IHeaderManager`), иначе CS1061.
-- Исключения сторов: `ConnectionNotRegisteredException`,
+- Almost all classes implement their interfaces **explicitly** — keep variable
+  types as the interface (`IEventBus`, `IMessageStore`, `IHeaderManager`),
+  otherwise CS1061.
+- Store exceptions: `ConnectionNotRegisteredException`,
   `ParticipantNotRegisteredException`, `RoomNotRegisteredException`.
-- `IdentityFileStore` занимает глобальный мьютекс слота: два живых экземпляра
-  в одном процессе получают разные слоты. В тестах Dispose первого перед
-  созданием второго.
-- Moq: `IEnumerable`-возвраты настраивай явно (`LoadAll()` без setup вернёт
-  null → NRE); `Task`-возвраты loose-мок отдаёт завершёнными.
-- JSON-литералы в C# — raw strings: `"""{"typeTag":250}"""u8.ToArray()`.
-- Коллекционные выражения `[1, 2]` в `Concat` выводятся как int — пиши
+- `IdentityFileStore` holds a global slot mutex: two live instances in one
+  process get different slots. In tests, Dispose the first one before creating
+  the second.
+- Moq: set up `IEnumerable` returns explicitly (`LoadAll()` without setup
+  returns null → NRE); loose mocks return `Task`s already completed.
+- JSON literals in C# — raw strings: `"""{"typeTag":250}"""u8.ToArray()`.
+- Collection expressions `[1, 2]` in `Concat` are inferred as int — write
   `new byte[] { 1, 2 }`.

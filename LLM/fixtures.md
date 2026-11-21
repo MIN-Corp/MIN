@@ -1,103 +1,104 @@
-﻿# Каталог фикстур MIN.Tests.Common
+﻿# Catalog of MIN.Tests.Common fixtures
 
-Все фикстуры живут в `Common/MIN.Tests.Common` (namespace `MIN.Tests.Common`),
-кроме отмеченных отдельно. Подключаются через ProjectReference; xunit,
-FluentAssertions, Moq и Test.Sdk тестовые проекты получают автоматически из
-`Directory.Build.props` (там же RID `win-x64`, чтобы не копировать нативы
-всех платформ).
+All fixtures live in `Common/MIN.Tests.Common` (namespace `MIN.Tests.Common`),
+except those noted separately. Connected via ProjectReference; xunit,
+FluentAssertions, Moq and Test.Sdk are pulled into test projects automatically
+from `Directory.Build.props` (same place sets RID `win-x64` so native binaries
+of all platforms are not copied into every bin).
 
-## Логирование и окружение
+## Logging and environment
 
 ### TestLoggerProvider
-`ILoggerProvider`, копит записи в памяти.
-- `Items` — снапшот всех записей; `HasErrors` — есть ли ошибки.
-- Событие `OnLogReceived`, метод `GetRecentLogHistory(page, pageSize)`.
-- Используй для проверок «ошибка залогирована» вместо моков.
+`ILoggerProvider`, accumulates entries in memory.
+- `Items` — snapshot of all entries; `HasErrors` — whether any errors exist.
+- Event `OnLogReceived`, method `GetRecentLogHistory(page, pageSize)`.
+- Use it for "error was logged" checks instead of mocks.
 
 ### TemporaryDirectory
-`IDisposable`-директория в `Path.GetTempPath()`, удаляется при Dispose.
-`Path` — путь. База для файловых тестов.
+`IDisposable` directory under `Path.GetTempPath()`, removed on Dispose.
+`Path` — the path. Base for file tests.
 
 ### TestIdentityDataPathProvider
-`IIdentityDataPathProvider` поверх временной директории:
+`IIdentityDataPathProvider` on top of a temp directory:
 `CryptographyDirectory`, `RoomsDirectory`, `FilesDirectory`.
-Для тестов ключей, RoomFileEncryptor, FileStorageService, RoomFileStore.
+For key tests, RoomFileEncryptor, FileStorageService, RoomFileStore.
 
 ### TestAppDataProvider
-`IAppDataProvider`: `VersionedDirectory` = `SharedDirectory` = временная
-директория. Для IdentityFileStore, FileSystemSettingsStorage.
+`IAppDataProvider`: `VersionedDirectory` = `SharedDirectory` = temp directory.
+For IdentityFileStore, FileSystemSettingsStorage.
 
 ### TestIdentityService
-`IIdentityService` с настраиваемым `SelfParticipant` (по умолчанию
-`Participant { Name = "TestUser" }`) и вызываемым `SelfParticipantSaved`.
+`IIdentityService` with configurable `SelfParticipant` (defaults to
+`Participant { Name = "TestUser" }`) and invocable `SelfParticipantSaved`.
 
-## Комнаты и контексты
+## Rooms and contexts
 
 ### TestRoomFactory
-Настоящий `RoomFactory` с DI-регистрациями сторов
+A real `RoomFactory` with DI registrations of the stores
 (`MessageStore`, `ParticipantStore`, `ParticipantConnectionRegistry`, `SubRoomManager`).
-- `Factory` — `IRoomFactory`; `CreateContext(roomId?)` — новый `RoomContext`.
-- Dispose освобождает контексты и провайдер.
+- `Factory` — `IRoomFactory`; `CreateContext(roomId?)` — new `RoomContext`.
+- Dispose releases the contexts and the provider.
 
 ### TestMessageContext
-`Create(roomContext, selfId, connectionId, role, ct)` — обёртка над ctor
-`MessageContext`. **Порядок: selfId ПЕРЕД connectionId.**
+`Create(roomContext, selfId, connectionId, role, ct)` — wrapper over the
+`MessageContext` ctor. **Order: selfId BEFORE connectionId.**
 
 ### EncryptorPair
-`await EncryptorPair.CreateAsync()` — два `MessageEncryptor` (Alice/Bob) с
-выполненным ECDH-обменом. `Alice`/`Bob` — `IMessageEncryptor`,
-`AliceId`/`BobId` — идентификаторы партнёров. Шифруешь у Alice для BobId —
-расшифровывается у Bob с AliceId. Dispose освобождает оба шифратора.
+`await EncryptorPair.CreateAsync()` — two `MessageEncryptor`s (Alice/Bob) with
+a completed ECDH exchange. `Alice`/`Bob` are `IMessageEncryptor`,
+`AliceId`/`BobId` are partner ids. Encrypt at Alice for BobId — decrypts at
+Bob with AliceId. Dispose releases both encryptors.
 
-## Сериализация
+## Serialization
 
 ### TestSerializer
-- `Create(params IMessage[])` — `JsonMessageSerializer` с указанными типами
-  или со всеми известными (`AllMessages`).
-- `AllMessages` — экземпляры всех конкретных `IMessage` якорных сборок.
-- `AnchorAssemblies` — список сборок-якорей; по умолчанию лёгкие
-  (Core, Chat, Discovery, FileTransfer, Sessions).
-- `RegisterAnchorAssembly(assembly)` — добавить тяжёлый якорь (Voice,
-  ScreenDemo) **до первого обращения к AllMessages**. В
-  `MIN.Core.Serialization.Tests` это делает `[ModuleInitializer]`
-  (`HeavyAnchorRegistration.cs`) — только этот проект тащит нативы
-  Voice/ScreenDemo.
+- `Create(params IMessage[])` — `JsonMessageSerializer` with the given types
+  or with all known ones (`AllMessages`).
+- `AllMessages` — instances of every concrete `IMessage` from the anchor
+  assemblies.
+- `AnchorAssemblies` — list of anchor assemblies; the defaults are lightweight
+  ones (Core, Chat, Discovery, FileTransfer, Sessions).
+- `RegisterAnchorAssembly(assembly)` — add a heavy anchor (Voice,
+  ScreenDemo) **before the first access to AllMessages**. In
+  `MIN.Core.Serialization.Tests` a `[ModuleInitializer]` does this
+  (`HeavyAnchorRegistration.cs`) — only that project pulls in Voice/ScreenDemo
+  natives.
 
-## Асинхронные ожидания
+## Asynchronous waiting
 
 ### TestWait
-`UntilAsync(Func<bool> condition, timeoutMs = 5000, pollMs = 20)` — поллинг
-условия с таймаутом. Для событий, которые приходят асинхронно.
+`UntilAsync(Func<bool> condition, timeoutMs = 5000, pollMs = 20)` — polls a
+condition with a timeout. For events that arrive asynchronously.
 
 ### EventCapture<T>
-`new EventCapture<T>(eventBus)` — подписывается и копит события.
-- `Events` — снапшот; `WaitAsync(count = 1, timeoutMs = 5000)`.
-- Dispose отписывается. Используй вместо ручных TCS.
+`new EventCapture<T>(eventBus)` — subscribes and accumulates events.
+- `Events` — snapshot; `WaitAsync(count = 1, timeoutMs = 5000)`.
+- Dispose unsubscribes. Use it instead of manual TCS.
 
-## Транспорт
+## Transport
 
 ### InMemoryTransport
-`ITransport` в памяти:
-- `SentDatagrams` — очередь `SentDatagram(Data, RecipientConnectionId)`.
-- `SendHandler` — `Func<SentDatagram, Task>`: маршрутизируй байты получателю
-  в том же тесте (так устроен сквозной стенд стриминга).
-- `Endpoints` — что возвращают `GetEndpoints`/`SetUpEndpoints`.
-- `Connections` — очередь подключений; `BroadcastAsync` веерит по ним
-  с учётом exclude.
-- `Deliver(data, connectionId, serverConnectionId?)` — эмуляция входящих.
-- `RaiseConnectionStateChanged(args)` — эмуляция событий соединения.
-- `SendAsync` уважает CancellationToken.
+In-memory `ITransport`:
+- `SentDatagrams` — queue of `SentDatagram(Data, RecipientConnectionId)`.
+- `SendHandler` — `Func<SentDatagram, Task>`: route the bytes to the recipient
+  within the same test (this is how the end-to-end streaming stand works).
+- `Endpoints` — what `GetEndpoints`/`SetUpEndpoints` return.
+- `Connections` — queue of connections; `BroadcastAsync` fans out over them
+  honoring exclude.
+- `Deliver(data, connectionId, serverConnectionId?)` — emulates incoming data.
+- `RaiseConnectionStateChanged(args)` — emulates connection events.
+- `SendAsync` honors the CancellationToken.
 
-### TestPorts (живёт в MIN.Core.Transport.Tests)
-`GetFreeTcpPort()` / `GetFreeUdpPort()` — свободный порт на loopback
-(биндим :0, читаем, отпускаем).
+### TestPorts (lives in MIN.Core.Transport.Tests)
+`GetFreeTcpPort()` / `GetFreeUdpPort()` — a free loopback port
+(bind :0, read it, release it).
 
-## Фикстуры внутри тестовых проектов
+## Fixtures inside test projects
 
-- `HandlerTestFactory` (MIN.Core.Handlers.Tests) — DI-контейнер с настоящими
-  обработчиками Core/Chat и моками зависимостей; `GetHandler(tag)`.
-  См. `LLM/handler-tests.md`.
-- `CapturingDispatcher` (MIN.Core.Services.Tests) — `IMessageDispatcher`,
-  копит `(Message, Context)` в `Dispatched`.
+- `HandlerTestFactory` (MIN.Core.Handlers.Tests) — DI container with real
+  Core/Chat handlers and mocked dependencies; `GetHandler(tag)`.
+  See `LLM/handler-tests.md`.
+- `CapturingDispatcher` (MIN.Core.Services.Tests) — `IMessageDispatcher`
+  that accumulates `(Message, Context)` in `Dispatched`.
 - `FakeDiscoveryTransport` / `CapturingResponder` (MIN.Discovery.Tests) —
-  транспорт обнаружения в памяти + ответчик, копящий ответы.
+  in-memory discovery transport + a responder accumulating replies.

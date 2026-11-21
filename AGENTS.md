@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-MIN — распределённый мессенджер (.NET 8, Avalonia UI): комнаты, E2E-шифрование
-(ECDH P-256 + HKDF → AES-256-GCM), TCP/UDP-транспорт, потоковая передача
-чанками, UDP-broadcast discovery, файловые хранилища с версионированием схемы.
+MIN — a distributed messenger (.NET 8, Avalonia UI): rooms, E2E encryption
+(ECDH P-256 + HKDF → AES-256-GCM), TCP/UDP transport, chunked streaming,
+UDP-broadcast discovery, file stores with schema versioning.
 Solution: `MIN.sln`.
 
 ## Build & Test Commands
@@ -12,57 +12,58 @@ Solution: `MIN.sln`.
 ```bash
 dotnet build MIN.sln
 
-# Один тестовый проект (проекты лежат рядом с тестируемыми модулями)
+# Single test project (projects live next to the tested modules)
 dotnet test Core/Events/MIN.Core.Events.Tests/MIN.Core.Events.Tests.csproj
 
-# Все тесты
+# All tests
 find Core Infrastructure Helpers Common -name '*.Tests.csproj' -not -path '*/obj/*' | while read p; do dotnet test "$p"; done
 
-# Один тест
+# Single test
 dotnet test <csproj> --filter "FullyQualifiedName~MessageEncryptorTests.EncryptDecryptShouldRoundTrip"
 ```
 
-**Important**: `TreatWarningsAsErrors` + `GenerateDocumentationFile` — сборка
-упадёт на любом предупреждении и на public-членах без XML-доков.
-Тестовые проекты (`*.Tests`) автоматически получают xunit, FluentAssertions,
-Moq, Test.Sdk и RID `win-x64` из `Directory.Build.props` ( RID нужен, чтобы
-не копировать нативы onnx/openh264 всех платформ в каждый bin).
+**Important**: `TreatWarningsAsErrors` + `GenerateDocumentationFile` — the
+build fails on any warning and on public members without XML docs.
+Test projects (`*.Tests`) automatically get xunit, FluentAssertions,
+Moq, Test.Sdk and RID `win-x64` from `Directory.Build.props` ( the RID is
+needed so that onnx/openh264 natives of all platforms are not copied into
+every bin).
 
 ## Architecture
 
-- **Core/**: Cryptography, Messaging (контракты сообщений + MessageTypeTag),
-  Events (InMemoryEventBus), Handlers (диспетчер + обработчики), Headers,
-  Serialization (JsonMessageSerializer + конвертеры IEndpoint/IMessage),
+- **Core/**: Cryptography, Messaging (message contracts + MessageTypeTag),
+  Events (InMemoryEventBus), Handlers (dispatcher + handlers), Headers,
+  Serialization (JsonMessageSerializer + IEndpoint/IMessage converters),
   Transport (TcpSockets/UdpSockets/ChannelTransport), Streaming
-  (StreamManager/ChunkBufferAssembler/MessageStream), Stores (сторы, реестры,
-  RoomFactory, персистентность), Services (Messaging/Pipeline/Moderation/
-  Persistence/Lifecycle), Protocol (рукопожатия), Identity, Entities, DI.
+  (StreamManager/ChunkBufferAssembler/MessageStream), Stores (stores, registries,
+  RoomFactory, persistence), Services (Messaging/Pipeline/Moderation/
+  Persistence/Lifecycle), Protocol (handshakes), Identity, Entities, DI.
 - **Infrastructure/**: Chat, Discovery, FileTransfer, Sessions, Voice,
-  ScreenDemo, Audio — каждый с Messaging/Handlers/Services/DI.
-- **Common/**: MIN.Common.Core (расширения), MIN.Common.Mvc (Module +
-  DI-расширения), **MIN.Tests.Common** (общие тестовые фикстуры).
-- **Helpers/**: логгер, настройки, версии, SchemaFileStore.
-- **Desktop/**: Avalonia UI (тестами не покрыт).
+  ScreenDemo, Audio — each with Messaging/Handlers/Services/DI.
+- **Common/**: MIN.Common.Core (extensions), MIN.Common.Mvc (Module +
+  DI extensions), **MIN.Tests.Common** (shared test fixtures).
+- **Helpers/**: logger, settings, versions, SchemaFileStore.
+- **Desktop/**: Avalonia UI (not covered by tests).
 
 ## Testing
 
-Тестовые проекты `MIN.*.Tests` расположены **рядом с тестируемым модулем**
-(например `Infrastructure/Chat/MIN.Chat.Tests`), в `MIN.sln` сгруппированы
-в виртуальную папку `Tests`.
+Test projects `MIN.*.Tests` are located **next to the tested module**
+(e.g. `Infrastructure/Chat/MIN.Chat.Tests`); in `MIN.sln` they are grouped
+in the same virtual solution folders as their tested modules.
 
-- Скилл-роутер: `.agents/skills/unit-tests-writing/SKILL.md`
-- Guidelines по типам тестов: `LLM/core-tests.md`, `LLM/handler-tests.md`,
+- Skill router: `.agents/skills/unit-tests-writing/SKILL.md`
+- Guidelines by test type: `LLM/core-tests.md`, `LLM/handler-tests.md`,
   `LLM/service-tests.md`, `LLM/integration-tests.md`
-- Каталог фикстур: `LLM/fixtures.md`
+- Fixture catalog: `LLM/fixtures.md`
 
-Конвенции: `{Subject}Tests` / `{Method}Should{Behavior}`, Arrange/Act/Assert,
-русские XML-доки, CRLF + UTF-8 BOM. Обработчики internal — тестируются через
-DI-контур (`HandlerTestFactory`), без InternalsVisibleTo.
+Conventions: `{Subject}Tests` / `{Method}Should{Behavior}`, Arrange/Act/Assert,
+Russian XML docs, CRLF + UTF-8 BOM. Handlers are internal — tested through the
+DI wiring (`HandlerTestFactory`), without InternalsVisibleTo.
 
 ## Conventions
 
-- Файлы: CRLF, UTF-8 BOM, file-scoped namespaces, 4 пробела, `var`.
-- Большинство публичных классов реализуют интерфейсы явно (explicit) —
-  в тестах используй интерфейсные типы переменных.
-- Исключения сторов: `*NotRegisteredException`.
-- Текущая версия: см. `Directory.Build.props` (`Version`).
+- Files: CRLF, UTF-8 BOM, file-scoped namespaces, 4-space indent, `var`.
+- Most public classes implement their interfaces explicitly — in tests use
+  interface types for variables.
+- Store exceptions: `*NotRegisteredException`.
+- Current version: see `Directory.Build.props` (`Version`).
