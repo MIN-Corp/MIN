@@ -52,6 +52,7 @@ public class CoreModule : Module
         services.RegisterAsImplementedInterfaces<FileSystemKeyStorage>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<MessageEncryptor>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<RoomFileEncryptor>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<PasswordHasher>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<ChannelTransport>(ServiceLifetime.Singleton);
         services.RegisterAsImplementedInterfaces<ClientHandshakeService>(ServiceLifetime.Singleton);

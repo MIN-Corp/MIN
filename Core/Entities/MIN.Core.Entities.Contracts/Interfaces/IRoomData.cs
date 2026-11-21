@@ -56,4 +56,9 @@ public interface IRoomData
     /// Дата создания комнаты
     /// </summary>
     DateTime CreatedAt { get; }
+
+    /// <summary>
+    /// Защищена ли комната паролем
+    /// </summary>
+    bool HasPassword { get; }
 }

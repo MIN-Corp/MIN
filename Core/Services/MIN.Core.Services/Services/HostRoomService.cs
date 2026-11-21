@@ -1,4 +1,5 @@
 ﻿using MIN.Common.Core.Extensions;
+using MIN.Core.Cryptography.Contracts.Interfaces;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Extensions;
@@ -31,6 +32,7 @@ internal sealed class HostRoomService
     private readonly ITransport transport;
     private readonly IRoomStore roomStore;
     private readonly IEventBus eventBus;
+    private readonly IPasswordHasher passwordHasher;
     private readonly IRoomConnectionRegistry registry;
     private readonly IIdentityService identityService;
     private readonly IMessageRouter messageRouter;
@@ -47,6 +49,7 @@ internal sealed class HostRoomService
         ITransport transport,
         IRoomStore roomStore,
         IEventBus eventBus,
+        IPasswordHasher passwordHasher,
         IRoomConnectionRegistry registry,
         IIdentityService identityService,
         IMessageRouter messageRouter,
@@ -58,6 +61,7 @@ internal sealed class HostRoomService
         this.transport = transport;
         this.roomStore = roomStore;
         this.eventBus = eventBus;
+        this.passwordHasher = passwordHasher;
         this.registry = registry;
         this.identityService = identityService;
         this.messageRouter = messageRouter;
@@ -78,7 +82,7 @@ internal sealed class HostRoomService
 
     public bool TryResolveRoom(RawMessageReceivedEventArgs e, out Guid roomId)
     {
-        if (e.ServerConnectionId is Guid serverConnectionId
+        if (e.ServerConnectionId is { } serverConnectionId
             && registry.TryGetRoomIdByServerConnectionId(serverConnectionId, out roomId))
         {
             return !protocolPhase.Contains(e.ConnectionId);
@@ -181,7 +185,7 @@ internal sealed class HostRoomService
         }
     }
 
-    public async Task<Room> StartHostingAsync(RoomInfo roomInfo, NetworkOptions networkOptions, CancellationToken cancellationToken)
+    public async Task<Room> StartHostingAsync(RoomInfo roomInfo, NetworkOptions networkOptions, string? password, CancellationToken cancellationToken)
     {
         if (registry.GetServerConnectionCount() + 1 > ServicesConstants.MaximumRoomHosts)
         {
@@ -207,6 +211,14 @@ internal sealed class HostRoomService
             existingRoom.ConnectionAddresses = MergeCustomEndpoints(
                 await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken),
                 existingRoom.LocalRoomSettings);
+
+            if (password != null)
+            {
+                existingRoom.LocalRoomSettings.PasswordHash = passwordHasher.HashPassword(password, roomId);
+            }
+
+            existingRoom.HasPassword = existingRoom.LocalRoomSettings.PasswordHash != null;
+
             roomCancellationTokenSources[roomId] = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             var existingContext = roomFactory.GetOrCreateContext(roomId);
@@ -224,6 +236,14 @@ internal sealed class HostRoomService
             ConnectionAddresses = [],
             LocalRoomSettings = { NetworkOptions = networkOptions }
         };
+
+        if (password != null)
+        {
+            room.LocalRoomSettings.PasswordHash = passwordHasher.HashPassword(password, roomId);
+        }
+
+        room.HasPassword = room.LocalRoomSettings.PasswordHash != null;
+
         room.ConnectionAddresses = MergeCustomEndpoints(
             await transport.SetUpEndpoints(connectionId, networkOptions, cancellationToken: cancellationToken),
             room.LocalRoomSettings);
@@ -270,6 +290,18 @@ internal sealed class HostRoomService
         room.LocalRoomSettings.NetworkOptions = newNetworkOptions;
 
         return room.ConnectionAddresses;
+    }
+
+    public Task UpdateRoomPasswordAsync(Guid roomId, string? password, CancellationToken cancellationToken)
+    {
+        var room = roomStore.GetRoom(roomId);
+
+        room.LocalRoomSettings.PasswordHash = password != null
+            ? passwordHasher.HashPassword(password, roomId)
+            : null;
+        room.HasPassword = room.LocalRoomSettings.PasswordHash != null;
+
+        return Task.CompletedTask;
     }
 
     public void MarkParticipantAsLeftRoom(Guid roomId, Guid participantId)

@@ -73,7 +73,7 @@ internal sealed class FastChannelConnectHandler : BaseHandler
         if (fastChannelEndpoint == null)
         {
             LogInfo("Хост не предоставил UDP endpoint, остаёмся на TCP");
-            return HandlerResult.WithResponse(new RoomJoinRequestMessage());
+            return BuildJoinRequest(context);
         }
 
         var dialedAddress = roomStore.TryGetRoom(context.RoomContext.RoomId, out var savedRoom)
@@ -90,6 +90,18 @@ internal sealed class FastChannelConnectHandler : BaseHandler
 
         await transport.ConnectAsync(fastChannelEndpoint, context.ConnectionId, context.CancellationToken);
 
-        return HandlerResult.WithResponse(new RoomJoinRequestMessage());
+        return BuildJoinRequest(context);
+    }
+
+    private HandlerResult BuildJoinRequest(MessageContext context)
+    {
+        var passwordHash = roomStore.TryGetRoom(context.RoomContext.RoomId, out var room)
+            ? room.LocalRoomSettings.PasswordHash
+            : null;
+
+        return HandlerResult.WithResponse(new RoomJoinRequestMessage()
+        {
+            PasswordHash = passwordHash,
+        });
     }
 }
