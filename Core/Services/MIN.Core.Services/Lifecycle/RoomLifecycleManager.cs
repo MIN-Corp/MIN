@@ -70,6 +70,9 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
     Task<ConnectionResult> IRoomLifecycleManager.ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, string? password, CancellationToken cancellationToken)
         => clientService.ConnectAsync(endpoint, expectedRoomId, password, cancellationToken);
 
+    void IRoomLifecycleManager.MarkRoomForDeletion(Guid roomId)
+        => clientService.MarkRoomForDeletion(roomId);
+
     Task IRoomLifecycleManager.DisconnectAsync(Guid roomId, Guid connectionId)
         => clientService.DisconnectAsync(roomId, connectionId);
 

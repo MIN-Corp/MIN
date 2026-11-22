@@ -4,6 +4,7 @@ using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
+using MIN.Core.Handlers.Contracts.Constants;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Identity.Contracts.Interfaces;
@@ -51,7 +52,7 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 if (room.LocalRoomSettings.PasswordHash is { } expectedHash
                     && !passwordHasher.VerifyVerifier(roomJoinRequestMessage.PasswordHash, expectedHash))
                 {
-                    return HandlerResult.WithErrorHandled("Неверный пароль комнаты.", critical: true);
+                    return HandlerResult.WithErrorHandled(RoomPasswordConstants.WrongPasswordMessage, critical: true, kickParticipant: false);
                 }
 
                 if (room.LocalRoomSettings.PendingKickParticipantIds.Remove(roomJoinRequestMessage.SenderId, out var reason))
@@ -69,7 +70,7 @@ internal sealed class ParticipantJoinHandler : BaseHandler
 
                 if (!isReturning && existing != null)
                 {
-                    return HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.", critical: true);
+                    return HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.", critical: true, kickParticipant: false);
                 }
 
                 return HandlerResult.WithResponse(new RoomJoinResponseMessage());

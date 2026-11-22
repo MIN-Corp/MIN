@@ -152,7 +152,8 @@ public sealed class MessageDispatcher : IMessageDispatcher
                         try
                         {
                             await errorHandler.SendErrorToConnectionAsync(result.ErrorMessage, errorConnectionId,
-                                context.RoomContext.RoomId, result.CriticalErrorForConnection).ConfigureAwait(false);
+                                context.RoomContext.RoomId, result.CriticalErrorForConnection,
+                                kickParticipant: result.KickParticipant).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {

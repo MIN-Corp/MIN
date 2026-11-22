@@ -173,6 +173,30 @@ public class NetworkErrorHandlerTests : IDisposable
         lifecycle.Verify(l => l.KickConnectionAsync(roomId, connectionId, DisconnectReason.Kick), Times.Once);
     }
 
+    /// <summary>
+    /// ACK на мягкое отклонение разрывает соединение без кика участника
+    /// </summary>
+    [Fact]
+    public async Task SoftConnectionDisconnectAckShouldNotKickParticipant()
+    {
+        // Arrange
+        var connectionId = Guid.NewGuid();
+        await handler.SendErrorToConnectionAsync("причина", connectionId, roomId, critical: true, timeoutMs: 60_000, kickParticipant: false);
+
+        // Act
+        await eventBus.PublishAsync(new DisconnectAckReceived
+        {
+            RoomId = roomId,
+            ParticipantId = Guid.NewGuid(),
+            ConnectionId = connectionId,
+        }, CancellationToken.None);
+        await TestWait.UntilAsync(() => lifecycle.Invocations.Count >= 1, timeoutMs: 2000);
+
+        // Assert
+        lifecycle.Verify(l => l.KickConnectionAsync(roomId, connectionId, DisconnectReason.Intentionally), Times.Once);
+        lifecycle.Verify(l => l.KickConnectionAsync(roomId, connectionId, DisconnectReason.Kick), Times.Never);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

@@ -20,6 +20,11 @@ namespace MIN.Desktop.ViewModels.Modals;
 /// </summary>
 public partial class CreateRoomViewModel : ModalViewModelBase
 {
+    /// <summary>
+    /// Маска существующего пароля (настоящий пароль не хранится и не может быть показан)
+    /// </summary>
+    private const string ExistingPasswordMask = "••••••••";
+
     private int roomCurrentParticipantCount;
 
     [ObservableProperty]
@@ -88,6 +93,28 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     public partial bool HamachiInstalled { get; set; }
 
     /// <summary>
+    /// Пароль комнаты
+    /// </summary>
+    [ObservableProperty]
+    public partial string Password { get; set; } = "";
+
+    /// <summary>
+    /// У комнаты уже установлен пароль
+    /// </summary>
+    [ObservableProperty]
+    public partial bool HasExistingPassword { get; set; }
+
+    /// <summary>
+    /// Решение по паролю, прочитанное вызывающим кодом после закрытия окна
+    /// </summary>
+    public RoomPasswordChange PasswordAction { get; private set; }
+
+    /// <summary>
+    /// Новый пароль (для <see cref="RoomPasswordChange.Set"/>)
+    /// </summary>
+    public string? NewPassword { get; private set; }
+
+    /// <summary>
     /// Название окна
     /// </summary>
     [ObservableProperty]
@@ -96,19 +123,19 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     /// <summary>
     /// Настраиваемая комната
     /// </summary>
-    public RoomInfo Room { get; set; } = new RoomInfo();
+    public RoomInfo Room { get; private set; } = new();
 
     /// <summary>
     /// Настройки глобальности сети
     /// </summary>
-    public NetworkOptions NetworkOptions { get; set; }
+    public NetworkOptions NetworkOptions { get; private set; }
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="CreateRoomViewModel"/>
     /// </summary>
     public CreateRoomViewModel(IRoomConnectionRegistry registry)
     {
-        var installedVpns = NetworkHelper.GetVpnIps();
+        var installedVpns = NetworkHelper.GetVpnIps().ToArray();
 
         if (installedVpns.Any(x => x.NetworkName.Contains("Radmin")))
         {
@@ -124,7 +151,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
     }
 
     /// <summary>
-    /// Инициализироовать с уже созданной комнатой
+    /// Инициализировать с уже созданной комнатой
     /// </summary>
     public void InitializeWithRoom(RoomInfo room, NetworkOptions networkOptions)
     {
@@ -133,7 +160,14 @@ public partial class CreateRoomViewModel : ModalViewModelBase
         IsNew = false;
         Room = room;
         Name = room.Name;
+        HasExistingPassword = room.HasPassword;
+
+        if (HasExistingPassword)
+        {
+            Password = ExistingPasswordMask;
+        }
         roomCurrentParticipantCount = room.ParticipantCount;
+
         RoomMaxPlayers = room.MaximumParticipants;
         NetworkOptions = networkOptions;
 
@@ -163,7 +197,7 @@ public partial class CreateRoomViewModel : ModalViewModelBase
 
         Room.MaximumParticipants = RoomMaxPlayers;
 
-        NetworkOptions = new()
+        NetworkOptions = new NetworkOptions
         {
             PrefferredPort = (ushort)Port,
             EnableLocalDiscovery = EnableLocalDiscovery,
@@ -171,6 +205,19 @@ public partial class CreateRoomViewModel : ModalViewModelBase
             EnableRadmin = EnableRadmin,
             EnableWeb = EnableWeb,
         };
+
+        if (!IsNew && HasExistingPassword)
+        {
+            PasswordAction = Password == ExistingPasswordMask ? RoomPasswordChange.Keep
+                : string.IsNullOrEmpty(Password) ? RoomPasswordChange.Clear
+                : RoomPasswordChange.Set;
+        }
+        else
+        {
+            PasswordAction = string.IsNullOrEmpty(Password) ? RoomPasswordChange.Keep : RoomPasswordChange.Set;
+        }
+
+        NewPassword = PasswordAction == RoomPasswordChange.Set ? Password : null;
 
         Close(ButtonOptions.Ok);
     }

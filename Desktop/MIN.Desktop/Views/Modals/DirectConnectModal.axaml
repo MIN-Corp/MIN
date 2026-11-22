@@ -66,6 +66,18 @@
                         </TextBox>
                     </StackPanel>
                 </Border>
+
+                <Border Classes="card">
+                    <StackPanel Classes="form">
+                        <TextBlock Text="Пароль комнаты" />
+                        <TextBox
+                            MaxLength="120"
+                            MaxWidth="400"
+                            PasswordChar="•"
+                            Text="{Binding Password}"
+                            PlaceholderText="Оставьте пустым, если пароля нет..." />
+                    </StackPanel>
+                </Border>
             </StackPanel>
             <Border Classes="footer">
                 <Panel>

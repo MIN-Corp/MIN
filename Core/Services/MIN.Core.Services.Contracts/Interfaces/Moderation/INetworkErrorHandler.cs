@@ -17,7 +17,8 @@ public interface INetworkErrorHandler
     /// Отправить ошибку для соединения, указав причину
     /// </summary>
     /// <remarks>
-    /// если critical = true - нужно разорвать соединение
+    /// Если critical = true - нужно разорвать соединение;
+    /// kickParticipant = false - участник остаётся в комнате (только разрыв соединения)
     /// </remarks>
-    Task SendErrorToConnectionAsync(string message, Guid connectionId, Guid roomId, bool critical = false, int timeoutMs = 5000);
+    Task SendErrorToConnectionAsync(string message, Guid connectionId, Guid roomId, bool critical = false, int timeoutMs = 5000, bool kickParticipant = true);
 }

@@ -54,9 +54,25 @@
                 </Border>
 
                 <Border Classes="card">
+                    <StackPanel Classes="form">
+                        <TextBlock Text="Пароль комнаты" />
+                        <TextBox
+                            MaxLength="120"
+                            MaxWidth="400"
+                            PasswordChar="•"
+                            Text="{Binding Password, Converter={converters:TrimConverter}}"
+                            PlaceholderText="Без пароля..." />
+                        <TextBlock MaxWidth="300.0" Classes="info" IsVisible="{Binding HasExistingPassword}">
+                            Настоящий пароль скрыт. Сотрите содержимое, чтобы убрать пароль,
+                            или введите новый, чтобы заменить его
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
                     <Expander Classes="main" Header="Настройка сети" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0" Classes="form">
-                            <!-- Preffered port -->
+                            <!-- Preferred port -->
 
                             <StackPanel>
                                 <StackPanel Classes="form">
@@ -88,7 +104,7 @@
                                     Может запросить права доступа
                                 </TextBlock>
                             </StackPanel>
-                           
+
                             <Separator /> <!-- UPnP -->
 
                             <StackPanel>
@@ -147,7 +163,7 @@
                                 </StackPanel>
 
                                 <TextBlock MaxWidth="300.0" Classes="info">
-                                     (В РАЗРАБОТКЕ) Оппубликует комнату в Web, где каждый может увидеть
+                                     (В РАЗРАБОТКЕ) Опубликует комнату в Web, где каждый может увидеть
                                     комнату в глобальном списке.
                                 </TextBlock>
                             </StackPanel>

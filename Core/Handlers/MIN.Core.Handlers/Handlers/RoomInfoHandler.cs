@@ -69,6 +69,9 @@ internal sealed class RoomInfoHandler : BaseHandler
                 var knownConnectionAddresses = roomStore.TryGetRoom(roomId, out var registeredRoom)
                     ? registeredRoom.ConnectionAddresses
                     : null;
+                var savedLocalSettings = roomStore.TryGetRoom(roomId, out registeredRoom)
+                    ? registeredRoom.LocalRoomSettings
+                    : null;
 
                 roomStore.Register(roomInfoResponse.Room);
 
@@ -76,6 +79,11 @@ internal sealed class RoomInfoHandler : BaseHandler
                 if (connectionAddresses?.Length > 0)
                 {
                     roomStore.GetRoom(roomId).ConnectionAddresses = connectionAddresses;
+                }
+
+                if (savedLocalSettings != null)
+                {
+                    roomStore.GetRoom(roomId).LocalRoomSettings = savedLocalSettings;
                 }
 
                 var history = roomInfoResponse.Room.ChatHistory;

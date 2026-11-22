@@ -22,6 +22,11 @@ public interface IRoomLifecycleManager
     Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, string? password = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Пометить комнату на удаление при следующем подключении (клиентская сторона)
+    /// </summary>
+    void MarkRoomForDeletion(Guid roomId);
+
+    /// <summary>
     /// Отключиться от удалённой комнаты (клиентская сторона)
     /// </summary>
     Task DisconnectAsync(Guid roomId, Guid connectionId);

@@ -151,7 +151,8 @@ internal sealed class HostRoomService
                 });
             }
         }
-        else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out _))
+        else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out var participant)
+                 && participant!.CurrentStatus != OnlineStatus.Offline)
         {
             var reason = e.DisconnectReason;
 

@@ -136,6 +136,7 @@ public class AdvancedHandlerTests : IDisposable
 
         // Assert
         result.ErrorMessage.Should().Contain("устаревшей версии");
+        result.KickParticipant.Should().BeFalse();
         result.CriticalErrorForConnection.Should().BeTrue();
     }
 
@@ -304,6 +305,7 @@ public class AdvancedHandlerTests : IDisposable
 
         // Assert
         result.ErrorMessage.Should().Be("кикнут");
+        result.KickParticipant.Should().BeTrue();
         result.CriticalErrorForConnection.Should().BeTrue();
     }
 
@@ -324,6 +326,7 @@ public class AdvancedHandlerTests : IDisposable
 
         // Assert
         result.ErrorMessage.Should().Contain("пароль");
+        result.KickParticipant.Should().BeFalse();
         result.CriticalErrorForConnection.Should().BeTrue();
     }
 
@@ -560,6 +563,25 @@ public class AdvancedHandlerTests : IDisposable
     }
 
     /// <summary>
+    /// Ответ с информацией о комнате сохраняет локальные настройки клиента
+    /// </summary>
+    [Fact]
+    public async Task RoomInfoResponseShouldKeepLocalRoomSettings()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.LocalRoomSettings.PasswordHash = "600000:stored==";
+        var handler = factory.GetHandler(MessageTypeTag.RoomInfoResponse);
+        var incomingRoom = new Room { Id = roomId, Name = "Другое имя", HostParticipant = new ParticipantInfo { Id = Guid.NewGuid() } };
+
+        // Act
+        await handler.HandleAsync(new RoomInfoResponseMessage { Room = incomingRoom }, CreateContext(Role.Client));
+
+        // Assert
+        factory.RoomStore.GetRoom(roomId).LocalRoomSettings.PasswordHash.Should().Be("600000:stored==");
+    }
+
+    /// <summary>
     /// Запрос синхронизации возвращает упущенные сообщения
     /// </summary>
     [Fact]
@@ -658,6 +680,65 @@ public class AdvancedHandlerTests : IDisposable
         var ackEvent = result.ResultEvent.Should().BeOfType<DisconnectAckReceived>().Subject;
         ackEvent.ParticipantId.Should().Be(senderId);
         ackEvent.ConnectionId.Should().Be(connectionId);
+    }
+
+    /// <summary>
+    /// Отключение незнакомого участника уничтожает каркас комнаты
+    /// </summary>
+    [Fact]
+    public async Task DisconnectUnknownParticipantShouldDestroyRoom()
+    {
+        // Arrange
+        RegisterRoom();
+        var handler = factory.GetHandler(MessageTypeTag.Disconnect);
+        factory.RoomConnections.RegisterClientConnection(roomId, connectionId);
+
+        // Act
+        var result = await handler.HandleAsync(new DisconnectMessage { Reason = "Неверный пароль комнаты.", SenderId = Guid.NewGuid() }, CreateContext(Role.Client));
+
+        // Assert
+        result.CriticalErrorForDestroy.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Отключение известного офлайн-участника не уничтожает комнату
+    /// </summary>
+    [Fact]
+    public async Task DisconnectKnownOfflineParticipantShouldKeepRoom()
+    {
+        // Arrange
+        RegisterRoom();
+        roomContext.Participants.AddParticipant(new Participant { Id = selfId, CurrentStatus = OnlineStatus.Offline });
+        var handler = factory.GetHandler(MessageTypeTag.Disconnect);
+        factory.RoomConnections.RegisterClientConnection(roomId, connectionId);
+        roomContext.Connections.Register(connectionId, new ParticipantInfo { Id = selfId });
+
+        // Act
+        var result = await handler.HandleAsync(new DisconnectMessage { Reason = "x", SenderId = Guid.NewGuid() }, CreateContext(Role.Client));
+
+        // Assert
+        result.CriticalErrorForDestroy.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Кик онлайн-участника живой комнаты уничтожает комнату
+    /// </summary>
+    [Fact]
+    public async Task DisconnectOnlineParticipantInLiveRoomShouldDestroyRoom()
+    {
+        // Arrange
+        var room = RegisterRoom();
+        room.IsOnline = true;
+        roomContext.Participants.AddParticipant(new Participant { Id = selfId, CurrentStatus = OnlineStatus.Online });
+        var handler = factory.GetHandler(MessageTypeTag.Disconnect);
+        factory.RoomConnections.RegisterClientConnection(roomId, connectionId);
+        roomContext.Connections.Register(connectionId, new ParticipantInfo { Id = selfId });
+
+        // Act
+        var result = await handler.HandleAsync(new DisconnectMessage { Reason = "кикнут", SenderId = Guid.NewGuid() }, CreateContext(Role.Client));
+
+        // Assert
+        result.CriticalErrorForDestroy.Should().BeTrue();
     }
 
     /// <summary>

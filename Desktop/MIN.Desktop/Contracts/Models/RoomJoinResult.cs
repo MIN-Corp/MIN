@@ -26,12 +26,7 @@ public class RoomJoinResult
     public RoomIdentityMismatchException? RoomIdentityMismatchException { get; init; }
 
     /// <summary>
-    /// Идентификатор комнаты
+    /// Пароль был отклонён
     /// </summary>
-    public Guid RoomId { get; init; }
-
-    /// <summary>
-    /// Идентификатор соединения
-    /// </summary>
-    public Guid ConnectionId { get; init; }
+    public bool PasswordRejected { get; init; }
 }

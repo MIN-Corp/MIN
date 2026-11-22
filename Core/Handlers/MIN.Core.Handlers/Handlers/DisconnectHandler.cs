@@ -36,18 +36,20 @@ internal sealed class DisconnectHandler : BaseHandler
                 var reason = disconnectMessage.Reason;
                 LogInfo($"Сервер нарошно отключил меня: {reason}");
 
-                var isKicked = context.RoomContext.Participants.TryGetParticipantById(context.SelfId, out var self)
-                    && self?.CurrentStatus == OnlineStatus.Online;
+                var isParticipantKnown = context.RoomContext.Participants.TryGetParticipantById(context.SelfId, out var self);
+                var isKicked = isParticipantKnown && self?.CurrentStatus == OnlineStatus.Online;
 
-                await messageSender.SendAsync(new DisconnectAckMessage()
+                await messageSender.SendAsync(new DisconnectAckMessage
                 {
                     Reason = reason,
                     SenderId = context.SelfId,
                 }, context.RoomContext.RoomId, context.ConnectionId, context.CancellationToken);
 
-                var roomName = roomStore.GetRoom(context.RoomContext.RoomId).Name;
-                var uiToShow = "Хост разорвал соединение" + (roomName != null ? $" для комнаты {roomName}" : string.Empty) + (reason != string.Empty ? $": {reason}" : string.Empty);
-                return HandlerResult.Failure(uiToShow, stopPropagation: true, critical: true, destroy: isKicked);
+                var roomExists = roomStore.TryGetRoom(context.RoomContext.RoomId, out var currentRoom);
+                var roomName = roomExists ? currentRoom!.Name : null;
+                var uiToShow = "Хост разорвал соединение" + (string.IsNullOrEmpty(roomName) ? $" для комнаты {roomName}" : string.Empty) + (reason != string.Empty ? $": {reason}" : string.Empty);
+                var isLiveRoom = roomExists && currentRoom!.IsOnline;
+                return HandlerResult.Failure(uiToShow, stopPropagation: true, critical: true, destroy: (isKicked && isLiveRoom) || !isParticipantKnown);
 
             case DisconnectAckMessage _:
                 return HandlerResult.WithEvent(new DisconnectAckReceived()

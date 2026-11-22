@@ -20,5 +20,5 @@ public sealed class RoomJoinRequestMessage : BaseMessage
     /// <remarks>
     /// Совпадает с сохранённым на хосте; null - если пароль не требуется или не введён
     /// </remarks>
-    public string? PasswordHash { get; set; }
+    public string? PasswordHash { get; init; }
 }

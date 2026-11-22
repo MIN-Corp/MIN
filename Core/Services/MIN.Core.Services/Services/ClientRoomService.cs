@@ -174,12 +174,13 @@ internal sealed class ClientRoomService
         catch (OperationCanceledException) { return connectionResult; }
         catch
         {
-            if (connectionResult.RoomId != Guid.Empty && !roomExistedBefore)
+            if (connectionResult.RoomId == Guid.Empty || roomExistedBefore)
             {
-                roomStore.Remove(connectionResult.RoomId);
-                roomFactory.DestroyContext(connectionResult.RoomId);
+                throw;
             }
 
+            roomStore.Remove(connectionResult.RoomId);
+            roomFactory.DestroyContext(connectionResult.RoomId);
             throw;
         }
     }
@@ -244,7 +245,7 @@ internal sealed class ClientRoomService
 
         logger.Log($"Я сам инициирую отключение от комнаты с id {roomId} с соединением {connectionId}");
 
-        // Transport will fire event, where it would cleanup further
+        // Transport will fire event, where it would clean up further
         await transport.DisconnectAsync(connectionId, DisconnectReason.Intentionally);
     }
 
@@ -285,7 +286,7 @@ internal sealed class ClientRoomService
     {
         if (pendingRoomLeaves.TryRemove(roomId, out var tcs))
         {
-            tcs?.TrySetResult();
+            tcs.TrySetResult();
         }
     }
 
