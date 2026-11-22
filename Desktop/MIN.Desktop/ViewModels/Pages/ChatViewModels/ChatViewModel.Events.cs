@@ -345,38 +345,44 @@ public partial class ChatViewModel
         chatSideBarViewModel.UpdateStats(room);
     }
 
-    private async Task OnChatHistoryUpdated(ChatHistoryUpdatedEvent eventMessage, CancellationToken cancellationToken)
+    private Task OnChatHistoryUpdated(ChatHistoryUpdatedEvent eventMessage, CancellationToken cancellationToken)
     {
-        var e = eventMessage.Message;
-
-        room.TotalMessageCount = e.TotalCount;
-        hasScrolledHistory = true;
-
-        RemoveLoadMoreLabel();
-        maxRenderedMessages += StoreConstants.MessagesPageSize;
-        await RenderMessages(e.Messages, appendOnTop: true);
-
-        if (e.Messages.Count > 0)
+        Dispatcher.UIThread.Post(async void () =>
         {
-            var oldest = e.Messages[^1];
-            oldestLoadedTimestamp = oldest.Timestamp;
-            oldestLoadedMessageId = oldest.Id;
-        }
+            var e = eventMessage.Message;
 
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
-        var moreInMemory = context.Messages
-            .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
-            .Any();
+            room.TotalMessageCount = e.TotalCount;
+            hasScrolledHistory = true;
+            canLoadOlderMessages = false;
+            maxRenderedMessages += StoreConstants.MessagesPageSize;
 
-        if (moreInMemory || context.Messages.GetMessageCount() < room.TotalMessageCount)
-        {
-            ShowLoadMoreLabel();
-        }
+            await RenderMessages(e.Messages, appendOnTop: true);
+
+            if (e.Messages.Count > 0)
+            {
+                var oldest = e.Messages[^1];
+                oldestLoadedTimestamp = oldest.Timestamp;
+                oldestLoadedMessageId = oldest.Id;
+            }
+
+            var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
+            var moreInMemory = context.Messages
+                .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
+                .Any();
+
+            if (moreInMemory || context.Messages.GetMessageCount() < room.TotalMessageCount)
+            {
+                canLoadOlderMessages = true;
+            }
+        });
+
+        return Task.CompletedTask;
     }
 
     private async Task OnChatHistoryCleared(ChatHistoryClearedEvent eventMessage, CancellationToken cancellationToken)
     {
-        RemoveLoadMoreLabel();
+        canLoadOlderMessages = false;
+        isLoadingOlderHistory = false;
         DisposeMessageCards();
         Messages.ClearAndDispose();
         renderedMessageCount = 0;

@@ -15,6 +15,7 @@ namespace MIN.Desktop.Views.Views.Central;
 public partial class ChatView : RoutableViewBase<ChatViewModel>
 {
     private const double BottomThresholdPercent = 0.5;
+    private const double TopLoadThreshold = 0.5;
     private const double AnchorTolerance = 0.5;
 
     private ChatViewModel? chatVm;
@@ -228,6 +229,11 @@ public partial class ChatView : RoutableViewBase<ChatViewModel>
         }
 
         wasAtBottom = atBottom;
+
+        if (e.OffsetDelta.Y < 0 && sv.Offset.Y <= TopLoadThreshold)
+        {
+            _ = chatVm.LoadOlderMessagesAsync();
+        }
     }
 
     private (BaseChatMessageViewModel? card, double subOffset) FindTopVisibleCard()

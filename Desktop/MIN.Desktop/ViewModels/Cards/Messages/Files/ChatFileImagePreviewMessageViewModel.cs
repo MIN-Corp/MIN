@@ -15,6 +15,11 @@ namespace MIN.Desktop.ViewModels.Cards.Messages.Files;
 
 public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageViewModel
 {
+    /// <summary>
+    /// Порог размера файла (2 МБ), до которого изображения скачиваются автоматически
+    /// </summary>
+    private const long AutoDownloadSizeThreshold = 2 * 1024 * 1024;
+
     // GIF
     private FileStream? gifStream;
     private GifHeaderSource gifPreviewImage = null!;
@@ -68,6 +73,8 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
 
         LoadImage(FileMetadataMessage.FilePath ?? string.Empty);
         UpdateDownloadState();
+
+        IsAvailableForNetworkChanged += OnNetworkAvailabilityChangedForAutoDownload;
     }
 
     /// <inheritdoc />
@@ -127,6 +134,31 @@ public partial class ChatFileImagePreviewMessageViewModel : ChatFileBaseMessageV
         if (!Downloaded)
         {
             InvokeDownloadRequested();
+        }
+    }
+
+    /// <summary>
+    /// Автоматически запрашивает скачивание изображений, не превышающих порог размера
+    /// </summary>
+    public void TryAutoDownload()
+    {
+        if (Downloaded || IsTransferring || !IsAvailableForNetwork
+            || FileMetadataMessage.FileSize > AutoDownloadSizeThreshold)
+        {
+            return;
+        }
+
+        InvokeDownloadRequested();
+    }
+
+    /// <summary>
+    /// Доскачивает небольшие изображения при восстановлении сети
+    /// </summary>
+    private void OnNetworkAvailabilityChangedForAutoDownload()
+    {
+        if (IsAvailableForNetwork)
+        {
+            TryAutoDownload();
         }
     }
 

@@ -147,11 +147,12 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         maxRenderedMessages = StoreConstants.MessagesPageSize;
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
+        canLoadOlderMessages = false;
+        isLoadingOlderHistory = false;
 
         var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var lastHistory = context.Messages.GetRecentHistory().ToList();
 
-        RemoveLoadMoreLabel();
         DisposeMessageCards();
         Messages.ClearAndDispose();
         await RenderMessages(lastHistory);
@@ -169,7 +170,7 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
 
         if (moreExists || context.Messages.GetMessageCount() < room.TotalMessageCount)
         {
-            ShowLoadMoreLabel();
+            canLoadOlderMessages = true;
         }
 
         await RestoreScrollOrGoBottomAsync();
@@ -185,7 +186,8 @@ public partial class ChatViewModel : ValidatingRoutableViewModelBase
         DisposeMessageCards();
         Messages.ClearAndDispose();
         renderedMessageCount = 0;
-        RemoveLoadMoreLabel();
+        canLoadOlderMessages = false;
+        isLoadingOlderHistory = false;
     }
 
     /// <inheritdoc />

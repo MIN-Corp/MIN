@@ -365,30 +365,35 @@ public partial class ChatViewModel
                 {
                     try
                     {
-                        await using var fileStream = File.OpenRead(fileAttachment.File.FilePath);
-                        using var bitmap = Bitmap.DecodeToWidth(fileStream, 1);
+                        var format = featureCollection.FileTransfer.FileHelperService
+                            .GetFileType(fileAttachment.File.FileName);
+
+                        if (format.Equals("svg", StringComparison.OrdinalIgnoreCase))
+                        {
+                            using var svgBitmap = ImageHelper.SvgToBitmap(fileAttachment.File.FilePath);
+                        }
+                        else
+                        {
+                            await using var fileStream = File.OpenRead(fileAttachment.File.FilePath);
+                            using var bitmap = Bitmap.DecodeToWidth(fileStream, 1);
+                        }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            using var bitmap = ImageHelper.SvgToBitmap(fileAttachment.File.FilePath);
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            InAppNotifier.Error($"Не удалось загрузить файл {fileAttachment.File.FileName}: {ex.Message}");
-                            return;
-                        }
+                        InAppNotifier.Error($"Не удалось отправить файл {fileAttachment.File.FileName}: "
+                                            + "файл повреждён или имеет неподдерживаемый формат изображения.");
+                        featureCollection.Helper.Logger.Log($"Не удалось загрузить файл {fileAttachment.File.FileName}: {ex.Message}");
+                        return;
                     }
                 }
 
                 await featureCollection.Chat.ChatFileService.SendFileAsync(RoomId,
                     fileAttachment == lastFile ? SendingMessage : string.Empty,
-                   fileAttachment.File.FileName,
-                   fileAttachment.File.FilePath,
-                   chatSideBarViewModel.PrivateChatParticipantId,
-                   replyToPreviewId,
-                   roomCts.Token
+                    fileAttachment.File.FileName,
+                    fileAttachment.File.FilePath,
+                    chatSideBarViewModel.PrivateChatParticipantId,
+                    replyToPreviewId,
+                    roomCts.Token
                );
             }
 
