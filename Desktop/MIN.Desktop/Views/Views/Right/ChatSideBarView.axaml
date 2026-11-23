@@ -214,9 +214,18 @@
                 </Border>
             </StackPanel>
 
-            <TextBlock DockPanel.Dock="Top" Classes="header5" HorizontalAlignment="Center">
-                Участники:
-            </TextBlock>
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,12,0">
+                <Button DockPanel.Dock="Right"
+                        Classes="icon"
+                        IsVisible="{Binding IsHost}"
+                        ToolTip.Tip="Чёрный список"
+                        Command="{Binding ShowBannedListCommand}">
+                    <Svg Path="/Assets/Icons/about-card.svg" />
+                </Button>
+                <TextBlock Classes="header5" HorizontalAlignment="Center">
+                    Участники:
+                </TextBlock>
+            </DockPanel>
 
              <ScrollViewer Classes="main">
                 <ItemsControl ItemsSource="{Binding RoomParticipants}">
@@ -265,11 +274,20 @@
                                                                     <Svg Path="/Assets/Icons/private-chat.svg" />
                                                                 </MenuItem.Icon>
                                                             </MenuItem>
-                                                            <MenuItem Header="Кикнуть участника"
-                                                                IsVisible="{Binding CanKick}"
-                                                                Command="{Binding KickParticipantCommand}">
+                                                            <MenuItem Classes="danger"
+                                                                      Header="Кикнуть участника"
+                                                                      IsVisible="{Binding CanKick}"
+                                                                      Command="{Binding KickParticipantCommand}">
                                                                 <MenuItem.Icon>
                                                                     <Svg Path="/Assets/Icons/close.svg" />
+                                                                </MenuItem.Icon>
+                                                            </MenuItem>
+                                                            <MenuItem Classes="danger"
+                                                                      Header="Забанить участника"
+                                                                      IsVisible="{Binding CanKick}"
+                                                                      Command="{Binding BanParticipantCommand}">
+                                                                <MenuItem.Icon>
+                                                                    <Svg Path="/Assets/Icons/gavel.svg" />
                                                                 </MenuItem.Icon>
                                                             </MenuItem>
                                                         </MenuFlyout>

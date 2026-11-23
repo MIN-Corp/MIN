@@ -1,4 +1,5 @@
-﻿using MIN.Core.Entities.Contracts.Models;
+﻿using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Models;
 
@@ -33,4 +34,24 @@ public interface IChatRoomService
     /// Обновить настройки сети по комнате
     /// </summary>
     Task UpdateNetworkOutOfSettings(RoomInfo room, IEnumerable<IEndpoint> endpoints, NetworkOptions newNetworkOptions, NetworkOptions? oldNetworkOptions = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Забанить участника на выбранную длительность и исключить его из комнаты
+    /// </summary>
+    Task BanParticipantAsync(Guid roomId, Guid participantId, string participantName, string reason, BanDuration duration, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Разбанить участника комнаты
+    /// </summary>
+    Task UnbanParticipantAsync(Guid roomId, Guid participantId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Изменить дату разбана участника
+    /// </summary>
+    Task UpdateBanDateAsync(Guid roomId, Guid participantId, BanDuration duration, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Получить список забаненных участников комнаты
+    /// </summary>
+    Task<IReadOnlyList<BanInfo>> GetBannedParticipantsAsync(Guid roomId, CancellationToken cancellationToken = default);
 }

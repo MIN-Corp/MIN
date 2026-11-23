@@ -1,4 +1,6 @@
 ﻿using MIN.Chat.Services.Contracts.Interfaces;
+using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Entities.Contracts.Extensions;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Identity.Contracts.Interfaces;
 using MIN.Core.Messaging.Stateless.RoomRelated.History;
@@ -24,6 +26,7 @@ public sealed class ChatRoomService : IChatRoomService
     private readonly IRoomLifecycleManager lifecycleManager;
     private readonly IRoomFactory roomFactory;
     private readonly INetworkErrorHandler networkErrorHandler;
+    private readonly IBanService banService;
     private readonly IDiscoveryService discoveryService;
     private readonly IIdentityService identityService;
 
@@ -35,6 +38,7 @@ public sealed class ChatRoomService : IChatRoomService
         IRoomLifecycleManager lifecycleManager,
         IRoomFactory roomFactory,
         INetworkErrorHandler networkErrorHandler,
+        IBanService banService,
         IDiscoveryService discoveryService,
         IIdentityService identityService)
     {
@@ -43,6 +47,7 @@ public sealed class ChatRoomService : IChatRoomService
         this.lifecycleManager = lifecycleManager;
         this.roomFactory = roomFactory;
         this.networkErrorHandler = networkErrorHandler;
+        this.banService = banService;
         this.discoveryService = discoveryService;
         this.identityService = identityService;
     }
@@ -51,7 +56,7 @@ public sealed class ChatRoomService : IChatRoomService
     {
         if (!registry.IsHosting(roomId))
         {
-            throw new InvalidOperationException("Ты не являешся хостом для этой комнаты");
+            throw new InvalidOperationException("Ты не являешься хостом для этой комнаты");
         }
 
         var context = roomFactory.GetOrCreateContext(roomId);
@@ -79,7 +84,7 @@ public sealed class ChatRoomService : IChatRoomService
 
         if (!registry.IsHosting(roomId))
         {
-            throw new InvalidOperationException("Ты не являешся хостом для этой комнаты");
+            throw new InvalidOperationException("Ты не являешься хостом для этой комнаты");
         }
 
         await messageRouter.RouteAsync(new RoomInfoUpdatedMessage
@@ -112,4 +117,40 @@ public sealed class ChatRoomService : IChatRoomService
         await ManageDiscoveryOutOfSettings(room, endpoints, newNetworkOptions, oldNetworkOptions, cancellationToken);
         await lifecycleManager.UpdateNetworkOptions(room.Id, newNetworkOptions, cancellationToken);
     }
+
+    async Task IChatRoomService.BanParticipantAsync(Guid roomId, Guid participantId, string participantName, string reason, BanDuration duration, CancellationToken cancellationToken)
+    {
+        if (!registry.IsHosting(roomId))
+        {
+            throw new InvalidOperationException("Ты не являешься хостом для этой комнаты");
+        }
+
+        // Сначала фиксируем бан, чтобы гонка с переподключением не позволила зайти обратно
+        var ban = banService.Ban(roomId, participantId, participantName, reason, duration.ToUnbanDate());
+
+        var context = roomFactory.GetOrCreateContext(roomId);
+
+        if (!context.Connections.TryGetConnectionIdFromParticipantId(participantId, out _))
+        {
+            await lifecycleManager.KickClientAsync(roomId, participantId, DisconnectReason.Kick, ban.GetBanMessage());
+            return;
+        }
+
+        await networkErrorHandler.SendErrorAsync(ban.GetBanMessage(), participantId, roomId, critical: true);
+    }
+
+    Task IChatRoomService.UnbanParticipantAsync(Guid roomId, Guid participantId, CancellationToken cancellationToken)
+    {
+        banService.Unban(roomId, participantId);
+        return Task.CompletedTask;
+    }
+
+    Task IChatRoomService.UpdateBanDateAsync(Guid roomId, Guid participantId, BanDuration duration, CancellationToken cancellationToken)
+    {
+        banService.UpdateBan(roomId, participantId, duration.ToUnbanDate());
+        return Task.CompletedTask;
+    }
+
+    Task<IReadOnlyList<BanInfo>> IChatRoomService.GetBannedParticipantsAsync(Guid roomId, CancellationToken cancellationToken)
+        => Task.FromResult(banService.GetBannedParticipants(roomId));
 }

@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MIN.Desktop.ViewModels.Modals"
+        xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:behaviors="using:MIN.Desktop.Infrastructure.Behaviors.Focus"
+        xmlns:converters="using:MIN.Desktop.Infrastructure.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="300"
+        MinWidth="300"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        x:Class="MIN.Desktop.Views.Modals.ParticipantBanModal"
+        x:DataType="vm:ParticipantBanViewModel"
+        Title="MIN - Бан участника">
+
+    <Design.DataContext>
+        <vm:ParticipantBanViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <controls:CustomTitleBar CanMinimize="False" CanMaximize="False" />
+
+        <StackPanel>
+            <StackPanel Classes="form" Margin="24">
+                <Border Classes="card">
+                    <StackPanel Classes="form" Spacing="10">
+                        <TextBlock Text="{Binding ParticipantName}" Classes="header4" />
+
+                        <TextBlock Text="Причина бана:" />
+                        <TextBox
+                            MaxLength="120"
+                            MaxWidth="400"
+                            TextWrapping="Wrap"
+                            AcceptsReturn="True"
+                            MaxLines="5"
+                            Text="{Binding Reason, Converter={converters:TrimConverter}}"
+                            PlaceholderText="Причина...">
+                            <Interaction.Behaviors>
+                                <behaviors:FocusOnViewShowBehavior />
+                            </Interaction.Behaviors>
+                        </TextBox>
+
+                        <TextBlock Text="Длительность бана:" />
+                        <ComboBox
+                            MinWidth="200"
+                            ItemsSource="{Binding DurationOptions}"
+                            SelectedItem="{Binding SelectedDuration}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <Border Classes="footer">
+                <Panel>
+                    <Button
+                        Command="{Binding CloseCommand}"
+                        Content="Отмена"
+                        Classes="secondary"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Left"
+                        HotKey="Escape" />
+                    <Button
+                        Command="{Binding BanCommand}"
+                        Content="Забанить"
+                        HorizontalAlignment="Right"
+                        HotKey="Enter" />
+                </Panel>
+            </Border>
+        </StackPanel>
+    </DockPanel>
+</Window>

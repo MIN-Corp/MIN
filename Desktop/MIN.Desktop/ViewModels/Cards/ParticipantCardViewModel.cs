@@ -92,6 +92,11 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
     public Action<Participant>? OnKickParticipantClicked { get; set; }
 
     /// <summary>
+    /// Событие по нажатию на кнопку бана участника
+    /// </summary>
+    public Action<Participant>? OnBanParticipantClicked { get; set; }
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="ParticipantCardViewModel"/>
     /// </summary>
     public ParticipantCardViewModel(Participant participant,
@@ -108,12 +113,13 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
         CanStartPrivateChat = !isSelf;
         CanInteract = CanKick || CanStartPrivateChat;
 
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode)
         {
-            FillLabels();
-
-            SubscribeToEvents(eventBus, roomId);
+            return;
         }
+
+        FillLabels();
+        SubscribeToEvents(eventBus, roomId);
     }
 
     private void SubscribeToEvents(IEventBus eventBus, Guid roomId)
@@ -128,14 +134,16 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
 
     private Task OnOnlineStatusChanged(OnlineStatusChangedEvent eventMessage, CancellationToken cancellationToken)
     {
-        if (eventMessage.Participant.Id == participant.Id)
+        if (eventMessage.Participant.Id != participant.Id)
         {
-            ParticipantStatus = isSelf ? OnlineStatus.Online : eventMessage.Status;
-            IsOffline = ParticipantStatus == OnlineStatus.Offline;
-            if (eventMessage.Status == OnlineStatus.Offline)
-            {
-                ParticipantLastSeenAt = DateTime.Now;
-            }
+            return Task.CompletedTask;
+        }
+
+        ParticipantStatus = isSelf ? OnlineStatus.Online : eventMessage.Status;
+        IsOffline = ParticipantStatus == OnlineStatus.Offline;
+        if (eventMessage.Status == OnlineStatus.Offline)
+        {
+            ParticipantLastSeenAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
@@ -150,7 +158,7 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Пометить как оффлайн (себя не помечает)
+    /// Пометить как офлайн (себя не помечает)
     /// </summary>
     public void MarkAsOffline()
     {
@@ -162,14 +170,6 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
         ParticipantStatus = isSelf ? OnlineStatus.Online : OnlineStatus.Offline;
         IsOffline = ParticipantStatus == OnlineStatus.Offline;
         ParticipantLastSeenAt = DateTime.Now;
-    }
-
-    /// <summary>
-    /// Отменить выбор карточки
-    /// </summary>
-    public void Unselect()
-    {
-        IsSelected = false;
     }
 
     [RelayCommand]
@@ -184,6 +184,12 @@ public partial class ParticipantCardViewModel : CardViewModelBase, IDisposable
     private void KickParticipant()
     {
         OnKickParticipantClicked?.Invoke(participant);
+    }
+
+    [RelayCommand]
+    private void BanParticipant()
+    {
+        OnBanParticipantClicked?.Invoke(participant);
     }
 
     private void FillLabels()

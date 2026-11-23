@@ -71,6 +71,8 @@ public class CoreModule : Module
         services.RegisterAsImplementedInterfaces<RoomPersistenceService>(ServiceLifetime.Singleton);
 
         services.RegisterAsImplementedInterfaces<NetworkErrorHandler>(ServiceLifetime.Singleton);
+        services.RegisterAsImplementedInterfaces<BanService>(ServiceLifetime.Singleton);
+
         services.RegisterAsImplementedInterfaces<RoomConnectionRegistry>(ServiceLifetime.Singleton);
 
         // Room-scoped

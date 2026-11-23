@@ -1,4 +1,5 @@
-﻿using MIN.Core.Transport.Contracts.Interfaces;
+﻿using MIN.Core.Entities.Contracts.Models;
+using MIN.Core.Transport.Contracts.Interfaces;
 using MIN.Core.Transport.Contracts.Models;
 
 namespace MIN.Core.Entities;
@@ -30,6 +31,14 @@ public record LocalRoomSettings
     /// Участники, которых нужно кикнуть при следующей попытке входа
     /// </summary>
     public Dictionary<Guid, string> PendingKickParticipantIds { get; } = [];
+
+    /// <summary>
+    /// Забаненные участники комнаты
+    /// </summary>
+    /// <remarks>
+    /// Ключ - Id участника. Переживает rehost и сохраняется в файл комнаты
+    /// </remarks>
+    public Dictionary<Guid, BanInfo> BannedParticipants { get; } = [];
 
     /// <summary>
     /// Добавленные вручную точки подключения (например, домен VPS)

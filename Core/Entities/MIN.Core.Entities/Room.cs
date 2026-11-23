@@ -49,8 +49,7 @@ public class Room : IRoomData
     /// Локальные настройки комнаты
     /// </summary>
     /// <remarks>
-    /// Для новых участников всегда будет пустым,
-    /// Нужен для сохранения комнаты на будущее
+    /// Для новых участников всегда будет пустым
     /// </remarks>
     public LocalRoomSettings LocalRoomSettings { get; set; } = new();
 
