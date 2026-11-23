@@ -128,5 +128,9 @@
       <DependentUpon>ScreenDemoStreamView.axaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\Modals\RoomPasswordModal.axaml.cs">
+      <DependentUpon>RoomPasswordModal.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

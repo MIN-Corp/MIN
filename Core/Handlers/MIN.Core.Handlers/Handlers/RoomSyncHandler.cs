@@ -61,7 +61,7 @@ internal sealed class RoomSyncHandler : BaseHandler
                         .GetMessagesNewerThan(syncRequest.MessagesAfterTimestamp, syncRequest.MessagesAfterMessageId)
                         .SanitizeMessagesForParticipant(message.SenderId).ToList(),
                     UpdatedMessages =
-                        visible.Where(m => m is IUpdateableMessage updateable && updateable.UpdatedAt >= syncRequest.MessagesAfterTimestamp).ToList(),
+                        visible.Where(m => m is IUpdatableMessage updateable && updateable.UpdatedAt >= syncRequest.MessagesAfterTimestamp).ToList(),
                     ExistingMessageIds = visible.Select(x => x.Id).Distinct().ToList()
                 });
 

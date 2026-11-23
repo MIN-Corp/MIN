@@ -65,7 +65,8 @@ public partial class ChatViewModel
     private Guid? lastPrivateChatParticipantId;
     private IMessage? lastChatMessage;
     private bool hasScrolledHistory;
-    private SystemChatMessageViewModel? loadMoreLabel;
+    private bool canLoadOlderMessages;
+    private bool isLoadingOlderHistory;
     private int renderedMessageCount;
 
     private DateTime? oldestLoadedTimestamp;
@@ -113,7 +114,7 @@ public partial class ChatViewModel
 
         if (ShouldTrimExcessMessages())
         {
-            ReplaceOldestWithLoadMore();
+            TrimOldestMessage();
         }
 
         if (appendOnTop)
@@ -153,12 +154,13 @@ public partial class ChatViewModel
     {
         DisposeMessageCards();
         Messages.ClearAndDispose();
-        RemoveLoadMoreLabel();
         hasScrolledHistory = false;
         renderedMessageCount = 0;
         maxRenderedMessages = StoreConstants.MessagesPageSize;
         oldestLoadedTimestamp = null;
         oldestLoadedMessageId = null;
+        canLoadOlderMessages = false;
+        isLoadingOlderHistory = false;
 
         var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
         var messages = context.Messages.GetRecentHistory().ToList();
@@ -167,8 +169,9 @@ public partial class ChatViewModel
 
         if (room.TotalMessageCount > StoreConstants.MessagesPageSize)
         {
-            ShowLoadMoreLabel();
+            canLoadOlderMessages = true;
         }
+
         oldestLoadedTimestamp = messages[0].Timestamp;
         oldestLoadedMessageId = messages[0].Id;
 
@@ -267,85 +270,70 @@ public partial class ChatViewModel
         }
     }
 
-    private void ShowLoadMoreLabel()
+    /// <summary>
+    /// Подгружает более старые сообщения при достижении верха списка.
+    /// Если загружать нечего, ничего не делает.
+    /// </summary>
+    public async Task LoadOlderMessagesAsync()
     {
-        if (loadMoreLabel != null)
+        if (!canLoadOlderMessages || isLoadingOlderHistory)
         {
             return;
         }
 
-        loadMoreLabel = new SystemChatMessageViewModel
-        {
-            Text = "+ Загрузить ещё",
-        };
+        isLoadingOlderHistory = true;
 
-        loadMoreLabel.OnClicked += OnLoadMoreClicked;
-        Messages.Insert(0, loadMoreLabel);
-    }
-
-    private void RemoveLoadMoreLabel()
-    {
-        if (loadMoreLabel == null)
+        try
         {
-            return;
+            var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
+
+            var olderInMemory = context.Messages
+                .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId)
+                .ToList();
+
+            maxRenderedMessages += StoreConstants.MessagesPageSize;
+
+            var messagesCount = context.Messages.GetMessageCount();
+
+            if (!IsHost && IsAvailableForNetwork
+                && olderInMemory.Count < StoreConstants.MessagesPageSize
+                && messagesCount < room.TotalMessageCount)
+            {
+                canLoadOlderMessages = false;
+
+                await featureCollection.Chat.ChatRoomService.SendChatHistoryRequest(
+                    RoomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
+                return;
+            }
+
+            await RenderMessages(olderInMemory, appendOnTop: true);
+            hasScrolledHistory = true;
+
+            if (olderInMemory.Count > 0)
+            {
+                oldestLoadedTimestamp = olderInMemory[^1].Timestamp;
+                oldestLoadedMessageId = olderInMemory[^1].Id;
+            }
+
+            var stillMoreExists = context.Messages
+                .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
+                .Any();
+
+            canLoadOlderMessages = stillMoreExists || messagesCount < room.TotalMessageCount;
         }
-
-        loadMoreLabel.OnClicked -= OnLoadMoreClicked;
-
-        Messages.Remove(loadMoreLabel);
-        loadMoreLabel.Dispose();
-        loadMoreLabel = null;
-    }
-
-    private async Task OnLoadMoreClicked()
-    {
-        var context = featureCollection.Core.RoomFactory.GetOrCreateContext(RoomId);
-
-        var olderInMemory = context.Messages
-            .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId)
-            .ToList();
-
-        maxRenderedMessages += StoreConstants.MessagesPageSize;
-
-        var messagesCount = context.Messages.GetMessageCount();
-
-        if (!IsHost && IsAvailableForNetwork
-            && olderInMemory.Count < StoreConstants.MessagesPageSize
-            && messagesCount < room.TotalMessageCount)
+        finally
         {
-            await featureCollection.Chat.ChatRoomService.SendChatHistoryRequest(
-                RoomId, oldestLoadedTimestamp, oldestLoadedMessageId, roomCts.Token);
-            return;
-        }
-
-        RemoveLoadMoreLabel();
-
-        await RenderMessages(olderInMemory, appendOnTop: true);
-        hasScrolledHistory = true;
-
-        if (olderInMemory.Count > 0)
-        {
-            oldestLoadedTimestamp = olderInMemory[^1].Timestamp;
-            oldestLoadedMessageId = olderInMemory[^1].Id;
-        }
-
-        var stillMoreExists = context.Messages
-            .GetMessagesOlderThan(oldestLoadedTimestamp, oldestLoadedMessageId, 1)
-            .Any();
-
-        if (stillMoreExists || messagesCount < room.TotalMessageCount)
-        {
-            ShowLoadMoreLabel();
+            isLoadingOlderHistory = false;
         }
     }
 
     private bool ShouldTrimExcessMessages() => renderedMessageCount >= maxRenderedMessages;
 
-    private void ReplaceOldestWithLoadMore()
+    private void TrimOldestMessage()
     {
         for (var i = 0; i < Messages.Count; i++)
         {
-            if (Messages[i] == loadMoreLabel || Messages[i].Message == null)
+            if (Messages[i].Message == null)
             {
                 continue;
             }
@@ -359,17 +347,20 @@ public partial class ChatViewModel
 
             for (var j = i; j < Messages.Count; j++)
             {
-                if (Messages[j].Message != null)
+                if (Messages[j].Message == null)
                 {
-                    oldestLoadedTimestamp = Messages[j].Message!.Timestamp;
-                    oldestLoadedMessageId = Messages[j].Message!.Id;
-                    break;
+                    continue;
                 }
+
+                oldestLoadedTimestamp = Messages[j].Message!.Timestamp;
+                oldestLoadedMessageId = Messages[j].Message!.Id;
+                break;
             }
 
             break;
         }
-        ShowLoadMoreLabel();
+
+        canLoadOlderMessages = true;
     }
 
     [RelayCommand]
@@ -456,8 +447,9 @@ public partial class ChatViewModel
         card.OnDownloadRequested += () => OnDownloadRequested(msg);
         card.OnCancelRequested += () => OnCancelRequested(msg);
         card.OnDeleteRequested += () => OnMessageDeleteRequested(msg.Id);
-        card.OnEditRequested += (newContent) => OnMessageEditRequested(msg.Id, newContent);
+        card.OnEditRequested += newContent => OnMessageEditRequested(msg.Id, newContent);
         card.OnReplyRequested += () => SetReplyTo(msg);
+        card.TryAutoDownload();
 
         if (!withAppendOnTop)
         {

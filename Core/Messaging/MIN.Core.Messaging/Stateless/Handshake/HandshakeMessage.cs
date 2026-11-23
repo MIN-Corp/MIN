@@ -23,26 +23,26 @@ public sealed class HandshakeMessage : BaseMessage
     /// <summary>
     /// Информация об инициирующем участнике
     /// </summary>
-    public ParticipantInfo Participant { get; set; } = null!;
+    public ParticipantInfo Participant { get; init; } = null!;
 
     /// <summary>
     /// Версия приложения отправителя
     /// </summary>
-    public Version Version { get; set; } = null!;
+    public Version Version { get; init; } = null!;
 
     /// <summary>
     /// Хеш публичного ключ (в случае его несовпадения)
     /// </summary>
     /// <remarks>
-    /// null - если уверены, что это первая встреча
+    /// Null - если уверены, что это первая встреча
     /// </remarks>
-    public byte[]? PublicKeyFingerprint { get; set; } = null!;
+    public byte[]? PublicKeyFingerprint { get; init; }
 
     /// <summary>
     /// Публичный ключ
     /// </summary>
     /// <remarks>
-    /// null - если уже была встреча и нужно проверить сохранившееся
+    /// Null - если уже была встреча и нужно проверить сохранившееся
     /// </remarks>
-    public byte[]? PublicKey { get; set; } = null!;
+    public byte[]? PublicKey { get; init; }
 }

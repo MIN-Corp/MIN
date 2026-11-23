@@ -37,6 +37,9 @@ public class Room : IRoomData
     /// <inheritdoc />
     public DateTime CreatedAt { get; set; }
 
+    /// <inheritdoc />
+    public bool HasPassword { get; set; }
+
     /// <summary>
     /// Список адресов для подключения
     /// </summary>
@@ -98,6 +101,7 @@ public class Room : IRoomData
         MaximumParticipants = roomData.MaximumParticipants;
         IsOnline = roomData.IsOnline;
         CreatedAt = roomData.CreatedAt;
+        HasPassword = roomData.HasPassword;
     }
 
     /// <summary>
@@ -112,6 +116,7 @@ public class Room : IRoomData
         MaximumParticipants = MaximumParticipants,
         IsOnline = IsOnline,
         CreatedAt = CreatedAt,
+        HasPassword = HasPassword,
         HostParticipant = HostParticipant,
         CurrentParticipants = CurrentParticipants.ToList(),
         ChatHistory = ChatHistory.ToList(),

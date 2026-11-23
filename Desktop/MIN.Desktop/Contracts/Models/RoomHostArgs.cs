@@ -22,6 +22,11 @@ public class RoomHostArgs
     public NetworkOptions NetworkOptions { get; init; }
 
     /// <summary>
+    /// Пароль комнаты (null - без пароля)
+    /// </summary>
+    public string? Password { get; init; }
+
+    /// <summary>
     /// Событие по готовности комнаты
     /// </summary>
     public required Func<Room, Task> OnRoomReady { get; init; }

@@ -3,7 +3,7 @@
 /// <summary>
 /// Сообщение, которое имеет текстовое поле и может быть изменено
 /// </summary>
-public interface IContentEditable : IUpdateableMessage
+public interface IContentEditable : IUpdatableMessage
 {
     /// <summary>
     /// Содержимое сообщения

@@ -17,6 +17,11 @@ public class RoomJoinArgs
     public required IEndpoint Endpoint { get; init; }
 
     /// <summary>
+    /// Пароль комнаты (null - не указан)
+    /// </summary>
+    public string? Password { get; init; }
+
+    /// <summary>
     /// Ожидаемый идентификатор комнаты
     /// </summary>
     public Guid? ExpectedRoomId { get; init; }

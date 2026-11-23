@@ -11,42 +11,50 @@ public sealed class HandlerResult
     /// <summary>
     /// Успешность обработки
     /// </summary>
-    public bool IsSuccess { get; init; }
+    public bool IsSuccess { get; private init; }
 
     /// <summary>
     /// Флаг, указывающий, следует ли остановить дальнейшую обработку (для цепочек)
     /// </summary>
-    public bool StopPropagation { get; init; }
+    public bool StopPropagation { get; private init; }
 
     /// <summary>
     /// Флаг, указывающий, настолько ли критична ли ошибка, чтобы оставатьсяя подключённым
     /// </summary>
-    public bool CriticalErrorForConnection { get; init; }
+    public bool CriticalErrorForConnection { get; private init; }
 
     /// <summary>
     /// Флаг, указывающий, настолько ли критична ли ошибка, чтобы сохранить комнату
     /// </summary>
-    public bool CriticalErrorForDestroy { get; init; }
+    public bool CriticalErrorForDestroy { get; private init; }
+
+    /// <summary>
+    /// Флаг, указывающий, надо ли выкидывать участника из комнаты при отключении соединения
+    /// </summary>
+    /// <remarks>
+    /// False - соединение просто разрывается, участник остаётся в комнате (offline)
+    /// </remarks>
+    public bool KickParticipant { get; private init; }
 
     /// <summary>
     /// Флаг, указывающий, надо ли публиковать ErrorOccurredEvent, или обработчик сам обработает
     /// </summary>
-    public bool ShowErrorMessage { get; init; }
+    public bool ShowErrorMessage { get; private init; }
 
     /// <summary>
     /// Ответное сообщение (если требуется)
     /// </summary>
-    public IMessage? Response { get; init; }
+    public IMessage? Response { get; private init; }
 
     /// <summary>
     /// Вызываемое событие (если требуется)
     /// </summary>
-    public BaseEvent? ResultEvent { get; init; }
+    public BaseEvent? ResultEvent { get; private init; }
 
     /// <summary>
     /// Сообщение об ошибке (если не успешно)
     /// </summary>
-    public string? ErrorMessage { get; init; }
+    public string? ErrorMessage { get; private init; }
 
     /// <summary>
     /// Создаёт успешный результат
@@ -97,7 +105,7 @@ public sealed class HandlerResult
     /// <summary>
     /// Создаёт результат с возвратом ошибки отправителю
     /// </summary>
-    public static HandlerResult WithErrorHandled(string errorMessage, bool stopPropagation = false, bool critical = false, bool destroy = false)
+    public static HandlerResult WithErrorHandled(string errorMessage, bool stopPropagation = false, bool critical = false, bool destroy = false, bool kickParticipant = true)
         => new()
         {
             IsSuccess = true,
@@ -105,5 +113,6 @@ public sealed class HandlerResult
             ErrorMessage = errorMessage,
             CriticalErrorForConnection = critical,
             CriticalErrorForDestroy = destroy,
+            KickParticipant =  kickParticipant
         };
 }

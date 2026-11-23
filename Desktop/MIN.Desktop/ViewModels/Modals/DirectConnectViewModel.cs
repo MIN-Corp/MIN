@@ -26,6 +26,12 @@ public partial class DirectConnectViewModel : ModalViewModelBase
     [Required(ErrorMessage = "Введите IP адрес")]
     public partial string IpAddress { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Пароль комнаты (если требуется)
+    /// </summary>
+    [ObservableProperty]
+    public partial string Password { get; set; } = "";
+
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
 

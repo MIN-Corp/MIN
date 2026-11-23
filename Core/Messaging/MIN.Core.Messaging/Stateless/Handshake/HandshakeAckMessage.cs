@@ -29,7 +29,7 @@ public sealed class HandshakeAckMessage : BaseMessage
     /// Хеш публичного ключа хоста (в случае его несовпадения)
     /// </summary>
     /// <remarks>
-    /// null - если уверены, что это первая встреча
+    /// Null - если уверены, что это первая встреча
     /// </remarks>
     public byte[]? PublicKeyFingerprint { get; set; } = null!;
 
@@ -37,7 +37,7 @@ public sealed class HandshakeAckMessage : BaseMessage
     /// Публичный ключ хоста
     /// </summary>
     /// <remarks>
-    /// null - если уже была встреча и нужно проверить сохранившееся
+    /// Null - если уже была встреча и нужно проверить сохранившееся
     /// </remarks>
     public byte[]? PublicKey { get; set; } = null!;
 }

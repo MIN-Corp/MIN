@@ -31,9 +31,9 @@ public interface IMessage
     /// Идентификатор получателя сообщения
     /// </summary>
     /// <remarks>
-    /// null - если оно должно разослаться всем
+    /// Null - если оно должно разослаться всем
     /// </remarks>
-    Guid? RecipientId { get; init; }
+    Guid? RecipientId { get; }
 
     /// <summary>
     /// Флаг, указывающий, должно ли сообщение рассылаться всем

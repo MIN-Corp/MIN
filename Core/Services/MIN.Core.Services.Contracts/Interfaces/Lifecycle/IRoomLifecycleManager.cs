@@ -15,10 +15,14 @@ public interface IRoomLifecycleManager
     /// <summary>
     /// Подключиться к удалённой комнате (клиентская сторона)
     /// </summary>
-    Task<ConnectionResult> ConnectAsync(IEndpoint endpointm, Guid? expectedRoomId, CancellationToken cancellationToken = default);
+    /// <param name="endpoint">Точка подключения</param>
+    /// <param name="expectedRoomId">Ожидаемый id комнаты</param>
+    /// <param name="password">Пароль комнаты (null - не указан)</param>
+    /// <param name="cancellationToken">Токен отмены</param>
+    Task<ConnectionResult> ConnectAsync(IEndpoint endpoint, Guid? expectedRoomId, string? password = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Пометить комнату, как забытую
+    /// Пометить комнату на удаление при следующем подключении (клиентская сторона)
     /// </summary>
     void MarkRoomForDeletion(Guid roomId);
 
@@ -40,12 +44,17 @@ public interface IRoomLifecycleManager
     /// <summary>
     /// Начать хостинг комнаты (серверная сторона)
     /// </summary>
-    Task<Room> StartHostingAsync(RoomInfo roomInfo, NetworkOptions networkOptions, CancellationToken cancellationToken = default);
+    Task<Room> StartHostingAsync(RoomInfo roomInfo, NetworkOptions networkOptions, string? password, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Обновить настройки сети комнаты
     /// </summary>
     Task<IEnumerable<IEndpoint>> UpdateNetworkOptions(Guid roomId, NetworkOptions newNetworkOptions, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Установить или снять пароль хостимой комнаты
+    /// </summary>
+    Task UpdateRoomPasswordAsync(Guid roomId, string? password, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Пометить участника, как вышедшего из комнаты надолго

@@ -43,13 +43,13 @@ internal sealed class MessageUpdateHandler : BaseHandler
                 return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели отредактировать, было отправлено не вами"));
             }
 
-            if (existingMessage is not IUpdateableMessage)
+            if (existingMessage is not IUpdatableMessage)
             {
                 return Task.FromResult(HandlerResult.WithErrorHandled("Сообщение, которое вы хотели отредактировать, не может быть отредактировано"));
             }
         }
 
-        if (existingMessage is IUpdateableMessage updateable)
+        if (existingMessage is IUpdatableMessage updateable)
         {
             if (existingMessage is IReplyable updatebleReplyable && messageUpdate.NewMessage is IReplyable updatedReplyable)
             {

@@ -10,7 +10,7 @@ namespace MIN.Sessions.Core.Messaging.OutOfSubRoom;
 /// <summary>
 /// Сообщение готовности хостинга сессии
 /// </summary>
-public sealed class SessionReadyMessage : BaseUpdatebleMessage, IDescribable, IAuthoredMessage
+public sealed class SessionReadyMessage : BaseUpdatableMessage, IDescribable, IAuthoredMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.SessionReady;

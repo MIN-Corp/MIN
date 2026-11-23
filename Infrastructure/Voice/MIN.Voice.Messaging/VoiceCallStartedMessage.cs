@@ -10,7 +10,7 @@ namespace MIN.Voice.Messaging;
 /// <summary>
 /// Сообщение старта звонка (по сути и есть звонок)
 /// </summary>
-public sealed class VoiceCallStartedMessage : BaseUpdatebleMessage, IDescribable, IAuthoredMessage
+public sealed class VoiceCallStartedMessage : BaseUpdatableMessage, IDescribable, IAuthoredMessage
 {
     /// <inheritdoc />
     public override MessageTypeTag TypeTag => MessageTypeTag.VoiceCallStarted;

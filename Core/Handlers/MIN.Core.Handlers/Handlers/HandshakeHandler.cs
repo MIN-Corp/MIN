@@ -52,7 +52,7 @@ internal sealed class HandshakeHandler : BaseHandler
         if (context.RoomContext.Connections.ConnectionExists(context.ConnectionId))
         {
             return HandlerResult.WithErrorHandled("Произошла коллизия идентификаторов соединения. Попробуйте ещё раз.",
-                critical: true);
+                critical: true, kickParticipant: false);
         }
 
         context.RoomContext.Connections.Register(context.ConnectionId, handshakeMessage.Participant);
@@ -62,7 +62,7 @@ internal sealed class HandshakeHandler : BaseHandler
             var selfVersion = versionProvider.Version;
             var clientOnOlderVersion = selfVersion > handshakeMessage.Version ? "Вы" : "Хост";
             return HandlerResult.WithErrorHandled($"{clientOnOlderVersion} на устаревшей версии: \nВаша версия - {handshakeMessage.Version}\nВерсия хоста комнаты - {selfVersion}",
-                critical: true);
+                critical: true, kickParticipant: false);
         }
 
         var participantId = handshakeMessage.Participant.Id;

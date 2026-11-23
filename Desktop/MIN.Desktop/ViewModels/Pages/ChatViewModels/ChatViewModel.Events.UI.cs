@@ -466,6 +466,27 @@ public partial class ChatViewModel
 
             try
             {
+                switch (editFormResult.PasswordAction)
+                {
+                    case RoomPasswordChange.Set:
+                        await featureCollection.Core.Lifecycle.UpdateRoomPasswordAsync(room.Id, editFormResult.NewPassword, updatingRoomCts.Token);
+                        break;
+                    case RoomPasswordChange.Clear:
+                        await featureCollection.Core.Lifecycle.UpdateRoomPasswordAsync(room.Id, null, updatingRoomCts.Token);
+                        break;
+                    case RoomPasswordChange.Keep:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                editFormResult.Room.HasPassword = editFormResult.PasswordAction switch
+                {
+                    RoomPasswordChange.Set => true,
+                    RoomPasswordChange.Clear => false,
+                    _ => room.HasPassword,
+                };
+
                 await featureCollection.Chat.ChatRoomService.UpdateNetworkOutOfSettings(editFormResult.Room,
                     room.ConnectionAddresses, editFormResult.NetworkOptions, room.LocalRoomSettings.NetworkOptions, updatingRoomCts.Token);
 

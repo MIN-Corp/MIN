@@ -22,6 +22,7 @@ using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.Infrastructure.Validators;
 using MIN.Desktop.ViewModels.Cards;
+using MIN.Desktop.ViewModels.Modals;
 using MIN.Desktop.ViewModels.Windows;
 using MIN.FileTransfer.Messaging;
 using MIN.Sessions.Core.Messaging.OutOfSubRoom;
@@ -364,30 +365,35 @@ public partial class ChatViewModel
                 {
                     try
                     {
-                        await using var fileStream = File.OpenRead(fileAttachment.File.FilePath);
-                        using var bitmap = Bitmap.DecodeToWidth(fileStream, 1);
+                        var format = featureCollection.FileTransfer.FileHelperService
+                            .GetFileType(fileAttachment.File.FileName);
+
+                        if (format.Equals("svg", StringComparison.OrdinalIgnoreCase))
+                        {
+                            using var svgBitmap = ImageHelper.SvgToBitmap(fileAttachment.File.FilePath);
+                        }
+                        else
+                        {
+                            await using var fileStream = File.OpenRead(fileAttachment.File.FilePath);
+                            using var bitmap = Bitmap.DecodeToWidth(fileStream, 1);
+                        }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            using var bitmap = ImageHelper.SvgToBitmap(fileAttachment.File.FilePath);
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            InAppNotifier.Error($"Не удалось загрузить файл {fileAttachment.File.FileName}: {ex.Message}");
-                            return;
-                        }
+                        InAppNotifier.Error($"Не удалось отправить файл {fileAttachment.File.FileName}: "
+                                            + "файл повреждён или имеет неподдерживаемый формат изображения.");
+                        featureCollection.Helper.Logger.Log($"Не удалось загрузить файл {fileAttachment.File.FileName}: {ex.Message}");
+                        return;
                     }
                 }
 
                 await featureCollection.Chat.ChatFileService.SendFileAsync(RoomId,
                     fileAttachment == lastFile ? SendingMessage : string.Empty,
-                   fileAttachment.File.FileName,
-                   fileAttachment.File.FilePath,
-                   chatSideBarViewModel.PrivateChatParticipantId,
-                   replyToPreviewId,
-                   roomCts.Token
+                    fileAttachment.File.FileName,
+                    fileAttachment.File.FilePath,
+                    chatSideBarViewModel.PrivateChatParticipantId,
+                    replyToPreviewId,
+                    roomCts.Token
                );
             }
 
@@ -408,8 +414,6 @@ public partial class ChatViewModel
         if (IsConnecting)
         {
             reconnectRoomCts?.Cancel();
-            reconnectRoomCts?.Dispose();
-            reconnectRoomCts = null;
             IsConnecting = false;
             return;
         }
@@ -451,7 +455,7 @@ public partial class ChatViewModel
     /// </summary>
     private async Task<bool> ConnectUsingAsync(IEndpoint endpoint, CancellationTokenSource cts)
     {
-        var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
+        var reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs
         {
             Cts = cts,
             ExpectedRoomId = RoomId,
@@ -468,6 +472,33 @@ public partial class ChatViewModel
             }
         }, cts.Token);
 
+        if (reconnectResult.PasswordRejected)
+        {
+            var retry = await dialogService.ShowDialogAsync<RoomPasswordViewModel>();
+            if (retry! == false)
+            {
+                return false;
+            }
+
+            reconnectResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs
+            {
+                Cts = cts,
+                ExpectedRoomId = RoomId,
+                Endpoint = endpoint,
+                ShowLoadingDialog = false,
+                Password = retry!.Password,
+                OnRoomReady = async (readyRoom, readyConnectionId) =>
+                {
+                    if (readyRoom == null)
+                    {
+                        return;
+                    }
+
+                    await RefreshAfterReconnect(readyRoom, readyConnectionId);
+                }
+            }, cts.Token);
+        }
+
         if (reconnectResult.Failure == null || reconnectResult.RoomIdentityMismatchException == null)
         {
             return reconnectResult.Failure == null;
@@ -476,12 +507,14 @@ public partial class ChatViewModel
         switch (reconnectResult.RoomMismatchChoice)
         {
             case RoomMismatchChoice.JoinNew:
-                await discoveryViewModel.OnRoomJoin(endpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
+                await discoveryViewModel.OnRoomJoin(endpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id,
+                    requiresPassword: reconnectResult.RoomIdentityMismatchException.ActualRoom.HasPassword);
                 break;
             case RoomMismatchChoice.Replace:
                 connectionId = reconnectResult.RoomIdentityMismatchException.ConnectionId;
                 await Disconnect(asForget: true);
-                await discoveryViewModel.OnRoomJoin(endpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id);
+                await discoveryViewModel.OnRoomJoin(endpoint, reconnectResult.RoomIdentityMismatchException.ActualRoom.Id,
+                    requiresPassword: reconnectResult.RoomIdentityMismatchException.ActualRoom.HasPassword);
                 break;
             case RoomMismatchChoice.None:
             case RoomMismatchChoice.Cancel:
@@ -492,7 +525,6 @@ public partial class ChatViewModel
         }
 
         return true;
-
     }
 
     private async Task RefreshAfterReconnect(Room updatedRoom, Guid connectionId)

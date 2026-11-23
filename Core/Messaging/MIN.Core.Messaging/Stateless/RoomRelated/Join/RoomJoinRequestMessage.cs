@@ -13,4 +13,12 @@ public sealed class RoomJoinRequestMessage : BaseMessage
 
     /// <inheritdoc />
     public override bool IsPublic => false;
+
+    /// <summary>
+    /// Верификатор пароля комнаты
+    /// </summary>
+    /// <remarks>
+    /// Совпадает с сохранённым на хосте; null - если пароль не требуется или не введён
+    /// </remarks>
+    public string? PasswordHash { get; init; }
 }

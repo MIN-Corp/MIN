@@ -4,7 +4,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 namespace MIN.Core.Messaging.Contracts.Messages;
 
 /// <summary>
-/// Базовый класс для всех сообщений, передаваемых по сети
+/// Базовый класс для всех сообщений, передаваемых по сети.
 /// Предоставляет общие свойства Id и Timestamp
 /// </summary>
 public abstract class BaseMessage : IMessage

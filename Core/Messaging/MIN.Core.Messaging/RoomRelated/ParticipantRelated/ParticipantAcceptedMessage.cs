@@ -4,7 +4,7 @@ using MIN.Core.Messaging.Contracts.Messages;
 namespace MIN.Core.Messaging.RoomRelated.ParticipantRelated;
 
 /// <summary>
-/// Уведомление о присоединении нового участника к комнате
+/// Уведомление о приёме нового участника к комнате
 /// </summary>
 public sealed class ParticipantAcceptedMessage : BaseMessage
 {

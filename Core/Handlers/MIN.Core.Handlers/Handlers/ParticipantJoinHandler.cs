@@ -1,8 +1,10 @@
-﻿using MIN.Core.Entities;
+﻿using MIN.Core.Cryptography.Contracts.Interfaces;
+using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Events.Contracts.Interfaces;
 using MIN.Core.Events.Events;
 using MIN.Core.Handlers.Contracts.Base;
+using MIN.Core.Handlers.Contracts.Constants;
 using MIN.Core.Handlers.Contracts.Exceptions;
 using MIN.Core.Handlers.Contracts.Models;
 using MIN.Core.Identity.Contracts.Interfaces;
@@ -19,15 +21,18 @@ namespace MIN.Core.Handlers.Handlers;
 internal sealed class ParticipantJoinHandler : BaseHandler
 {
     private readonly IRoomStore roomStore;
+    private readonly IPasswordHasher passwordHasher;
     private readonly IIdentityService identityService;
     private readonly IEventBus eventBus;
 
     public ParticipantJoinHandler(IRoomStore roomStore,
+        IPasswordHasher passwordHasher,
         IIdentityService identityService,
         IEventBus eventBus,
         ILoggerProvider logger) : base(logger)
     {
         this.roomStore = roomStore;
+        this.passwordHasher = passwordHasher;
         this.identityService = identityService;
         this.eventBus = eventBus;
     }
@@ -44,6 +49,12 @@ internal sealed class ParticipantJoinHandler : BaseHandler
             case RoomJoinRequestMessage roomJoinRequestMessage:
                 var room = roomStore.GetRoom(context.RoomContext.RoomId);
 
+                if (room.LocalRoomSettings.PasswordHash is { } expectedHash
+                    && !passwordHasher.VerifyVerifier(roomJoinRequestMessage.PasswordHash, expectedHash))
+                {
+                    return HandlerResult.WithErrorHandled(RoomPasswordConstants.WrongPasswordMessage, critical: true, kickParticipant: false);
+                }
+
                 if (room.LocalRoomSettings.PendingKickParticipantIds.Remove(roomJoinRequestMessage.SenderId, out var reason))
                 {
                     return HandlerResult.WithErrorHandled(reason, critical: true);
@@ -59,7 +70,7 @@ internal sealed class ParticipantJoinHandler : BaseHandler
 
                 if (!isReturning && existing != null)
                 {
-                    return HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.", critical: true);
+                    return HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.", critical: true, kickParticipant: false);
                 }
 
                 return HandlerResult.WithResponse(new RoomJoinResponseMessage());

@@ -259,7 +259,8 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
 
             card.Clicked += async void (origin) =>
             {
-                await OnRoomJoin(discoveryInfo.Endpoints.First(x => x.Origin == origin), discoveryInfo.Room.Id);
+                await OnRoomJoin(discoveryInfo.Endpoints.First(x => x.Origin == origin),
+                    discoveryInfo.Room.Id, requiresPassword: discoveryInfo.Room.HasPassword);
                 card.IsConnecting = false;
             };
 
@@ -277,7 +278,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
     /// <summary>
     /// Войти в комнату
     /// </summary>
-    public async Task OnRoomJoin(IEndpoint endpoint, Guid? expectedRoomId)
+    public async Task OnRoomJoin(IEndpoint endpoint, Guid? expectedRoomId, string? password = null, bool requiresPassword = false)
     {
         while (true)
         {
@@ -292,13 +293,25 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
                 return;
             }
 
+            if (requiresPassword && password == null)
+            {
+                var passwordResult = await dialogService.ShowDialogAsync<RoomPasswordViewModel>();
+                if (passwordResult! == false)
+                {
+                    return;
+                }
+
+                password = passwordResult!.Password;
+            }
+
             var connectCts = CancellationTokenSource.CreateLinkedTokenSource(lifeTimeCts.Token);
 
-            var joinResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs()
+            var joinResult = await roomConnectionUiService.JoinAsync(new RoomJoinArgs
             {
                 Cts = connectCts,
                 Endpoint = endpoint,
                 ExpectedRoomId = expectedRoomId,
+                Password = password,
                 ShowLoadingDialog = true,
                 OnRoomReady = async (room, connectionId) =>
                 {
@@ -321,6 +334,18 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
                     RegisterRoom(new RoomInfo(room), chatViewModel);
                 }
             }, connectCts.Token);
+
+            if (joinResult.PasswordRejected)
+            {
+                var retry = await dialogService.ShowDialogAsync<RoomPasswordViewModel>();
+                if (retry! == false)
+                {
+                    return;
+                }
+
+                password = retry!.Password;
+                continue;
+            }
 
             if (joinResult.Failure != null && joinResult.RoomIdentityMismatchException != null)
             {
@@ -360,7 +385,7 @@ public partial class DiscoveryViewModel : RoutableViewModelBase
 
         result.OnConnect += async void () =>
         {
-            await OnRoomJoin(result.Endpoint, expectedRoomId: null);
+            await OnRoomJoin(result.Endpoint, expectedRoomId: null, password: string.IsNullOrEmpty(result.Password) ? null : result.Password);
             result.EnableConnectButton();
         };
     }

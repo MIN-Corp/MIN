@@ -22,7 +22,8 @@ public class NetworkErrorHandler : INetworkErrorHandler
     private readonly IIdentityService identityService;
 
     private readonly ConcurrentDictionary<Guid, Timer> rejectParticipantsAckTimers = new(); // participantId / timer
-    private readonly ConcurrentDictionary<Guid, Timer> rejectConnectionsAckTimers = new(); // connectionId / timer
+    private readonly ConcurrentDictionary<Guid, Timer> rejectConnectionsAckTimers = new(); // connectionId / timer (состояние: RejectedConnection)
+    private readonly ConcurrentDictionary<Guid, RejectedConnection> rejectConnectionStates = new();
 
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="NetworkErrorHandler"/>
@@ -82,7 +83,7 @@ public class NetworkErrorHandler : INetworkErrorHandler
         timer.Change(TimeSpan.FromMilliseconds(timeoutMs), Timeout.InfiniteTimeSpan);
     }
 
-    async Task INetworkErrorHandler.SendErrorToConnectionAsync(string message, Guid connectionId, Guid roomId, bool critical, int timeoutMs)
+    async Task INetworkErrorHandler.SendErrorToConnectionAsync(string message, Guid connectionId, Guid roomId, bool critical, int timeoutMs, bool kickParticipant)
     {
         if (!critical)
         {
@@ -98,9 +99,8 @@ public class NetworkErrorHandler : INetworkErrorHandler
             Reason = message,
         }, roomId, connectionId, CancellationToken.None);
 
-        var timer = new Timer(OnConnectionRejectAckTimeout,
-            new ConnectionResult(roomId, connectionId),
-            Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        rejectConnectionStates[connectionId] = new RejectedConnection(roomId, connectionId, kickParticipant);
+        var timer = new Timer(OnConnectionRejectAckTimeout, connectionId, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
         if (rejectConnectionsAckTimers.TryRemove(connectionId, out var previousTimer))
         {
@@ -118,9 +118,9 @@ public class NetworkErrorHandler : INetworkErrorHandler
         {
             await DisconnectClient(e.ParticipantId, e.RoomId, e.ErrorMessage);
         }
-        else
+        else if (ResetConnectionRejectAckTimer(e.ConnectionId, out var rejected))
         {
-            await DisconnectConnection(e.ConnectionId, e.RoomId);
+            await DisconnectConnection(rejected!.ConnectionId, rejected.RoomId, rejected.KickParticipant);
         }
     }
 
@@ -134,17 +134,18 @@ public class NetworkErrorHandler : INetworkErrorHandler
 
     private async void OnConnectionRejectAckTimeout(object? state)
     {
-        if (state is ConnectionResult connection && ResetConnectionRejectAckTimer(connection.ConnectionId))
+        if (ResetConnectionRejectAckTimer((Guid)state!, out var rejected) && rejected != null)
         {
-            await DisconnectConnection(connection.ConnectionId, connection.RoomId);
+            await DisconnectConnection(rejected.ConnectionId, rejected.RoomId, rejected.KickParticipant);
         }
     }
 
     private async Task DisconnectClient(Guid participantId, Guid roomId, string message)
         => await lifecycleManager.KickClientAsync(roomId, participantId, DisconnectReason.Kick, message);
 
-    private async Task DisconnectConnection(Guid connectionId, Guid roomId)
-        => await lifecycleManager.KickConnectionAsync(roomId, connectionId, DisconnectReason.Kick);
+    private async Task DisconnectConnection(Guid connectionId, Guid roomId, bool kickParticipant)
+        => await lifecycleManager.KickConnectionAsync(roomId, connectionId,
+            kickParticipant ? DisconnectReason.Kick : DisconnectReason.Intentionally);
 
     private bool ResetParticipantRejectAckTimer(Guid participantId)
     {
@@ -157,14 +158,17 @@ public class NetworkErrorHandler : INetworkErrorHandler
         return true;
     }
 
-    private bool ResetConnectionRejectAckTimer(Guid connectionId)
+    private bool ResetConnectionRejectAckTimer(Guid connectionId, out RejectedConnection? state)
     {
+        state = null;
+
         if (!rejectConnectionsAckTimers.TryRemove(connectionId, out var existingTimer))
         {
             return false;
         }
 
         existingTimer.Dispose();
+        rejectConnectionStates.TryRemove(connectionId, out state);
         return true;
     }
 }

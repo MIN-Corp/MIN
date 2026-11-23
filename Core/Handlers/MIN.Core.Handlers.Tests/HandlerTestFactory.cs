@@ -97,6 +97,11 @@ public sealed class HandlerTestFactory : IDisposable
     public Mock<INetworkErrorHandler> NetworkErrorHandler { get; } = new();
 
     /// <summary>
+    /// Мок хешера паролей комнат
+    /// </summary>
+    public Mock<IPasswordHasher> PasswordHasher { get; } = new();
+
+    /// <summary>
     /// Инициализирует новый экземпляр <see cref="HandlerTestFactory"/>
     /// </summary>
     public HandlerTestFactory()
@@ -120,6 +125,7 @@ public sealed class HandlerTestFactory : IDisposable
         services.AddSingleton(Encryptor.Object);
         services.AddSingleton(Persistence.Object);
         services.AddSingleton(NetworkErrorHandler.Object);
+        services.AddSingleton(PasswordHasher.Object);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, ICoreHandlerAnchor>(ServiceLifetime.Singleton);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, IChatHandlerAnchor>(ServiceLifetime.Singleton);
         provider = services.BuildServiceProvider();
