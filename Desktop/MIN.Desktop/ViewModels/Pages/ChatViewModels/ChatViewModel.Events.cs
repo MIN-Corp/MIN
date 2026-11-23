@@ -444,10 +444,11 @@ public partial class ChatViewModel
     {
         Dispatcher.UIThread.Post(() =>
         {
+            var wasOnline = IsOnline;
             IsOnline = false;
             chatSideBarViewModel.IsOnline = false;
             DisableAllConnectionActions();
-            if (string.IsNullOrEmpty(eventMessage.Reason))
+            if (string.IsNullOrEmpty(eventMessage.Reason) || !wasOnline)
             {
                 return;
             }

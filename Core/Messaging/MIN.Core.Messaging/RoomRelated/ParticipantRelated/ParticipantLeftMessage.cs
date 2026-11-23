@@ -30,11 +30,12 @@ public sealed class ParticipantLeftMessage : BaseMessage, IDescribable
     /// <summary>
     /// Покинул ли участник комнату, да так что из списка больше не числиться
     /// </summary>
-    public bool IsLeftRoom => Reason == DisconnectReason.Kick || Reason == DisconnectReason.LeftRoom;
+    public bool IsLeftRoom => Reason is DisconnectReason.Kick or DisconnectReason.LeftRoom;
 
-    string IDescribable.GetDescription() => Reason == DisconnectReason.Kick
-        ? $"Хост кикнул {Participant.Name}"
-        : Reason == DisconnectReason.Timeout
-        ? $"У участника {Participant.Name} пропала связь"
-        : $"Участник {Participant.Name} покинул комнату";
+    string IDescribable.GetDescription() => Reason switch
+    {
+        DisconnectReason.Kick => $"Хост кикнул {Participant.Name}",
+        DisconnectReason.Timeout => $"У участника {Participant.Name} пропала связь",
+        _ => $"Участник {Participant.Name} покинул комнату"
+    };
 }

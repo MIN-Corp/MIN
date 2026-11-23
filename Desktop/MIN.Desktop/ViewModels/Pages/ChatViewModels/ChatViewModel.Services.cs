@@ -414,8 +414,6 @@ public partial class ChatViewModel
         if (IsConnecting)
         {
             reconnectRoomCts?.Cancel();
-            reconnectRoomCts?.Dispose();
-            reconnectRoomCts = null;
             IsConnecting = false;
             return;
         }
@@ -527,7 +525,6 @@ public partial class ChatViewModel
         }
 
         return true;
-
     }
 
     private async Task RefreshAfterReconnect(Room updatedRoom, Guid connectionId)

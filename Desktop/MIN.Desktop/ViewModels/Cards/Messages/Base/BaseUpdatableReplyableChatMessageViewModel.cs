@@ -26,7 +26,7 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
     /// Инициализирует новый экземпляр <see cref="BaseUpdateableReplyableChatMessageViewModel"/>
     /// </summary>
     public BaseUpdateableReplyableChatMessageViewModel(IMessage message,
-        IUpdateableMessage updateableMessage,
+        IUpdatableMessage updatableMessage,
         IReplyable? replyable,
         IDialogService? dialogService,
         string name,
@@ -45,7 +45,7 @@ public abstract partial class BaseUpdateableReplyableChatMessageViewModel : Base
             removeHeaders,
             isAvailableForNetwork)
     {
-        IsUpdated = updateableMessage.IsUpdated;
+        IsUpdated = updatableMessage.IsUpdated;
     }
 
     /// <summary>

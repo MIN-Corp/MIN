@@ -5,13 +5,13 @@ namespace MIN.Core.Messaging.Contracts.Messages;
 /// <summary>
 /// Базовый класс для сообщений, имеющих текстовое представление и могут быть отредактированы
 /// </summary>
-public abstract class BaseUpdatebleMessage : BaseMessage, IUpdateableMessage
+public abstract class BaseUpdatableMessage : BaseMessage, IUpdatableMessage
 {
     /// <inheritdoc />
-    public bool IsUpdated { get; set; }
+    public bool IsUpdated { get; protected set; }
 
     /// <inheritdoc />
-    public DateTime UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; protected set; }
 
     /// <inheritdoc />
     public virtual void Update(IMessage newer)

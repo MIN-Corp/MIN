@@ -3,7 +3,7 @@
 /// <summary>
 /// Сообщение, способное изменить своё содержимое
 /// </summary>
-public interface IUpdateableMessage
+public interface IUpdatableMessage
 {
     /// <summary>
     /// Когда сообщение последний раз обновлялось (DateTime.MinValue — никогда)
@@ -13,7 +13,7 @@ public interface IUpdateableMessage
     /// <summary>
     /// Было ли уже изменено сообщение
     /// </summary>
-    bool IsUpdated { get; set; }
+    bool IsUpdated { get; }
 
     /// <summary>
     /// Обновить себя из новой версии
