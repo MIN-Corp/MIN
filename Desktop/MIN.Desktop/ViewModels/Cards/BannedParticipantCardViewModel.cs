@@ -1,6 +1,7 @@
 ﻿using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MIN.Core.Entities.Contracts.Models;
 
 namespace MIN.Desktop.ViewModels.Cards;
 
@@ -10,15 +11,10 @@ namespace MIN.Desktop.ViewModels.Cards;
 public partial class BannedParticipantCardViewModel : ObservableObject
 {
     /// <summary>
-    /// Идентификатор забаненного участника
-    /// </summary>
-    public Guid ParticipantId { get; }
-
-    /// <summary>
-    /// Имя забаненного участника
+    /// Информация о бане участника
     /// </summary>
     [ObservableProperty]
-    public partial string ParticipantName { get; set; }
+    public partial BanInfo BanInfo { get; set; }
 
     /// <summary>
     /// Текст даты разбана
@@ -39,11 +35,10 @@ public partial class BannedParticipantCardViewModel : ObservableObject
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="BannedParticipantCardViewModel"/>
     /// </summary>
-    public BannedParticipantCardViewModel(Guid participantId, string participantName, string unbanDateText)
+    public BannedParticipantCardViewModel(BanInfo banInfo, string date)
     {
-        ParticipantId = participantId;
-        ParticipantName = participantName;
-        UnbanDateText = unbanDateText;
+        BanInfo = banInfo;
+        UnbanDateText = date;
     }
 
     /// <summary>

@@ -61,7 +61,14 @@
                         HotKey="Escape" />
                     <Button
                         Command="{Binding BanCommand}"
+                        Content="Сохранить"
+                        IsVisible="{Binding IsEditMode}"
+                        HorizontalAlignment="Right"
+                        HotKey="Enter" />
+                    <Button
+                        Command="{Binding BanCommand}"
                         Content="Забанить"
+                        IsVisible="{Binding !IsEditMode}"
                         HorizontalAlignment="Right"
                         HotKey="Enter" />
                 </Panel>

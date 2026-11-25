@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using MIN.Core.Entities.Contracts.Extensions;
+using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
@@ -17,11 +18,17 @@ namespace MIN.Desktop.ViewModels.Modals;
 /// </summary>
 public partial class BannedParticipantsViewModel : ModalViewModelBase
 {
-    private readonly IMinFeatureCollection featureCollection;
-    private readonly IDialogService dialogService;
-    private readonly CancellationTokenSource appCts;
+    private readonly IMinFeatureCollection featureCollection = null!;
+    private readonly IDialogService dialogService = null!;
+    private readonly CancellationTokenSource appCts = null!;
 
     private Guid roomId;
+
+    /// <summary>
+    /// Список пуст
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsEmpty { get; set; }
 
     /// <summary>
     /// Забаненные участники
@@ -42,6 +49,11 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
     }
 
     /// <summary>
+    /// Инициализирует новый экземпляр <see cref="BannedParticipantsViewModel"/>
+    /// </summary>
+    public BannedParticipantsViewModel() { }
+
+    /// <summary>
     /// Загрузить чёрный список комнаты
     /// </summary>
     public async void Init(Guid roomId)
@@ -53,12 +65,13 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
     private async Task ReloadAsync()
     {
         var bans = await featureCollection.Chat.ChatRoomService.GetBannedParticipantsAsync(roomId, appCts.Token);
+        IsEmpty = bans.Count == 0;
 
         BannedParticipants.Clear();
 
         foreach (var ban in bans)
         {
-            var card = new BannedParticipantCardViewModel(ban.ParticipantId, ban.Name, FormatUnbanDate(ban.BannedUntil));
+            var card = new BannedParticipantCardViewModel(ban, FormatUnbanDate(ban.BannedUntil));
 
             card.OnEditClicked += async void (cardVm) => await EditBanAsync(cardVm);
             card.OnRemoveClicked += async void (cardVm) => await RemoveBanAsync(cardVm);
@@ -69,7 +82,7 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
 
     private async Task EditBanAsync(BannedParticipantCardViewModel card)
     {
-        var banVm = await dialogService.ShowDialogAsync<ParticipantBanViewModel>(x => x.InitializeForEdit(card.ParticipantName));
+        var banVm = await dialogService.ShowDialogAsync<ParticipantBanViewModel>(x => x.InitializeForEdit(card.BanInfo));
 
         if (banVm! != true)
         {
@@ -79,7 +92,7 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
         try
         {
             await featureCollection.Chat.ChatRoomService.UpdateBanDateAsync(roomId,
-                card.ParticipantId, banVm!.SelectedValue, appCts.Token);
+                card.BanInfo.ParticipantId, banVm!.SelectedValue, appCts.Token);
 
             card.UpdateUnbanDate(FormatUnbanDate(banVm.SelectedValue.ToUnbanDate()));
         }
@@ -93,7 +106,7 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
     {
         try
         {
-            await featureCollection.Chat.ChatRoomService.UnbanParticipantAsync(roomId, card.ParticipantId, appCts.Token);
+            await featureCollection.Chat.ChatRoomService.UnbanParticipantAsync(roomId, card.BanInfo.ParticipantId, appCts.Token);
             BannedParticipants.Remove(card);
         }
         catch (Exception ex)

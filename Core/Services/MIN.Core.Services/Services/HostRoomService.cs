@@ -1,4 +1,5 @@
-﻿using MIN.Common.Core.Extensions;
+﻿using System.Collections.Concurrent;
+using MIN.Common.Core.Extensions;
 using MIN.Core.Cryptography.Contracts.Interfaces;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
@@ -144,15 +145,14 @@ internal sealed class HostRoomService
             }
             else
             {
-                await eventBus.PublishAsync(new RoomWentOfflineEvent()
+                await eventBus.PublishAsync(new RoomWentOfflineEvent
                 {
                     RoomId = roomId,
                     Reason = e.DisconnectReason.GetDescription(),
                 });
             }
         }
-        else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out var participant)
-                 && participant!.CurrentStatus != OnlineStatus.Offline)
+        else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out _))
         {
             var reason = e.DisconnectReason;
 
@@ -168,7 +168,7 @@ internal sealed class HostRoomService
                     : e.DisconnectReason;
             }
 
-            await messageRouter.RouteAsync(new ParticipantLeftMessage()
+            await messageRouter.RouteAsync(new ParticipantLeftMessage
             {
                 Participant = leavingParticipant,
                 Reason = reason,
@@ -348,7 +348,13 @@ internal sealed class HostRoomService
                 var hostParticipantId = roomStore.GetRoomHostParticipantId(roomId);
                 context.Participants.TryGetParticipantById(participantId, out var leavingParticipant);
 
-                await messageRouter.RouteAsync(new ParticipantLeftMessage()
+                if (!context.Participants.TryGetParticipantById(participantId, out _)
+                    || leavingParticipant == null)
+                {
+                    return;
+                }
+
+                await messageRouter.RouteAsync(new ParticipantLeftMessage
                 {
                     Participant = leavingParticipant!.ToParticipantInfo(),
                     Reason = reason,

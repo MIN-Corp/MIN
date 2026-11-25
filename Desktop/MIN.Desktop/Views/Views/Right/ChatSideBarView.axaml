@@ -214,7 +214,7 @@
                 </Border>
             </StackPanel>
 
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,12,0">
+            <DockPanel DockPanel.Dock="Top" Margin="0,8,12,8">
                 <Button DockPanel.Dock="Right"
                         Classes="icon"
                         IsVisible="{Binding IsHost}"
@@ -222,7 +222,9 @@
                         Command="{Binding ShowBannedListCommand}">
                     <Svg Path="/Assets/Icons/about-card.svg" />
                 </Button>
-                <TextBlock Classes="header5" HorizontalAlignment="Center">
+                <TextBlock Classes="header5"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center">
                     Участники:
                 </TextBlock>
             </DockPanel>

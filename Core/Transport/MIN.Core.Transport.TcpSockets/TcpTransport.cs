@@ -254,6 +254,10 @@ public class TcpTransport : ITransport, IAsyncDisposable
             await client.StopAsync(reason);
             clients.TryRemove(clientConnectionId, out _);
         }
+        else
+        {
+            logger.Log($"Не удалось отключить соединение {clientConnectionId}: не найдено ни на сервере, ни среди клиентов", LogLevel.Warning);
+        }
     }
 
     /// <inheritdoc />

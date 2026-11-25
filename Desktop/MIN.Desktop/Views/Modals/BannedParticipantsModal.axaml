@@ -1,15 +1,14 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:MIN.Desktop.ViewModels.Modals"
-        xmlns:card="using:MIN.Desktop.ViewModels.Cards"
         xmlns:controls="using:MIN.Desktop.TemplatedControls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         d:DesignWidth="420"
         MinWidth="420"
-        Height="480"
         CanResize="False"
+        SizeToContent="WidthAndHeight"
         x:Class="MIN.Desktop.Views.Modals.BannedParticipantsModal"
         x:DataType="vm:BannedParticipantsViewModel"
         Title="MIN - Чёрный список">
@@ -20,10 +19,13 @@
 
     <DockPanel>
         <controls:CustomTitleBar CanMinimize="False" CanMaximize="False" />
-
         <StackPanel>
             <StackPanel Margin="24,12">
-                <TextBlock Text="Чёрный список" Classes="header4" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                <TextBlock Text="Чёрный список пуст"
+                           Classes="header4"
+                           IsVisible="{Binding IsEmpty}"
+                           HorizontalAlignment="Center"
+                           Margin="0,12,0,10" />
 
                 <ScrollViewer MaxHeight="360">
                     <ItemsControl ItemsSource="{Binding BannedParticipants}">
@@ -45,7 +47,7 @@
                                         </StackPanel>
 
                                         <StackPanel>
-                                            <TextBlock Text="{Binding ParticipantName}" Classes="header5" />
+                                            <TextBlock Text="{Binding BanInfo.Name}" Classes="header5" />
                                             <TextBlock Text="{Binding UnbanDateText}" />
                                         </StackPanel>
                                     </DockPanel>

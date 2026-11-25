@@ -38,7 +38,7 @@ public record LocalRoomSettings
     /// <remarks>
     /// Ключ - Id участника. Переживает rehost и сохраняется в файл комнаты
     /// </remarks>
-    public Dictionary<Guid, BanInfo> BannedParticipants { get; } = [];
+    public Dictionary<Guid, BanInfo> BannedParticipants { get; set; } = [];
 
     /// <summary>
     /// Добавленные вручную точки подключения (например, домен VPS)

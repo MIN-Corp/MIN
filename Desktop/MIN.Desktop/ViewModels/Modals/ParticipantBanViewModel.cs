@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities.Contracts.Enums;
+using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Models;
 using MIN.Desktop.Contracts.Enums;
 using MIN.Desktop.ViewModels.Base;
@@ -60,9 +61,10 @@ public partial class ParticipantBanViewModel : ModalViewModelBase
     /// <summary>
     /// Инициализировать окно для изменения даты разбана
     /// </summary>
-    public void InitializeForEdit(string participantName)
+    public void InitializeForEdit(BanInfo banInfo)
     {
-        ParticipantName = participantName;
+        ParticipantName = banInfo.Name;
+        Reason = banInfo.Reason;
         IsEditMode = true;
         SelectedDuration = DurationOptions[1];
     }

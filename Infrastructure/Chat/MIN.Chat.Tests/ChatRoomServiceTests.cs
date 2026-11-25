@@ -29,6 +29,7 @@ public class ChatRoomServiceTests : IDisposable
     private readonly Mock<IMessageRouter> router = new();
     private readonly Mock<IRoomLifecycleManager> lifecycle = new();
     private readonly Mock<INetworkErrorHandler> errorHandler = new();
+    private readonly Mock<IBanService> banService = new();
     private readonly Mock<IDiscoveryService> discovery = new();
     private readonly TestIdentityService identity = new();
     private readonly IChatRoomService service;
@@ -39,7 +40,7 @@ public class ChatRoomServiceTests : IDisposable
     /// </summary>
     public ChatRoomServiceTests()
     {
-        service = new ChatRoomService(router.Object, registry, lifecycle.Object, rooms.Factory, errorHandler.Object, discovery.Object, identity);
+        service = new ChatRoomService(router.Object, registry, lifecycle.Object, rooms.Factory, errorHandler.Object, banService.Object, discovery.Object, identity);
     }
 
     /// <summary>
