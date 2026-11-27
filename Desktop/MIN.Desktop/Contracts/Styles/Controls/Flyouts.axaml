@@ -286,7 +286,7 @@
                         CornerRadius="{TemplateBinding CornerRadius}">
 
                     <!-- Здесь Padding принудительно установлен в PaddingSmall,
-                    а то что-то по умочанию справа есть неубераемый padding -->
+                    а то что-то по умолчанию справа есть неубераемый padding -->
                     <ContentPresenter Content="{TemplateBinding Content}"
                                       ContentTemplate="{TemplateBinding ContentTemplate}"
                                       Padding="{DynamicResource PaddingSmall}"/>
@@ -320,9 +320,5 @@
 
     <Style Selector="FlyoutPresenter.cardDetails Border">
         <Setter Property="MinWidth" Value="200" />
-    </Style>
-
-    <Style Selector="FlyoutPresenter.cardDetails TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     </Style>
 </Styles>

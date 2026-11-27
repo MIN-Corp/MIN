@@ -276,6 +276,9 @@
                                                                     <Svg Path="/Assets/Icons/private-chat.svg" />
                                                                 </MenuItem.Icon>
                                                             </MenuItem>
+
+                                                            <Separator />
+
                                                             <MenuItem Classes="danger"
                                                                       Header="Кикнуть участника"
                                                                       IsVisible="{Binding CanKick}"

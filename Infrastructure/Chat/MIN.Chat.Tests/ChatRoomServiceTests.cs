@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using MIN.Chat.Services;
 using MIN.Chat.Services.Contracts.Interfaces;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Messaging.Stateless.RoomRelated.History;
 using MIN.Core.Messaging.Stateless.RoomRelated.RoomInfo;
@@ -90,6 +91,71 @@ public class ChatRoomServiceTests : IDisposable
 
         // Assert
         errorHandler.Verify(e => e.SendErrorAsync("причина", participantId, roomId, true, It.IsAny<int>()), Times.Once);
+    }
+
+    /// <summary>
+    /// Бан фиксируется в сервисе банов до отправки кика
+    /// </summary>
+    [Fact]
+    public async Task BanParticipantShouldRecordBanBeforeKick()
+    {
+        // Arrange
+        registry.RegisterServerConnection(roomId, Guid.NewGuid());
+        rooms.Factory.GetOrCreateContext(roomId);
+        var participantId = Guid.NewGuid();
+        var ban = new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1));
+
+        var recorded = false;
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset?>()))
+            .Returns(ban)
+            .Callback(() => recorded = true);
+        lifecycle.Setup(l => l.KickClientAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DisconnectReason>(), It.IsAny<string>()))
+            .Callback(() => recorded.Should().BeTrue("бан должен быть записан до кика"))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await service.BanParticipantAsync(roomId, participantId, "Вася", "спам", BanDuration.Day);
+
+        // Assert
+        lifecycle.Verify(l => l.KickClientAsync(roomId, participantId, DisconnectReason.Kick,
+            It.Is<string>(s => s.Contains("Вы забанены"))), Times.Once);
+        errorHandler.Verify(e => e.SendErrorAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), true, It.IsAny<int>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Онлайн-участник банится через критическую ошибку без прямого кика
+    /// </summary>
+    [Fact]
+    public async Task BanOnlineParticipantShouldSendCriticalBanError()
+    {
+        // Arrange
+        registry.RegisterServerConnection(roomId, Guid.NewGuid());
+        var participantId = Guid.NewGuid();
+        var context = rooms.Factory.GetOrCreateContext(roomId);
+        context.Connections.RegisterLocalParticipant(new ParticipantInfo { Id = participantId, Name = "Вася" });
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset?>()))
+            .Returns(new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1)));
+
+        // Act
+        await service.BanParticipantAsync(roomId, participantId, "Вася", "спам", BanDuration.Day);
+
+        // Assert
+        errorHandler.Verify(e => e.SendErrorAsync(It.Is<string>(s => s.Contains("Вы забанены")),
+            participantId, roomId, true, It.IsAny<int>()), Times.Once);
+        lifecycle.Verify(l => l.KickClientAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DisconnectReason>(), It.IsAny<string>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Бан не хостом невозможен
+    /// </summary>
+    [Fact]
+    public async Task BanParticipantShouldThrowWhenNotHosting()
+    {
+        // Act
+        var act = async () => await service.BanParticipantAsync(roomId, Guid.NewGuid(), "Вася", "", BanDuration.Day);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*хостом*");
     }
 
     /// <summary>

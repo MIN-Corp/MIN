@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using MIN.Core.Entities.Contracts.Extensions;
-using MIN.Core.Entities.Contracts.Models;
 using MIN.Desktop.Contracts.Interfaces;
 using MIN.Desktop.Infrastructure.Services;
 using MIN.Desktop.ViewModels.Base;
@@ -58,8 +57,16 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
     /// </summary>
     public async void Init(Guid roomId)
     {
-        this.roomId = roomId;
-        await ReloadAsync();
+        try
+        {
+            this.roomId = roomId;
+            await ReloadAsync();
+        }
+        catch (Exception e)
+        {
+            InAppNotifier.Error($"Не удалось загрузить чёрный список {e.Message}");
+            CloseByCode();
+        }
     }
 
     private async Task ReloadAsync()
@@ -108,6 +115,7 @@ public partial class BannedParticipantsViewModel : ModalViewModelBase
         {
             await featureCollection.Chat.ChatRoomService.UnbanParticipantAsync(roomId, card.BanInfo.ParticipantId, appCts.Token);
             BannedParticipants.Remove(card);
+            IsEmpty = BannedParticipants.Count == 0;
         }
         catch (Exception ex)
         {

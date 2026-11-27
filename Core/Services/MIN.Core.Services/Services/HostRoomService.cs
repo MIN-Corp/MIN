@@ -342,9 +342,6 @@ internal sealed class HostRoomService
                     return;
                 }
 
-                var room = roomStore.GetRoom(roomId);
-                room.LocalRoomSettings.PendingKickParticipantIds[participantId] = message;
-
                 var hostParticipantId = roomStore.GetRoomHostParticipantId(roomId);
                 context.Participants.TryGetParticipantById(participantId, out var leavingParticipant);
 
@@ -353,6 +350,9 @@ internal sealed class HostRoomService
                 {
                     return;
                 }
+
+                var room = roomStore.GetRoom(roomId);
+                room.LocalRoomSettings.PendingKickParticipantIds[participantId] = message;
 
                 await messageRouter.RouteAsync(new ParticipantLeftMessage
                 {

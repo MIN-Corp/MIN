@@ -208,6 +208,37 @@ public class RoomFileStoreTests : IDisposable
     }
 
     /// <summary>
+    /// Список банов комнаты переживает сохранение и загрузку
+    /// </summary>
+    [Fact]
+    public async Task SaveLoadShouldRoundTripBannedParticipants()
+    {
+        // Arrange
+        var room = CreateRoom();
+        var bannedId = Guid.NewGuid();
+        room.LocalRoomSettings.BannedParticipants[bannedId] =
+            new BanInfo(bannedId, "Вася", "спам", DateTimeOffset.Now.AddDays(1));
+        room.LocalRoomSettings.BannedParticipants[Guid.NewGuid()] =
+            new BanInfo(Guid.NewGuid(), "Петя", "", null);
+        roomStore.Register(room);
+
+        // Act
+        await fileStore.SaveAsync(room.Id, new RoomSnapshot
+        {
+            Room = room,
+            Messages = [],
+            SubRooms = new SubRoomsSnapshot { SubRooms = [], NextId = 1 },
+        });
+        var loaded = fileStore.LoadAll();
+
+        // Assert
+        var settings = loaded.Single().Room.LocalRoomSettings;
+        settings.BannedParticipants.Should().HaveCount(2);
+        settings.BannedParticipants[bannedId].Name.Should().Be("Вася");
+        settings.BannedParticipants.Should().Contain(b => b.Value.BannedUntil == null);
+    }
+
+    /// <summary>
     /// LoadAll из пустой директории возвращает пустой список
     /// </summary>
     [Fact]

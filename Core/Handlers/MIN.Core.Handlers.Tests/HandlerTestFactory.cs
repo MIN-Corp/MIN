@@ -12,6 +12,7 @@ using MIN.Core.Services.Contracts.Interfaces.Lifecycle;
 using MIN.Core.Services.Contracts.Interfaces.Messaging;
 using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Core.Services.Contracts.Interfaces.Persistence;
+using MIN.Core.Services.Moderation;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Core.Stores.Contracts.Registries.Interfaces;
 using MIN.Core.Stores.Registries;
@@ -97,6 +98,11 @@ public sealed class HandlerTestFactory : IDisposable
     public Mock<INetworkErrorHandler> NetworkErrorHandler { get; } = new();
 
     /// <summary>
+    /// Мок сервиса банов
+    /// </summary>
+    private IBanService BanService { get; }
+
+    /// <summary>
     /// Мок хешера паролей комнат
     /// </summary>
     public Mock<IPasswordHasher> PasswordHasher { get; } = new();
@@ -108,6 +114,7 @@ public sealed class HandlerTestFactory : IDisposable
     {
         EventBus = new InMemoryEventBus(Logger);
         RoomStore = new RoomStore(rooms.Factory);
+        BanService = new BanService(RoomStore, Persistence.Object);
         Version.SetupGet(v => v.Version).Returns(new Version(2, 2, 0, 0));
         Version.Setup(v => v.IsVersionCompatible(It.IsAny<Version>())).Returns(true);
 
@@ -125,6 +132,7 @@ public sealed class HandlerTestFactory : IDisposable
         services.AddSingleton(Encryptor.Object);
         services.AddSingleton(Persistence.Object);
         services.AddSingleton(NetworkErrorHandler.Object);
+        services.AddSingleton(BanService);
         services.AddSingleton(PasswordHasher.Object);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, ICoreHandlerAnchor>(ServiceLifetime.Singleton);
         services.RegisterMultipleInterfacesAssignableFromAnchor<IMessageHandler, IChatHandlerAnchor>(ServiceLifetime.Singleton);

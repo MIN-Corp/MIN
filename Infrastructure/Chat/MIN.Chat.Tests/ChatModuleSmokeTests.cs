@@ -48,6 +48,7 @@ public class ChatModuleSmokeTests : IDisposable
         services.AddSingleton(Mock.Of<IMessageSender>());
         services.AddSingleton(Mock.Of<IRoomLifecycleManager>());
         services.AddSingleton(Mock.Of<INetworkErrorHandler>());
+        services.AddSingleton(Mock.Of<IBanService>());
         services.AddSingleton(Mock.Of<IDiscoveryService>());
         services.AddSingleton(Mock.Of<IMessageEncryptor>());
         services.AddSingleton(Mock.Of<ITransport>());
