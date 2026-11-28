@@ -208,6 +208,39 @@ public class RoomFileStoreTests : IDisposable
     }
 
     /// <summary>
+    /// Список банов комнаты переживает сохранение и загрузку
+    /// </summary>
+    [Fact]
+    public async Task SaveLoadShouldRoundTripBannedParticipants()
+    {
+        // Arrange
+        var room = CreateRoom();
+        var bannedId = Guid.NewGuid();
+        room.LocalRoomSettings.BannedParticipants[bannedId] =
+            new BanInfo(bannedId, "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", IsIpBanned: true);
+        room.LocalRoomSettings.BannedParticipants[Guid.NewGuid()] =
+            new BanInfo(Guid.NewGuid(), "Петя", "", null, "10.0.0.2", IsIpBanned: false);
+        roomStore.Register(room);
+
+        // Act
+        await fileStore.SaveAsync(room.Id, new RoomSnapshot
+        {
+            Room = room,
+            Messages = [],
+            SubRooms = new SubRoomsSnapshot { SubRooms = [], NextId = 1 },
+        });
+        var loaded = fileStore.LoadAll();
+
+        // Assert
+        var settings = loaded.Single().Room.LocalRoomSettings;
+        settings.BannedParticipants[bannedId].Name.Should().Be("Вася");
+        settings.BannedParticipants[bannedId].IpAddress.Should().Be("10.0.0.1");
+        settings.BannedParticipants[bannedId].IsIpBanned.Should().BeTrue();
+        settings.BannedParticipants.Should().Contain(b => b.Value.IpAddress == "10.0.0.2" && !b.Value.IsIpBanned);
+        settings.BannedParticipants.Should().Contain(b => b.Value.BannedUntil == null);
+    }
+
+    /// <summary>
     /// LoadAll из пустой директории возвращает пустой список
     /// </summary>
     [Fact]

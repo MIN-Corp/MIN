@@ -132,5 +132,13 @@
       <DependentUpon>RoomPasswordModal.axaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\Modals\ParticipantBanModal.axaml.cs">
+      <DependentUpon>ParticipantBanModal.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Views\Modals\BannedParticipantsModal.axaml.cs">
+      <DependentUpon>BannedParticipantsModal.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

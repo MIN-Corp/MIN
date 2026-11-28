@@ -54,13 +54,15 @@ internal sealed class ChatHistoryHandler : BaseHandler
                 }, stopPropagation: true);
 
             case ChatHistoryResponseMessage response:
-                if (roomStore.GetRoomHostParticipantId(roomId) == response.SenderId
-                    && context.Role == Role.Client)
+                if (roomStore.GetRoomHostParticipantId(roomId) != response.SenderId
+                    || context.Role != Role.Client)
                 {
-                    foreach (var roomMessage in response.Messages)
-                    {
-                        context.RoomContext.Messages.AddMessage(roomMessage, appendOnStart: true);
-                    }
+                    return HandlerResult.WithEvent(new ChatHistoryUpdatedEvent() { RoomId = roomId, Message = response, });
+                }
+
+                foreach (var roomMessage in response.Messages)
+                {
+                    context.RoomContext.Messages.AddMessage(roomMessage, appendOnStart: true);
                 }
 
                 return HandlerResult.WithEvent(new ChatHistoryUpdatedEvent()
@@ -85,11 +87,13 @@ internal sealed class ChatHistoryHandler : BaseHandler
                 }
 
                 context.RoomContext.Messages.ClearMessages();
-                context.RoomContext.Messages.AddMessage(new SystemTextMessage()
+                var wipeOutMessageInfo = new SystemTextMessage
                 {
                     Content = (clearMessage as IDescribable).GetDescription()
-                });
+                };
+                context.RoomContext.Messages.AddMessage(wipeOutMessageInfo);
                 room.TotalMessageCount = context.RoomContext.Messages.GetMessageCount();
+                room.LocalRoomSettings.HistoryWipedOutUpTo = wipeOutMessageInfo.Timestamp;
 
                 return HandlerResult.WithEvent(new ChatHistoryClearedEvent()
                 {

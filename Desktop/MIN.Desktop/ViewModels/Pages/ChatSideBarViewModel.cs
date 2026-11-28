@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
@@ -9,6 +10,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MIN.Core.Entities;
+using MIN.Core.Entities.Contracts.Enums;
 using MIN.Core.Entities.Contracts.Models;
 using MIN.Core.Transport.Contracts.Extensions;
 using MIN.Core.Transport.Contracts.Interfaces;
@@ -366,6 +368,13 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
     }
 
     /// <summary>
+    /// Открыть чёрный список участников
+    /// </summary>
+    [RelayCommand]
+    private async Task ShowBannedList()
+        => await dialogService.ShowDialogAsync<BannedParticipantsViewModel>(x => x.Init(roomId));
+
+    /// <summary>
     /// Обновить список участников
     /// </summary>
     public void UpdateParticipantFlow(IEnumerable<Participant> participants)
@@ -410,6 +419,27 @@ public partial class ChatSideBarViewModel : RoutableViewModelBase
                 {
                     await featureCollection.Chat.ChatRoomService.KickParticipantAsync(roomId,
                         participant.Id, kickVm!.Reason, appCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    InAppNotifier.Error(ex.Message);
+                }
+            };
+
+            card.OnBanParticipantClicked += async void (_) =>
+            {
+                var ipKnown = featureCollection.Chat.ChatRoomService.ParticipantIpAddressIsKnown(roomId, participant.Id);
+                var banVm = await dialogService.ShowDialogAsync<ParticipantBanViewModel>(x => x.InitializeForBan(participant.Name, ipKnown));
+
+                if (banVm! != true)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await featureCollection.Chat.ChatRoomService.BanParticipantAsync(roomId,
+                        participant.Id, participant.Name, banVm!.Reason, banVm.SelectedValue, banVm.BanByIp, appCts.Token);
                 }
                 catch (Exception ex)
                 {

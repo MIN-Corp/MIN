@@ -28,6 +28,16 @@ public interface IParticipantConnectionRegistry
     ParticipantInfo? GetParticipant(Guid connectionId);
 
     /// <summary>
+    /// Запомнить IP-адрес соединения
+    /// </summary>
+    void RegisterConnectionIp(Guid connectionId, string ip);
+
+    /// <summary>
+    /// Попытаться получить IP-адрес соединения
+    /// </summary>
+    bool TryGetConnectionIp(Guid connectionId, out string ip);
+
+    /// <summary>
     /// Попытаться получить данные участника от его соединения
     /// </summary>
     bool TryGetParticipantFromConnectionId(Guid connectionId, out ParticipantInfo participant);

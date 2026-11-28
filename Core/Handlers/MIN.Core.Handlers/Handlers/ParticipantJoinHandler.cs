@@ -13,6 +13,7 @@ using MIN.Core.Messaging.Contracts.Interfaces;
 using MIN.Core.Messaging.RoomRelated.ParticipantRelated;
 using MIN.Core.Messaging.Stateless.RoomRelated.Join;
 using MIN.Core.Messaging.Stateless.RoomRelated.RoomInfo;
+using MIN.Core.Services.Contracts.Interfaces.Moderation;
 using MIN.Core.Stores.Contracts.Interfaces;
 using MIN.Helpers.Contracts.Interfaces;
 
@@ -24,17 +25,20 @@ internal sealed class ParticipantJoinHandler : BaseHandler
     private readonly IPasswordHasher passwordHasher;
     private readonly IIdentityService identityService;
     private readonly IEventBus eventBus;
+    private readonly IBanService banService;
 
     public ParticipantJoinHandler(IRoomStore roomStore,
         IPasswordHasher passwordHasher,
         IIdentityService identityService,
         IEventBus eventBus,
+        IBanService banService,
         ILoggerProvider logger) : base(logger)
     {
         this.roomStore = roomStore;
         this.passwordHasher = passwordHasher;
         this.identityService = identityService;
         this.eventBus = eventBus;
+        this.banService = banService;
     }
 
     public override IEnumerable<MessageTypeTag> HandledTypes
@@ -55,6 +59,17 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                     return HandlerResult.WithErrorHandled(RoomPasswordConstants.WrongPasswordMessage, critical: true, kickParticipant: false);
                 }
 
+                if (banService.TryGetActiveBan(context.RoomContext.RoomId, roomJoinRequestMessage.SenderId, out var ban))
+                {
+                    return HandlerResult.WithErrorHandled(ban.GetBanMessage(), critical: true);
+                }
+
+                if (context.RoomContext.Connections.TryGetConnectionIp(context.ConnectionId, out var ip)
+                    && banService.TryGetActiveBanByIp(context.RoomContext.RoomId, ip, out var ipBan))
+                {
+                    return HandlerResult.WithErrorHandled(ipBan.GetBanMessage(), critical: true);
+                }
+
                 if (room.LocalRoomSettings.PendingKickParticipantIds.Remove(roomJoinRequestMessage.SenderId, out var reason))
                 {
                     return HandlerResult.WithErrorHandled(reason, critical: true);
@@ -63,17 +78,13 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                 var isReturning = context.RoomContext.Participants.TryGetParticipantById(roomJoinRequestMessage.SenderId, out var existing)
                     && existing?.CurrentStatus == OnlineStatus.Offline;
 
-                if (!isReturning && room.IsFull)
+                return isReturning switch
                 {
-                    return HandlerResult.WithErrorHandled("Комната заполнена. Попробуйте позже.", critical: true);
-                }
-
-                if (!isReturning && existing != null)
-                {
-                    return HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.", critical: true, kickParticipant: false);
-                }
-
-                return HandlerResult.WithResponse(new RoomJoinResponseMessage());
+                    false when room.IsFull => HandlerResult.WithErrorHandled("Комната заполнена. Попробуйте позже.", critical: true),
+                    false when existing != null => HandlerResult.WithErrorHandled("Такой участник в ней уже присутствует. Попробуйте позже.",
+                        critical: true, kickParticipant: false),
+                    _ => HandlerResult.WithResponse(new RoomJoinResponseMessage())
+                };
 
             case RoomJoinResponseMessage _:
                 return HandlerResult.WithResponse(new ParticipantJoinedMessage()

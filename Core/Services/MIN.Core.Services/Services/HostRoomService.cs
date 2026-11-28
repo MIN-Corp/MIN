@@ -1,4 +1,5 @@
-﻿using MIN.Common.Core.Extensions;
+﻿using System.Collections.Concurrent;
+using MIN.Common.Core.Extensions;
 using MIN.Core.Cryptography.Contracts.Interfaces;
 using MIN.Core.Entities;
 using MIN.Core.Entities.Contracts.Enums;
@@ -109,6 +110,12 @@ internal sealed class HostRoomService
         }
 
         protocolPhase.Remove(e.ConnectionId);
+        if (e.RemoteEndPoint.TryGetCanonicalIp(out var clientIp))
+        {
+            var context = roomFactory.GetOrCreateContext(roomId);
+            context.Connections.RegisterConnectionIp(e.ConnectionId, clientIp);
+        }
+
         logger.Log($"Клиент {e.RemoteEndPoint} прошёл протокол для комнаты {roomId}");
 
         await pingService.RegisterHeartbeatSession(Role.Host, roomId, e.ConnectionId);
@@ -144,15 +151,14 @@ internal sealed class HostRoomService
             }
             else
             {
-                await eventBus.PublishAsync(new RoomWentOfflineEvent()
+                await eventBus.PublishAsync(new RoomWentOfflineEvent
                 {
                     RoomId = roomId,
                     Reason = e.DisconnectReason.GetDescription(),
                 });
             }
         }
-        else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out var participant)
-                 && participant!.CurrentStatus != OnlineStatus.Offline)
+        else if (context.Participants.TryGetParticipantById(leavingParticipant.Id, out _))
         {
             var reason = e.DisconnectReason;
 
@@ -168,7 +174,7 @@ internal sealed class HostRoomService
                     : e.DisconnectReason;
             }
 
-            await messageRouter.RouteAsync(new ParticipantLeftMessage()
+            await messageRouter.RouteAsync(new ParticipantLeftMessage
             {
                 Participant = leavingParticipant,
                 Reason = reason,
@@ -342,13 +348,19 @@ internal sealed class HostRoomService
                     return;
                 }
 
-                var room = roomStore.GetRoom(roomId);
-                room.LocalRoomSettings.PendingKickParticipantIds[participantId] = message;
-
                 var hostParticipantId = roomStore.GetRoomHostParticipantId(roomId);
                 context.Participants.TryGetParticipantById(participantId, out var leavingParticipant);
 
-                await messageRouter.RouteAsync(new ParticipantLeftMessage()
+                if (!context.Participants.TryGetParticipantById(participantId, out _)
+                    || leavingParticipant == null)
+                {
+                    return;
+                }
+
+                var room = roomStore.GetRoom(roomId);
+                room.LocalRoomSettings.PendingKickParticipantIds[participantId] = message;
+
+                await messageRouter.RouteAsync(new ParticipantLeftMessage
                 {
                     Participant = leavingParticipant!.ToParticipantInfo(),
                     Reason = reason,

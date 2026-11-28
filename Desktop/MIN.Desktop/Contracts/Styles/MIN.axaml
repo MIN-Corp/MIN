@@ -56,7 +56,7 @@
             <Setter Property="Opacity" Value=".85" />
         </Style>
     </Style>
-    
+
     <!-- Animations -->
 
     <Style Selector=":is(Control).appear-from-top">

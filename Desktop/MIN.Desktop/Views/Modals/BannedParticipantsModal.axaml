@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MIN.Desktop.ViewModels.Modals"
+        xmlns:controls="using:MIN.Desktop.TemplatedControls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="420"
+        MinWidth="420"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        x:Class="MIN.Desktop.Views.Modals.BannedParticipantsModal"
+        x:DataType="vm:BannedParticipantsViewModel"
+        Title="MIN - Чёрный список">
+
+    <Design.DataContext>
+        <vm:BannedParticipantsViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <controls:CustomTitleBar CanMinimize="False" CanMaximize="False" />
+        <StackPanel>
+            <StackPanel Margin="24,12">
+                <TextBlock Text="Чёрный список пуст"
+                           Classes="header4"
+                           IsVisible="{Binding !HasBannedParticipants}"
+                           HorizontalAlignment="Center"
+                           Margin="0,12,0,10"/>
+
+                <ScrollViewer MaxHeight="360">
+                    <ItemsControl ItemsSource="{Binding BannedParticipants}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="card" Margin="0,4" Padding="12,8">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                                            <Button Classes="icon"
+                                                    ToolTip.Tip="Изменить дату разбана"
+                                                    Command="{Binding EditCommand}">
+                                                <Svg Path="/Assets/Icons/about-card.svg" />
+                                            </Button>
+                                            <Button Classes="icon"
+                                                    ToolTip.Tip="Убрать из чёрного списка"
+                                                    Command="{Binding RemoveCommand}">
+                                                <Svg Path="/Assets/Icons/close.svg" />
+                                            </Button>
+                                        </StackPanel>
+
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding BanInfo.Name}" Classes="header5" />
+                                            <TextBlock Text="{Binding IpAddressText}" IsVisible="{Binding IsIpBanned}" />
+                                            <TextBlock Text="{Binding UnbanDateText}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+
+            <Border Classes="footer">
+                <Panel>
+                    <Button
+                        Command="{Binding CloseCommand}"
+                        Content="Закрыть"
+                        Classes="secondary"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Right"
+                        HotKey="Escape" />
+                </Panel>
+            </Border>
+        </StackPanel>
+    </DockPanel>
+</Window>

@@ -41,9 +41,9 @@
                 <!-- Topbar -->
 
                 <Border DockPanel.Dock="Top"
-                Background="{DynamicResource SidebarBackground}"
-                Padding="{DynamicResource PaddingTopBar}"
-                CornerRadius="{DynamicResource CornerRadiusLarge}">
+                    Background="{DynamicResource SidebarBackground}"
+                    Padding="{DynamicResource PaddingTopBar}"
+                    CornerRadius="{DynamicResource CornerRadiusLarge}">
                     <DockPanel>
                         <Button HorizontalAlignment="Right"
                             DockPanel.Dock="Right"
