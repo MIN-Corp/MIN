@@ -118,19 +118,26 @@ public sealed class ChatRoomService : IChatRoomService
         await lifecycleManager.UpdateNetworkOptions(room.Id, newNetworkOptions, cancellationToken);
     }
 
-    async Task IChatRoomService.BanParticipantAsync(Guid roomId, Guid participantId, string participantName, string reason, BanDuration duration, CancellationToken cancellationToken)
+    async Task IChatRoomService.BanParticipantAsync(Guid roomId, Guid participantId, string participantName, string reason, BanDuration duration, bool alsoBanIp, CancellationToken cancellationToken)
     {
         if (!registry.IsHosting(roomId))
         {
             throw new InvalidOperationException("Ты не являешься хостом для этой комнаты");
         }
 
-        // Сначала фиксируем бан, чтобы гонка с переподключением не позволила зайти обратно
-        var ban = banService.Ban(roomId, participantId, participantName, reason, duration.ToUnbanDate());
-
         var context = roomFactory.GetOrCreateContext(roomId);
 
-        if (!context.Connections.TryGetConnectionIdFromParticipantId(participantId, out _))
+        var isConnected = context.Connections.TryGetConnectionIdFromParticipantId(participantId, out var connectionId);
+
+        string? ip = null;
+        if (isConnected && context.Connections.TryGetConnectionIp(connectionId, out var capturedIp))
+        {
+            ip = capturedIp;
+        }
+
+        var ban = banService.Ban(roomId, participantId, participantName, reason, duration.ToUnbanDate(), ip, alsoBanIp && ip != null);
+
+        if (!isConnected)
         {
             await lifecycleManager.KickClientAsync(roomId, participantId, DisconnectReason.Kick, ban.GetBanMessage());
             return;
@@ -145,10 +152,14 @@ public sealed class ChatRoomService : IChatRoomService
         return Task.CompletedTask;
     }
 
-    Task IChatRoomService.UpdateBanDateAsync(Guid roomId, Guid participantId, BanDuration duration, CancellationToken cancellationToken)
+    Task<BanInfo?> IChatRoomService.UpdateBanAsync(Guid roomId, Guid participantId, string reason, BanDuration duration, bool alsoBanIp, CancellationToken cancellationToken)
+        => Task.FromResult(banService.UpdateBan(roomId, participantId, reason, duration.ToUnbanDate(), alsoBanIp));
+
+    bool IChatRoomService.ParticipantIpAddressIsKnown(Guid roomId, Guid participantId)
     {
-        banService.UpdateBan(roomId, participantId, duration.ToUnbanDate());
-        return Task.CompletedTask;
+        var context = roomFactory.GetOrCreateContext(roomId);
+        return context.Connections.TryGetConnectionIdFromParticipantId(participantId, out var connectionId)
+               && context.Connections.TryGetConnectionIp(connectionId, out _);
     }
 
     Task<IReadOnlyList<BanInfo>> IChatRoomService.GetBannedParticipantsAsync(Guid roomId, CancellationToken cancellationToken)

@@ -36,9 +36,9 @@ public interface IChatRoomService
     Task UpdateNetworkOutOfSettings(RoomInfo room, IEnumerable<IEndpoint> endpoints, NetworkOptions newNetworkOptions, NetworkOptions? oldNetworkOptions = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Забанить участника на выбранную длительность и исключить его из комнаты
+    /// Забанить участника на выбранную длительность, опционально по IP, и исключить его из комнаты
     /// </summary>
-    Task BanParticipantAsync(Guid roomId, Guid participantId, string participantName, string reason, BanDuration duration, CancellationToken cancellationToken = default);
+    Task BanParticipantAsync(Guid roomId, Guid participantId, string participantName, string reason, BanDuration duration, bool alsoBanIp = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Разбанить участника комнаты
@@ -46,9 +46,14 @@ public interface IChatRoomService
     Task UnbanParticipantAsync(Guid roomId, Guid participantId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Изменить дату разбана участника
+    /// Изменить причину или дату разбана участника
     /// </summary>
-    Task UpdateBanDateAsync(Guid roomId, Guid participantId, BanDuration duration, CancellationToken cancellationToken = default);
+    Task<BanInfo?> UpdateBanAsync(Guid roomId, Guid participantId, string reason, BanDuration duration, bool alsoBanIp = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Известен ли ip адрес участника как хоста
+    /// </summary>
+    bool ParticipantIpAddressIsKnown(Guid roomId, Guid participantId);
 
     /// <summary>
     /// Получить список забаненных участников комнаты

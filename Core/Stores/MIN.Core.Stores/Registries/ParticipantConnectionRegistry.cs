@@ -11,6 +11,7 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
 {
     private readonly ConcurrentDictionary<Guid, ParticipantInfo> participantByConnectionId = new();
     private readonly ConcurrentDictionary<Guid, Guid> connectionIdByParticipantId = new();
+    private readonly ConcurrentDictionary<Guid, string> connectionIpByConnectionId = new();
 
     void IParticipantConnectionRegistry.Register(Guid connectionId, ParticipantInfo participant)
     {
@@ -30,6 +31,8 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
     /// <inheritdoc />
     public void Unregister(Guid connectionId)
     {
+        connectionIpByConnectionId.TryRemove(connectionId, out _);
+
         if (participantByConnectionId.TryRemove(connectionId, out var participantInfo)
            && connectionIdByParticipantId.TryGetValue(participantInfo.Id, out var currentConnectionId)
            && currentConnectionId == connectionId)
@@ -53,6 +56,12 @@ public sealed class ParticipantConnectionRegistry : IParticipantConnectionRegist
 
     ParticipantInfo IParticipantConnectionRegistry.GetParticipant(Guid connectionId)
         => participantByConnectionId.TryGetValue(connectionId, out var p) ? p : throw new ConnectionNotRegisteredException(connectionId);
+
+    void IParticipantConnectionRegistry.RegisterConnectionIp(Guid connectionId, string ip)
+        => connectionIpByConnectionId[connectionId] = ip;
+
+    bool IParticipantConnectionRegistry.TryGetConnectionIp(Guid connectionId, out string ip)
+        => connectionIpByConnectionId.TryGetValue(connectionId, out ip!);
 
     bool IParticipantConnectionRegistry.TryGetParticipantFromConnectionId(Guid connectionId, out ParticipantInfo participant)
         => participantByConnectionId.TryGetValue(connectionId, out participant!);

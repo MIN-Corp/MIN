@@ -27,6 +27,7 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
 {
     private readonly ITransport transport;
     private readonly IRoomConnectionRegistry registry;
+    private readonly IRoomFactory roomFactory;
     private readonly IEventBus eventBus;
     private readonly PingService pingService;
     private readonly ClientRoomService clientService;
@@ -52,6 +53,7 @@ public sealed class RoomLifecycleManager : IRoomLifecycleManager
     {
         this.transport = transport;
         this.registry = registry;
+        this.roomFactory = roomFactory;
         this.eventBus = eventBus;
 
         pingService = new PingService(eventBus, messageSender);

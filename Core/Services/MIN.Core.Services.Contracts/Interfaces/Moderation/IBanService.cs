@@ -11,7 +11,7 @@ public interface IBanService
     /// Забанить участника комнаты
     /// </summary>
     /// <returns>Информация о созданном бане</returns>
-    BanInfo Ban(Guid roomId, Guid participantId, string name, string reason, DateTimeOffset? bannedUntil);
+    BanInfo Ban(Guid roomId, Guid participantId, string name, string reason, DateTimeOffset? bannedUntil, string? ipAddress = null, bool isIpBanned = false);
 
     /// <summary>
     /// Разбанить участника комнаты
@@ -23,7 +23,7 @@ public interface IBanService
     /// Изменить дату разбана участника
     /// </summary>
     /// <returns>True - если бан найден и обновлён</returns>
-    bool UpdateBan(Guid roomId, Guid participantId, DateTimeOffset? bannedUntil);
+    BanInfo? UpdateBan(Guid roomId, Guid participantId, string reason, DateTimeOffset? bannedUntil, bool alsoBanIp);
 
     /// <summary>
     /// Проверить, действует ли бан на участника
@@ -40,4 +40,9 @@ public interface IBanService
     /// Истёкшие баны удаляются при получении списка
     /// </remarks>
     IReadOnlyList<BanInfo> GetBannedParticipants(Guid roomId);
+
+    /// <summary>
+    /// Получить активный бан по IP
+    /// </summary>
+    bool TryGetActiveBanByIp(Guid roomId, string ip, out BanInfo ban);
 }

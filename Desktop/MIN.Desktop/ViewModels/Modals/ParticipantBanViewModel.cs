@@ -32,6 +32,18 @@ public partial class ParticipantBanViewModel : ModalViewModelBase
     public partial string Reason { get; set; } = "";
 
     /// <summary>
+    /// Доступен ли бан по IP (IP-адрес участника известен)
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsIpBanAvailable { get; set; }
+
+    /// <summary>
+    /// Банить ли дополнительно по IP-адресу
+    /// </summary>
+    [ObservableProperty]
+    public partial bool BanByIp { get; set; }
+
+    /// <summary>
     /// Выбранная длительность бана
     /// </summary>
     [ObservableProperty]
@@ -51,10 +63,14 @@ public partial class ParticipantBanViewModel : ModalViewModelBase
     /// <summary>
     /// Инициализировать окно для нового бана
     /// </summary>
-    public void InitializeForBan(string participantName)
+    /// <param name="participantName">Имя участника</param>
+    /// <param name="ipKnown">Известен ли IP-адрес участника</param>
+    public void InitializeForBan(string participantName, bool ipKnown)
     {
         ParticipantName = participantName;
         IsEditMode = false;
+        IsIpBanAvailable = ipKnown;
+        BanByIp = false;
         SelectedDuration = DurationOptions[0];
     }
 
@@ -66,6 +82,8 @@ public partial class ParticipantBanViewModel : ModalViewModelBase
         ParticipantName = banInfo.Name;
         Reason = banInfo.Reason;
         IsEditMode = true;
+        IsIpBanAvailable = banInfo.IpAddress != null;
+        BanByIp = banInfo.IsIpBanned;
         SelectedDuration = DurationOptions[1];
     }
 

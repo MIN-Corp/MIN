@@ -23,9 +23,9 @@
             <StackPanel Margin="24,12">
                 <TextBlock Text="Чёрный список пуст"
                            Classes="header4"
-                           IsVisible="{Binding IsEmpty}"
+                           IsVisible="{Binding !HasBannedParticipants}"
                            HorizontalAlignment="Center"
-                           Margin="0,12,0,10" />
+                           Margin="0,12,0,10"/>
 
                 <ScrollViewer MaxHeight="360">
                     <ItemsControl ItemsSource="{Binding BannedParticipants}">
@@ -48,6 +48,7 @@
 
                                         <StackPanel>
                                             <TextBlock Text="{Binding BanInfo.Name}" Classes="header5" />
+                                            <TextBlock Text="{Binding IpAddressText}" IsVisible="{Binding IsIpBanned}" />
                                             <TextBlock Text="{Binding UnbanDateText}" />
                                         </StackPanel>
                                     </DockPanel>

@@ -64,6 +64,12 @@ internal sealed class ParticipantJoinHandler : BaseHandler
                     return HandlerResult.WithErrorHandled(ban.GetBanMessage(), critical: true);
                 }
 
+                if (context.RoomContext.Connections.TryGetConnectionIp(context.ConnectionId, out var ip)
+                    && banService.TryGetActiveBanByIp(context.RoomContext.RoomId, ip, out var ipBan))
+                {
+                    return HandlerResult.WithErrorHandled(ipBan.GetBanMessage(), critical: true);
+                }
+
                 if (room.LocalRoomSettings.PendingKickParticipantIds.Remove(roomJoinRequestMessage.SenderId, out var reason))
                 {
                     return HandlerResult.WithErrorHandled(reason, critical: true);

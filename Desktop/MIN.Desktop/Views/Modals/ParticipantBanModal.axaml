@@ -47,6 +47,11 @@
                             MinWidth="200"
                             ItemsSource="{Binding DurationOptions}"
                             SelectedItem="{Binding SelectedDuration}" />
+
+                        <CheckBox
+                            Content="Забанить по IP"
+                            IsVisible="{Binding IsIpBanAvailable}"
+                            IsChecked="{Binding BanByIp}" />
                     </StackPanel>
                 </Border>
             </StackPanel>

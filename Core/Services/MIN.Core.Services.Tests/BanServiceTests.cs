@@ -130,27 +130,27 @@ public class BanServiceTests : IDisposable
     }
 
     /// <summary>
-    /// Обновление бана меняет только дату разбана
+    /// Обновление бана меняет причину и дату, а IP и флаг ведут себя по чекбоксу
     /// </summary>
     [Fact]
-    public void UpdateBanShouldReplaceDateOnly()
+    public void UpdateBanShouldReplaceReasonAndDateAndToggleIpFlag()
     {
         // Arrange
         var room = CreateRoom();
         roomStore.Register(room);
         var participantId = Guid.NewGuid();
-        var original = service.Ban(room.Id, participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1));
+        service.Ban(room.Id, participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", isIpBanned: true);
         var newUntil = DateTimeOffset.Now.AddMonths(2);
 
         // Act
-        var updated = service.UpdateBan(room.Id, participantId, newUntil);
+        var updated = service.UpdateBan(room.Id, participantId, "спам и ещё спам", newUntil, alsoBanIp: false);
 
-        // Assert
-        updated.Should().BeTrue();
-        var stored = room.LocalRoomSettings.BannedParticipants[participantId];
-        stored.BannedUntil.Should().Be(newUntil);
-        stored.Name.Should().Be(original.Name);
-        stored.Reason.Should().Be(original.Reason);
+        // Assert — адрес не сбрасывается, флаг выключается
+        updated.Should().NotBeNull();
+        updated!.IpAddress.Should().Be("10.0.0.1");
+        updated.IsIpBanned.Should().BeFalse();
+        updated.Reason.Should().Be("спам и ещё спам");
+        updated.BannedUntil.Should().Be(newUntil);
         persistence.Verify(p => p.MarkDirty(room.Id), Times.Exactly(2));
     }
 
@@ -165,10 +165,10 @@ public class BanServiceTests : IDisposable
         roomStore.Register(room);
 
         // Act
-        var updated = service.UpdateBan(room.Id, Guid.NewGuid(), DateTimeOffset.Now);
+        var updated = service.UpdateBan(room.Id, Guid.NewGuid(), "Вы забанены", DateTimeOffset.Now, false);
 
         // Assert
-        updated.Should().BeFalse();
+        updated.Should().BeNull();
     }
 
     /// <summary>
@@ -248,6 +248,126 @@ public class BanServiceTests : IDisposable
         // Assert
         bans.Select(b => b.Name).Should().ContainInOrder("Альфа", "Бета").And.NotContain("Гамма");
         persistence.Verify(p => p.MarkDirty(room.Id), Times.Exactly(4));
+    }
+
+    /// <summary>
+    /// Бан по IP сохраняет адрес и флаг
+    /// </summary>
+    [Fact]
+    public void BanWithIpShouldStoreAddressAndFlag()
+    {
+        // Arrange
+        var room = CreateRoom();
+        roomStore.Register(room);
+        var participantId = Guid.NewGuid();
+
+        // Act
+        var ban = service.Ban(room.Id, participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", isIpBanned: true);
+
+        // Assert
+        ban.IpAddress.Should().Be("10.0.0.1");
+        ban.IsIpBanned.Should().BeTrue();
+        room.LocalRoomSettings.BannedParticipants[participantId].Should().BeSameAs(ban);
+    }
+
+    /// <summary>
+    /// Бан по IP находится по адресу
+    /// </summary>
+    [Fact]
+    public void TryGetActiveBanByIpShouldReturnBanForBannedIp()
+    {
+        // Arrange
+        var room = CreateRoom();
+        roomStore.Register(room);
+        var expected = service.Ban(room.Id, Guid.NewGuid(), "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", isIpBanned: true);
+
+        // Act
+        var result = service.TryGetActiveBanByIp(room.Id, "10.0.0.1", out var ban);
+
+        // Assert
+        result.Should().BeTrue();
+        ban.Should().BeSameAs(expected);
+    }
+
+    /// <summary>
+    /// Чужой IP-адрес не попадает под бан
+    /// </summary>
+    [Fact]
+    public void TryGetActiveBanByIpShouldReturnFalseForOtherIp()
+    {
+        // Arrange
+        var room = CreateRoom();
+        roomStore.Register(room);
+        service.Ban(room.Id, Guid.NewGuid(), "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", isIpBanned: true);
+
+        // Act
+        var result = service.TryGetActiveBanByIp(room.Id, "10.0.0.2", out var ban);
+
+        // Assert
+        result.Should().BeFalse();
+        ban.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Известный адрес с выключенным флагом не блокирует по IP
+    /// </summary>
+    [Fact]
+    public void TryGetActiveBanByIpShouldReturnFalseWhenIpBanDisabled()
+    {
+        // Arrange
+        var room = CreateRoom();
+        roomStore.Register(room);
+        service.Ban(room.Id, Guid.NewGuid(), "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", isIpBanned: false);
+
+        // Act
+        var result = service.TryGetActiveBanByIp(room.Id, "10.0.0.1", out var ban);
+
+        // Assert
+        result.Should().BeFalse();
+        ban.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Истёкший бан по IP удаляется лениво при проверке
+    /// </summary>
+    [Fact]
+    public void TryGetActiveBanByIpShouldRemoveExpiredBanAndMarkDirty()
+    {
+        // Arrange
+        var room = CreateRoom();
+        roomStore.Register(room);
+        var participantId = Guid.NewGuid();
+        service.Ban(room.Id, participantId, "Вася", "спам", DateTimeOffset.Now.AddSeconds(-1), "10.0.0.1", isIpBanned: true);
+
+        // Act
+        var result = service.TryGetActiveBanByIp(room.Id, "10.0.0.1", out _);
+
+        // Assert
+        result.Should().BeFalse();
+        room.LocalRoomSettings.BannedParticipants.Should().BeEmpty();
+        persistence.Verify(p => p.MarkDirty(room.Id), Times.Exactly(2));
+    }
+
+    /// <summary>
+    /// Выключенный флаг можно включить снова — адрес сохраняется
+    /// </summary>
+    [Fact]
+    public void UpdateBanShouldAllowReenablingIpBan()
+    {
+        // Arrange
+        var room = CreateRoom();
+        roomStore.Register(room);
+        var participantId = Guid.NewGuid();
+        service.Ban(room.Id, participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", isIpBanned: false);
+
+        // Act
+        var reenabled = service.UpdateBan(room.Id, participantId, "спам", DateTimeOffset.Now.AddMonths(2), alsoBanIp: true);
+
+        // Assert
+        reenabled.Should().NotBeNull();
+        reenabled!.IsIpBanned.Should().BeTrue();
+        reenabled.IpAddress.Should().Be("10.0.0.1");
+        persistence.Verify(p => p.MarkDirty(room.Id), Times.Exactly(2));
     }
 
     /// <inheritdoc cref="IDisposable.Dispose"/>

@@ -15,16 +15,16 @@ public static class IpAddressExtensions
 
         "255.255.255.0/24", // Некоторые версии Radmin используют 255.255.255.0/24
         "26.0.0.0/8",       // Диапазон Radmin VPN
-        
+
         "192.168.192.0/20", // ZeroTier по умолчанию
         "25.0.0.0/8",       // ZeroTier также использует 25.x.x.x
-        
+
         "100.64.0.0/10",    // Tailscale использует CGNAT диапазон
-        
+
         "10.0.0.0/8",       // Частный, но если не в LAN - может быть VPN
         "172.16.0.0/12",    // Частный, но если не в LAN - может быть VPN
         "192.168.0.0/16",   // Частный, но если не в LAN - может быть VPN
-        
+
         "100.64.0.0/10",
     ];
 
@@ -96,6 +96,33 @@ public static class IpAddressExtensions
         => address == null
             ? throw new ArgumentNullException(nameof(address))
             : address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+
+    /// <summary>
+    /// Извлечь канонический IP-адрес из строки удалённой точки подключения
+    /// </summary>
+    /// <param name="endPoint">Строка вида "1.2.3.4:56789" или "[::1]:8080"</param>
+    /// <param name="ip">Канонический IP-адрес (IPv4-mapped IPv6 разворачивается в IPv4)</param>
+    /// <returns>True - если адрес удалось разобрать</returns>
+    public static bool TryGetCanonicalIp(this string? endPoint, out string ip)
+    {
+        ip = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(endPoint))
+        {
+            return false;
+        }
+
+        try
+        {
+            var address = IPEndPoint.Parse(endPoint).Address.TryExtractMappedIPv4();
+            ip = address.ToString();
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
 
     /// <remarks>
     /// See <a href="https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing">CIDR on Wikipedia</a>

@@ -13,14 +13,31 @@ public partial class BannedParticipantCardViewModel : ObservableObject
     /// <summary>
     /// Информация о бане участника
     /// </summary>
+    public BanInfo BanInfo { get; private set; } = null!;
+
+    /// <summary>
+    /// Причина бана
+    /// </summary>
     [ObservableProperty]
-    public partial BanInfo BanInfo { get; set; }
+    public partial string Reason { get; set; } = string.Empty;
 
     /// <summary>
     /// Текст даты разбана
     /// </summary>
     [ObservableProperty]
-    public partial string UnbanDateText { get; set; }
+    public partial string UnbanDateText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Действует ли бан по IP
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsIpBanned { get; set; }
+
+    /// <summary>
+    /// Текст IP-адреса бана
+    /// </summary>
+    [ObservableProperty]
+    public partial string IpAddressText { get; set; } = string.Empty;
 
     /// <summary>
     /// Событие по нажатию на кнопку изменения даты разбана
@@ -35,18 +52,21 @@ public partial class BannedParticipantCardViewModel : ObservableObject
     /// <summary>
     /// Инициализирует новый экземпляр <see cref="BannedParticipantCardViewModel"/>
     /// </summary>
-    public BannedParticipantCardViewModel(BanInfo banInfo, string date)
+    public BannedParticipantCardViewModel(BanInfo banInfo)
     {
-        BanInfo = banInfo;
-        UnbanDateText = date;
+        UpdateBan(banInfo);
     }
 
     /// <summary>
-    /// Обновить текст даты разбана
+    /// Обновить бан
     /// </summary>
-    public void UpdateUnbanDate(string unbanDateText)
+    public void UpdateBan(BanInfo banInfo)
     {
-        UnbanDateText = unbanDateText;
+        BanInfo = banInfo;
+        Reason = banInfo.Reason;
+        IsIpBanned = banInfo.IsIpBanned;
+        IpAddressText = banInfo.IpAddress is { } ip ? $"IP: {ip}" : "";
+        UnbanDateText = banInfo.FormatUnbanDate();
     }
 
     [RelayCommand]

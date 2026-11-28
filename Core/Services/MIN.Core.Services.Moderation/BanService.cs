@@ -20,11 +20,11 @@ public class BanService : IBanService
         this.persistenceService = persistenceService;
     }
 
-    BanInfo IBanService.Ban(Guid roomId, Guid participantId, string name, string reason, DateTimeOffset? bannedUntil)
+    BanInfo IBanService.Ban(Guid roomId, Guid participantId, string name, string reason, DateTimeOffset? bannedUntil, string? ipAddress, bool isIpBanned)
     {
         var room = roomStore.GetRoom(roomId);
 
-        var ban = new BanInfo(participantId, name, reason, bannedUntil);
+        var ban = new BanInfo(participantId, name, reason, bannedUntil, ipAddress, isIpBanned);
         room.LocalRoomSettings.BannedParticipants[participantId] = ban;
 
         persistenceService.MarkDirty(roomId);
@@ -44,19 +44,24 @@ public class BanService : IBanService
         return true;
     }
 
-    bool IBanService.UpdateBan(Guid roomId, Guid participantId, DateTimeOffset? bannedUntil)
+    BanInfo? IBanService.UpdateBan(Guid roomId, Guid participantId, string reason, DateTimeOffset? bannedUntil, bool alsoBanIp)
     {
         var room = roomStore.GetRoom(roomId);
 
         if (!room.LocalRoomSettings.BannedParticipants.TryGetValue(participantId, out var existing))
         {
-            return false;
+            return null;
         }
 
-        room.LocalRoomSettings.BannedParticipants[participantId] = existing with { BannedUntil = bannedUntil };
+        room.LocalRoomSettings.BannedParticipants[participantId] = existing with
+        {
+            Reason = reason,
+            BannedUntil = bannedUntil,
+            IsIpBanned = alsoBanIp
+        };
 
         persistenceService.MarkDirty(roomId);
-        return true;
+        return room.LocalRoomSettings.BannedParticipants[participantId];
     }
 
     bool IBanService.TryGetActiveBan(Guid roomId, Guid participantId, out BanInfo ban)
@@ -100,6 +105,33 @@ public class BanService : IBanService
         persistenceService.MarkDirty(roomId);
 
         return bans.Values.OrderBy(x => x.Name).ToList();
+    }
+
+    bool IBanService.TryGetActiveBanByIp(Guid roomId, string ip, out BanInfo ban)
+    {
+        ban = null!;
+
+        if (!roomStore.TryGetRoom(roomId, out var room))
+        {
+            return false;
+        }
+
+        var stored = room.LocalRoomSettings.BannedParticipants.Values
+            .FirstOrDefault(x => x.IsIpBanned && x.IpAddress == ip);
+        if (stored == null)
+        {
+            return false;
+        }
+
+        if (IsExpired(stored))
+        {
+            room.LocalRoomSettings.BannedParticipants.Remove(stored.ParticipantId);
+            persistenceService.MarkDirty(roomId);
+            return false;
+        }
+
+        ban = stored;
+        return true;
     }
 
     private static bool IsExpired(BanInfo ban)

@@ -110,6 +110,12 @@ internal sealed class HostRoomService
         }
 
         protocolPhase.Remove(e.ConnectionId);
+        if (e.RemoteEndPoint.TryGetCanonicalIp(out var clientIp))
+        {
+            var context = roomFactory.GetOrCreateContext(roomId);
+            context.Connections.RegisterConnectionIp(e.ConnectionId, clientIp);
+        }
+
         logger.Log($"Клиент {e.RemoteEndPoint} прошёл протокол для комнаты {roomId}");
 
         await pingService.RegisterHeartbeatSession(Role.Host, roomId, e.ConnectionId);

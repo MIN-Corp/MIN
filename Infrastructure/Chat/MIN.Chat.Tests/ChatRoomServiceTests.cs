@@ -106,7 +106,8 @@ public class ChatRoomServiceTests : IDisposable
         var ban = new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1));
 
         var recorded = false;
-        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset?>()))
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
+                It.IsAny<string>(),It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<bool>()))
             .Returns(ban)
             .Callback(() => recorded = true);
         lifecycle.Setup(l => l.KickClientAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DisconnectReason>(), It.IsAny<string>()))
@@ -133,7 +134,8 @@ public class ChatRoomServiceTests : IDisposable
         var participantId = Guid.NewGuid();
         var context = rooms.Factory.GetOrCreateContext(roomId);
         context.Connections.RegisterLocalParticipant(new ParticipantInfo { Id = participantId, Name = "Вася" });
-        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset?>()))
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<bool>()))
             .Returns(new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1)));
 
         // Act
@@ -156,6 +158,83 @@ public class ChatRoomServiceTests : IDisposable
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*хостом*");
+    }
+
+     /// <summary>
+    /// Чекбокс бан-по-IP передаёт в сервис захваченный адрес участника
+    /// </summary>
+    [Fact]
+    public async Task BanWithIpShouldPassCapturedIpAndFlag()
+    {
+        // Arrange
+        registry.RegisterServerConnection(roomId, Guid.NewGuid());
+        var participantId = Guid.NewGuid();
+        var context = rooms.Factory.GetOrCreateContext(roomId);
+        var connectionId = Guid.NewGuid();
+        context.Connections.Register(connectionId, new ParticipantInfo { Id = participantId, Name = "Вася" });
+        context.Connections.RegisterConnectionIp(connectionId, "10.0.0.1");
+
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .Returns(new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1", true));
+
+        // Act
+        await service.BanParticipantAsync(roomId, participantId, "Вася", "спам", BanDuration.Day, alsoBanIp: true);
+
+        // Assert
+        banService.Verify(b => b.Ban(roomId, participantId, "Вася", "спам",
+            It.IsAny<DateTimeOffset?>(), "10.0.0.1", true), Times.Once);
+    }
+
+    /// <summary>
+    /// Без чекбокса IP всё равно сохраняется, но с выключенным флагом
+    /// </summary>
+    [Fact]
+    public async Task BanWithoutIpShouldPassIpWithDisabledFlag()
+    {
+        // Arrange
+        registry.RegisterServerConnection(roomId, Guid.NewGuid());
+        var participantId = Guid.NewGuid();
+        var context = rooms.Factory.GetOrCreateContext(roomId);
+        var connectionId = Guid.NewGuid();
+        context.Connections.Register(connectionId, new ParticipantInfo { Id = participantId, Name = "Вася" });
+        context.Connections.RegisterConnectionIp(connectionId, "10.0.0.1");
+
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .Returns(new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1), "10.0.0.1"));
+
+        // Act
+        await service.BanParticipantAsync(roomId, participantId, "Вася", "спам", BanDuration.Day);
+
+        // Assert
+        banService.Verify(b => b.Ban(roomId, participantId, "Вася", "спам",
+            It.IsAny<DateTimeOffset?>(), "10.0.0.1", false), Times.Once);
+    }
+
+    /// <summary>
+    /// Бан оффлайн-участника не передаёт IP
+    /// </summary>
+    [Fact]
+    public async Task BanOfflineParticipantShouldPassNullIpAndKickDirectly()
+    {
+        // Arrange
+        registry.RegisterServerConnection(roomId, Guid.NewGuid());
+        rooms.Factory.GetOrCreateContext(roomId);
+        var participantId = Guid.NewGuid();
+
+        banService.Setup(b => b.Ban(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .Returns(new BanInfo(participantId, "Вася", "спам", DateTimeOffset.Now.AddDays(1)));
+
+        // Act
+        await service.BanParticipantAsync(roomId, participantId, "Вася", "спам", BanDuration.Day, alsoBanIp: true);
+
+        // Assert
+        banService.Verify(b => b.Ban(roomId, participantId, "Вася", "спам",
+            It.IsAny<DateTimeOffset?>(), null, false), Times.Once);
+        lifecycle.Verify(l => l.KickClientAsync(roomId, participantId, DisconnectReason.Kick,
+            It.Is<string>(s => s.Contains("Вы забанены"))), Times.Once);
     }
 
     /// <summary>

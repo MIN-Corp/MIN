@@ -30,7 +30,7 @@ public record LocalRoomSettings
     /// <summary>
     /// Участники, которых нужно кикнуть при следующей попытке входа
     /// </summary>
-    public Dictionary<Guid, string> PendingKickParticipantIds { get; } = [];
+    public Dictionary<Guid, string> PendingKickParticipantIds { get; set; } = [];
 
     /// <summary>
     /// Забаненные участники комнаты
